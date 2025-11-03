@@ -1,0 +1,5 @@
+# Exclude files not needed for prompt generation
+
+# Examples (README.md contains all needed info)
+EXAMPLES.md
+LESSONS_LEARNED.md

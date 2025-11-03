@@ -1,0 +1,185 @@
+# Smart Defaults Configuration
+# These values are applied automatically when not specified
+
+# Core Defaults
+default_transformeter_level: 5
+default_variation_count: 3
+default_decoration_level: 8
+default_format: "1:1 square"
+default_production: "laser-cut MDF"
+default_output_type: "streamlined"
+
+# Format Specifications
+formats:
+  horizontal:
+    ratio: "2:1"
+    dimensions: "10\" × 5\""
+    orientation: "landscape"
+  square:
+    ratio: "1:1"
+    dimensions: "8\" × 8\""
+    orientation: "square"
+  vertical:
+    ratio: "1:2"
+    dimensions: "5\" × 10\""
+    orientation: "portrait"
+  circular:
+    diameter: "8\""
+    orientation: "round"
+
+# Level Presets
+level_presets:
+  conservative:
+    range: [3, 4]
+    default: 3
+    description: "Subtle changes, maintains original feel"
+  moderate:
+    range: [4, 6]
+    default: 5
+    description: "Balanced transformation"
+  professional:
+    range: [6, 7]
+    default: 6
+    description: "Industry standard variation"
+  bold:
+    range: [7, 8]
+    default: 7
+    description: "Significant transformation"
+  radical:
+    range: [8, 9]
+    default: 8
+    description: "Major reimagining"
+
+# Decoration Levels
+decoration_presets:
+  minimal:
+    level: 4
+    elements: [2, 3]
+  moderate:
+    level: 6
+    elements: [3, 5]
+  standard:
+    level: 8
+    elements: [5, 7]
+  maximum:
+    level: 10
+    elements: [7, 10]
+
+# Production Specifications
+production_specs:
+  laser_cut_mdf:
+    material: "1/8\" MDF"
+    min_line_weight: "0.5pt"
+    recommended_line_weight: "1pt"
+    color_mode: "CMYK"
+    file_format: "vector"
+    structural_requirement: "connected"
+    efficiency_target: "70%"
+
+# Quick Command Mappings
+quick_commands:
+  "professional":
+    level: 6
+    decoration: 8
+    output: "streamlined"
+  "conservative":
+    level: 3
+    decoration: 6
+    output: "streamlined"
+  "bold":
+    level: 7
+    decoration: 9
+    output: "streamlined"
+  "testing":
+    levels: [3, 5, 7]
+    count: 3
+    output: "streamlined"
+  "complete":
+    level: 5
+    decoration: 8
+    output: "full"
+
+# Element Counts by Variation Type
+element_requirements:
+  color_variation:
+    new_elements: [1, 3]
+    change_elements: [5, 8]
+  style_variation:
+    new_elements: [3, 5]
+    change_elements: [7, 10]
+  composition_variation:
+    new_elements: [3, 7]
+    change_elements: [8, 12]
+  seasonal_variation:
+    new_elements: [4, 6]
+    change_elements: [6, 9]
+  format_variation:
+    new_elements: [2, 4]
+    change_elements: [5, 7]
+
+# Theme Color Palettes (CMYK)
+theme_palettes:
+  christmas:
+    primary: "C:15 M:100 Y:90 K:10"  # Christmas Red
+    secondary: "C:60 M:0 Y:100 K:0"   # Christmas Green
+    accent: "C:10 M:10 Y:60 K:0"      # Gold
+  summer:
+    primary: "C:60 M:0 Y:10 K:0"      # Ocean Blue
+    secondary: "C:0 M:0 Y:100 K:0"    # Sunshine Yellow
+    accent: "C:0 M:70 Y:30 K:0"       # Coral
+  day_of_dead:
+    primary: "C:0 M:100 Y:100 K:0"    # Marigold Orange
+    secondary: "C:75 M:100 Y:0 K:0"   # Deep Purple
+    accent: "C:0 M:100 Y:0 K:0"       # Magenta
+  wedding:
+    primary: "C:5 M:10 Y:10 K:0"      # Soft White
+    secondary: "C:10 M:40 Y:20 K:0"   # Blush Pink
+    accent: "C:10 M:10 Y:60 K:10"     # Champagne Gold
+
+# Regional Element Defaults
+regional_defaults:
+  hermosillo:
+    flora: ["saguaro", "palo verde", "ocotillo"]
+    fauna: ["roadrunner", "gila monster"]
+    landmarks: ["cerro de la campana", "cathedral"]
+  cdmx:
+    flora: ["jacaranda", "ahuehuete"]
+    fauna: ["axolotl", "monarch butterfly"]
+    landmarks: ["angel de independencia", "palacio bellas artes"]
+  oaxaca:
+    flora: ["agave", "copal tree"]
+    fauna: ["jaguar", "quetzal"]
+    landmarks: ["monte alban", "santo domingo"]
+  cancun:
+    flora: ["coconut palm", "mangrove"]
+    fauna: ["sea turtle", "flamingo"]
+    landmarks: ["mayan ruins", "beaches"]
+
+# Validation Thresholds
+validation:
+  min_new_elements: 3
+  max_new_elements: 7
+  min_cohesion_score: 7
+  min_quality_score: 8
+  required_changes:
+    - "poses"
+    - "composition"
+    - "spatial_arrangement"
+
+# Auto-Detection Rules
+auto_detection:
+  keywords_to_level:
+    "subtle": 3
+    "minor": 3
+    "moderate": 5
+    "significant": 7
+    "major": 8
+    "radical": 9
+  keywords_to_output:
+    "quick": "streamlined"
+    "fast": "streamlined"
+    "rapid": "streamlined"
+    "complete": "full"
+    "detailed": "full"
+    "final": "full"
+    "production": "full"

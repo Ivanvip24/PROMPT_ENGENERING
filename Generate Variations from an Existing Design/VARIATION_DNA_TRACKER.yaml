@@ -1,0 +1,123 @@
+# Variation DNA Tracker
+# Track what makes each variation unique in a family
+
+# Example Family: Hermosillo Christmas Series
+family_id: "hermosillo_christmas_2025"
+original_design:
+  description: "Traditional Hermosillo landmark design with saguaros"
+  sacred_elements:
+    - "Cerro de la Campana"
+    - "HERMOSILLO text"
+    - "Desert sunset colors"
+
+variations:
+  variation_1_color:
+    id: "HC_001"
+    transformeter_level: 3
+    type: "color"
+    kept:
+      - logo position
+      - text placement
+      - landmark arrangement
+      - overall composition
+    changed:
+      - palette from warm to cool
+      - sunset to twilight colors
+      - gold accents to silver
+    added:
+      - metallic gradients
+      - aurora effects
+      - star patterns
+    removed:
+      - warm orange tones
+      - traditional rust colors
+    unique_purpose: "Evening/night themed variant"
+    cohesion_score: 9
+
+  variation_2_style:
+    id: "HC_002"
+    transformeter_level: 6
+    type: "style"
+    kept:
+      - sacred landmarks
+      - destination text
+      - desert theme
+    changed:
+      - realistic to geometric style
+      - traditional to modern aesthetic
+      - organic curves to angular shapes
+      - 3D depth to flat design
+    added:
+      - polygon patterns
+      - neon accents
+      - digital grid overlay
+      - tech-inspired borders
+      - crystalline textures
+    removed:
+      - traditional ornaments
+      - organic textures
+    unique_purpose: "Modern/tech audience"
+    cohesion_score: 8
+
+  variation_3_seasonal:
+    id: "HC_003"
+    transformeter_level: 5
+    type: "seasonal"
+    kept:
+      - landmark positions
+      - brand elements
+      - core composition
+    changed:
+      - saguaro poses (wearing Santa hats)
+      - roadrunner holding presents
+      - sunset includes star of Bethlehem
+    added:
+      - poinsettia clusters
+      - Christmas ornaments on cacti
+      - snow on mountain peaks
+      - holiday light strings
+      - wrapped gift boxes
+      - candy cane borders
+    removed:
+      - standard desert flowers
+      - regular wildlife poses
+    unique_purpose: "Holiday gift market"
+    cohesion_score: 8
+
+family_analysis:
+  total_variations: 3
+  unity_elements:
+    - "All contain Cerro de la Campana"
+    - "All include HERMOSILLO text"
+    - "All maintain desert theme foundation"
+  differentiation_success:
+    - "Each targets different use case"
+    - "Distinct visual approaches"
+    - "Clear purpose separation"
+  overall_family_cohesion: 8.3
+  recommendation: "APPROVED - Strong family with clear differentiation"
+
+# Template for New Family
+template:
+  family_id: "[destination]_[theme]_[year]"
+  original_design:
+    description: ""
+    sacred_elements: []
+  variations:
+    variation_[number]_[type]:
+      id: ""
+      transformeter_level:
+      type: "[color|style|composition|seasonal|format]"
+      kept: []
+      changed: []
+      added: []  # Must be 3-7 items
+      removed: []
+      unique_purpose: ""
+      cohesion_score: # /10
+
+# Quick Analysis Commands
+quick_analysis:
+  check_variation_count: "variations.added.length >= 3 && <= 7"
+  check_sacred_preserved: "all(variations.kept includes sacred_elements)"
+  check_differentiation: "all(variations.unique_purpose != duplicate)"
+  check_cohesion: "family_analysis.overall_family_cohesion >= 7"

@@ -1,0 +1,18 @@
+# Exclude heavy documentation folders to speed up Claude Code
+# These files are not needed for prompt generation
+
+# Example prompts (not needed for generation)
+Prompts/
+
+# Internal agents (not needed for generation)
+agents/
+
+# Detailed reference files (core docs are enough)
+reference/
+
+# Example files
+examples/
+
+# Optimization notes
+OPTIMIZATION_COMPLETE.md
+UPDATES_SUMMARY.md

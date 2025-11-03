@@ -1,0 +1,15 @@
+# Exclude heavy documentation folders to speed up Claude Code
+
+# Example prompts
+Prompts/
+
+# Cultural research data
+cultural_research/
+
+# Internal agents
+GOAL3/agents/
+
+# Optimization notes
+OPTIMIZATION_COMPLETE.md
+CRITICAL_FIX_ELEMENT_HANDLING.md
+SPEED_OPTIMIZED_WORKFLOW.md

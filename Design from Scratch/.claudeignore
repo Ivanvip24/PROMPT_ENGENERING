@@ -1,0 +1,10 @@
+# Exclude files not needed for prompt generation
+
+# Scenario files (CLAUDE.md contains all needed info)
+scenario_*.md
+
+# Detailed style guidelines (main file is enough)
+design_styles_reference.md
+
+# Pueblos list (too long, not always needed)
+pueblos_magicos_list.md

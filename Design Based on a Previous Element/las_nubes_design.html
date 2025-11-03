@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAS NUBES Chignahuapan - Design</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 40%, #228B22 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .design-container {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background: linear-gradient(135deg, #FFE4B5 0%, #F0E68C 50%, #90EE90 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Sky and Clouds */
+        .sky {
+            position: absolute;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(180deg, #87CEEB 0%, #FFE4B5 100%);
+            top: 0;
+        }
+
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 100px;
+            opacity: 0.8;
+        }
+
+        .cloud1 {
+            width: 100px;
+            height: 40px;
+            top: 30px;
+            left: 100px;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .cloud2 {
+            width: 80px;
+            height: 35px;
+            top: 60px;
+            right: 150px;
+            animation: float 25s infinite ease-in-out reverse;
+        }
+
+        .cloud3 {
+            width: 120px;
+            height: 45px;
+            top: 90px;
+            left: 300px;
+            animation: float 30s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(30px); }
+        }
+
+        /* Mountains Background */
+        .mountains {
+            position: absolute;
+            bottom: 200px;
+            width: 100%;
+            height: 300px;
+        }
+
+        .mountain {
+            position: absolute;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+
+        .mountain1 {
+            border-left: 200px solid transparent;
+            border-right: 200px solid transparent;
+            border-bottom: 250px solid #4A7C59;
+            left: -50px;
+        }
+
+        .mountain2 {
+            border-left: 180px solid transparent;
+            border-right: 180px solid transparent;
+            border-bottom: 200px solid #5F9EA0;
+            right: -30px;
+        }
+
+        .mountain3 {
+            border-left: 150px solid transparent;
+            border-right: 150px solid transparent;
+            border-bottom: 180px solid #6B8E23;
+            left: 250px;
+        }
+
+        /* Forest Trees */
+        .forest {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            height: 200px;
+        }
+
+        .tree {
+            position: absolute;
+            bottom: 0;
+        }
+
+        .tree-trunk {
+            background: #8B4513;
+            width: 20px;
+            height: 40px;
+            margin: 0 auto;
+        }
+
+        .tree-leaves {
+            width: 0;
+            height: 0;
+            border-left: 30px solid transparent;
+            border-right: 30px solid transparent;
+            border-bottom: 50px solid #228B22;
+            margin-left: -20px;
+        }
+
+        .tree1 { left: 50px; }
+        .tree2 { left: 120px; transform: scale(1.2); }
+        .tree3 { right: 100px; }
+        .tree4 { right: 180px; transform: scale(0.9); }
+        .tree5 { left: 650px; transform: scale(1.1); }
+
+        /* Wooden Cabin */
+        .cabin-container {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        .cabin {
+            width: 180px;
+            height: 140px;
+            background: linear-gradient(180deg, #8B4513 0%, #A0522D 100%);
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .cabin-roof {
+            width: 0;
+            height: 0;
+            border-left: 110px solid transparent;
+            border-right: 110px solid transparent;
+            border-bottom: 80px solid #654321;
+            position: absolute;
+            top: -80px;
+            left: -20px;
+        }
+
+        .cabin-door {
+            width: 50px;
+            height: 70px;
+            background: #654321;
+            position: absolute;
+            bottom: 0;
+            left: 65px;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .cabin-window {
+            width: 35px;
+            height: 35px;
+            background: #FFE4B5;
+            position: absolute;
+            top: 30px;
+            border: 3px solid #654321;
+        }
+
+        .cabin-window.left { left: 20px; }
+        .cabin-window.right { right: 20px; }
+
+        .chimney {
+            width: 30px;
+            height: 50px;
+            background: #8B4513;
+            position: absolute;
+            top: -60px;
+            right: 30px;
+        }
+
+        /* Campfire */
+        .campfire {
+            position: absolute;
+            bottom: 60px;
+            left: 43%;
+            transform: translateX(-50%);
+            z-index: 11;
+        }
+
+        .fire {
+            width: 40px;
+            height: 50px;
+            background: linear-gradient(180deg, #FF6347 0%, #FFA500 50%, #FFD700 100%);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            animation: flicker 1.5s infinite;
+            position: relative;
+        }
+
+        @keyframes flicker {
+            0%, 100% { transform: scale(1) rotate(-2deg); }
+            50% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        .logs {
+            width: 60px;
+            height: 10px;
+            background: #654321;
+            position: absolute;
+            bottom: -5px;
+            left: -10px;
+            border-radius: 5px;
+        }
+
+        /* Main Title */
+        .main-title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 20;
+        }
+
+        .title-primary {
+            font-size: 72px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow:
+                3px 3px 0 #FF6347,
+                -1px -1px 0 #FF6347,
+                1px -1px 0 #FF6347,
+                -1px 1px 0 #FF6347,
+                1px 1px 0 #FF6347,
+                0 5px 10px rgba(0, 0, 0, 0.5);
+            letter-spacing: 5px;
+            margin-bottom: 5px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+
+        .title-secondary {
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            letter-spacing: 3px;
+        }
+
+        /* Logo Placeholder */
+        .logo-placeholder {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 15;
+        }
+
+        .logo-text {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* QR Code Placeholder */
+        .qr-placeholder {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 15;
+        }
+
+        .qr-text {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* Decorative Elements */
+        .star {
+            position: absolute;
+            color: #FFD700;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .star1 { top: 150px; left: 100px; font-size: 20px; animation-delay: 0s; }
+        .star2 { top: 180px; right: 120px; font-size: 18px; animation-delay: 1s; }
+        .star3 { top: 140px; left: 600px; font-size: 22px; animation-delay: 2s; }
+
+        /* Festive Bunting */
+        .bunting {
+            position: absolute;
+            top: 120px;
+            width: 100%;
+            height: 40px;
+            z-index: 5;
+        }
+
+        .flag {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            position: absolute;
+            top: 0;
+        }
+
+        .flag1 { border-top: 30px solid #FF6347; left: 50px; }
+        .flag2 { border-top: 30px solid #FFD700; left: 100px; }
+        .flag3 { border-top: 30px solid #32CD32; left: 150px; }
+        .flag4 { border-top: 30px solid #FF69B4; left: 200px; }
+        .flag5 { border-top: 30px solid #00CED1; left: 250px; }
+        .flag6 { border-top: 30px solid #FF6347; left: 300px; }
+        .flag7 { border-top: 30px solid #FFD700; left: 350px; }
+        .flag8 { border-top: 30px solid #32CD32; left: 400px; }
+        .flag9 { border-top: 30px solid #FF69B4; left: 450px; }
+        .flag10 { border-top: 30px solid #00CED1; left: 500px; }
+        .flag11 { border-top: 30px solid #FF6347; left: 550px; }
+        .flag12 { border-top: 30px solid #FFD700; left: 600px; }
+        .flag13 { border-top: 30px solid #32CD32; left: 650px; }
+        .flag14 { border-top: 30px solid #FF69B4; left: 700px; }
+
+        .bunting-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #8B4513;
+        }
+
+        /* Grass */
+        .grass {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(180deg, #228B22 0%, #006400 100%);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="design-container">
+        <!-- Sky -->
+        <div class="sky">
+            <div class="cloud cloud1"></div>
+            <div class="cloud cloud2"></div>
+            <div class="cloud cloud3"></div>
+        </div>
+
+        <!-- Mountains -->
+        <div class="mountains">
+            <div class="mountain mountain1"></div>
+            <div class="mountain mountain2"></div>
+            <div class="mountain mountain3"></div>
+        </div>
+
+        <!-- Forest -->
+        <div class="forest">
+            <div class="tree tree1">
+                <div class="tree-leaves"></div>
+                <div class="tree-trunk"></div>
+            </div>
+            <div class="tree tree2">
+                <div class="tree-leaves"></div>
+                <div class="tree-trunk"></div>
+            </div>
+            <div class="tree tree3">
+                <div class="tree-leaves"></div>
+                <div class="tree-trunk"></div>
+            </div>
+            <div class="tree tree4">
+                <div class="tree-leaves"></div>
+                <div class="tree-trunk"></div>
+            </div>
+            <div class="tree tree5">
+                <div class="tree-leaves"></div>
+                <div class="tree-trunk"></div>
+            </div>
+        </div>
+
+        <!-- Grass -->
+        <div class="grass"></div>
+
+        <!-- Main Title -->
+        <div class="main-title">
+            <div class="title-primary">LAS NUBES</div>
+            <div class="title-secondary">CHIGNAHUAPAN Puebla</div>
+        </div>
+
+        <!-- Festive Bunting -->
+        <div class="bunting">
+            <div class="bunting-line"></div>
+            <div class="flag flag1"></div>
+            <div class="flag flag2"></div>
+            <div class="flag flag3"></div>
+            <div class="flag flag4"></div>
+            <div class="flag flag5"></div>
+            <div class="flag flag6"></div>
+            <div class="flag flag7"></div>
+            <div class="flag flag8"></div>
+            <div class="flag flag9"></div>
+            <div class="flag flag10"></div>
+            <div class="flag flag11"></div>
+            <div class="flag flag12"></div>
+            <div class="flag flag13"></div>
+            <div class="flag flag14"></div>
+        </div>
+
+        <!-- Wooden Cabin -->
+        <div class="cabin-container">
+            <div class="cabin">
+                <div class="cabin-roof"></div>
+                <div class="chimney"></div>
+                <div class="cabin-window left"></div>
+                <div class="cabin-window right"></div>
+                <div class="cabin-door"></div>
+            </div>
+        </div>
+
+        <!-- Campfire -->
+        <div class="campfire">
+            <div class="fire"></div>
+            <div class="logs"></div>
+        </div>
+
+        <!-- Decorative Stars -->
+        <div class="star star1">✦</div>
+        <div class="star star2">✦</div>
+        <div class="star star3">✦</div>
+
+        <!-- Logo Placeholder -->
+        <div class="logo-placeholder">
+            <div class="logo-text">Logo<br>Aquí</div>
+        </div>
+
+        <!-- QR Code Placeholder -->
+        <div class="qr-placeholder">
+            <div class="qr-text">QR Code<br>WhatsApp</div>
+        </div>
+    </div>
+</body>
+</html>
