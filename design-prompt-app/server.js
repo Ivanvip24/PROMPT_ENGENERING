@@ -98,15 +98,10 @@ async function invokeClaude(projectType, instruction, params) {
     }
     if (params.style) {
       const styleNames = {
-        'cartoon': 'Cartoon',
-        'realistic-illustration': 'Realistic Illustration',
-        'photography': 'Photography',
-        'vintage': 'Vintage',
-        'dense-collage': 'Dense Collage',
-        'collage': 'Collage',
-        'elegant': 'Elegant',
-        'thematic-frame': 'Thematic Frame',
-        'bold-illustration': 'Bold Illustration'
+        'cartoon': 'Cartoon - Playful cartoon style with bold outlines and vibrant colors',
+        'realistic': 'Realistic - Detailed realistic illustration with natural colors and textures',
+        'collage': 'Collage - CRITICAL: Create a true mixed media COLLAGE design with these specific requirements:\n  • Use layered cutout style with visible edges and overlapping elements\n  • Include varied textures (paper, fabric, photo fragments, patterns)\n  • Mix different art styles and media types (photos, illustrations, patterns, text)\n  • Create depth through overlapping layers with shadows/highlights\n  • Use irregular torn/cut edges on elements (NOT perfect vector shapes)\n  • Include decorative elements like tape, borders, stamps, or stitching effects\n  • Intentional composition that looks hand-assembled from multiple sources\n  • This should look like physical collage art, NOT a regular illustration',
+        'photography': 'Photography - Photography-based design with real photo elements integrated into the composition. Combine real photography with illustrated elements, decorative frames, or use photos as texture fills for regional shapes.'
       };
       fullInstruction += `\nStyle: ${styleNames[params.style] || params.style}`;
     }
@@ -116,6 +111,26 @@ async function invokeClaude(projectType, instruction, params) {
         '2:1': 'Rectangular 2:1 (horizontal landscape)'
       };
       fullInstruction += `\nFormat/Ratio: ${ratioFormats[params.ratio] || params.ratio}`;
+    }
+    if (params.productType) {
+      fullInstruction += `\nProduct Type: ${params.productType}`;
+
+      // Add shape constraints if this is a bottle opener AND user has uploaded shape references
+      if (params.productType === 'bottle-opener' && params.images && params.images.length > 0) {
+        fullInstruction += `\n\nMANDATORY BOTTLE OPENER SHAPE (CRITICAL - NON-NEGOTIABLE):
+
+EXACT SHAPE REQUIREMENTS - Study the reference images carefully:
+• TOP SECTION: Large rounded opening (upside-down U or rounded rectangle) where bottle cap fits - this opening is ESSENTIAL and must be clearly visible
+• OVERALL PROPORTIONS: Tall vertical format, approximately 6" height x 3" width ratio
+• MIDDLE SECTION: Narrower "neck" area (2-2.5" wide) with gentle organic curves on sides
+• BOTTOM SECTION: Wider rounded base (3.5-4" wide, occupying 35-40% of height) for stability
+• ALL EDGES: Organic flowing curves following design elements - NO straight lines or hard corners
+• STRUCTURAL INTEGRITY: All decorative elements connect to main composition, no floating parts
+
+The reference images show EXACTLY how this should look. Your design MUST match this silhouette - it's a functional product, not a decorative rectangle or circle. The top opening and bottom base widening are the defining features that make this recognizable as a bottle opener.
+
+VISUAL CHECK: If someone saw just the outline/silhouette, would they recognize it as a bottle opener? If not, fix the shape.`;
+      }
     }
 
     console.log(`\n${'='.repeat(60)}`);
@@ -140,6 +155,47 @@ async function invokeClaude(projectType, instruction, params) {
     if (projectImages.length > 0) {
       const imageFilenames = projectImages.map(img => path.basename(img));
       fullInstruction = `FIRST: Use the Read tool to read these image file(s) in the current directory:\n${imageFilenames.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n\nTHEN: ${fullInstruction}`;
+
+      // Special handling for "Design Based on Previous Element" with photography
+      if (projectType === 'previous-element' && params.style === 'photography' && params.photoStyle) {
+        const approachInstructions = {
+          'clipping-mask': `
+MANDATORY APPROACH - CLIPPING MASK:
+Create a design where the photograph is placed INSIDE a regional iconic shape (animal silhouette, cultural object, landmark silhouette, etc.). The photo becomes the texture/fill of this shape.
+
+SPECIFIC REQUIREMENTS:
+- Choose an iconic shape related to the destination (e.g., deer, coyote, saguaro, bird, building silhouette)
+- The photograph should fill the ENTIRE interior of this shape
+- Add minimal decorative elements around the shape (not inside it)
+- Text should be integrated into the illustrated border/decorative elements, NOT overlaid on the photo
+- The clipping mask shape should be bold and recognizable
+- Style: Bold cartoon-style outline for the shape, clean clipping mask effect`,
+
+          'decorative-frame': `
+MANDATORY APPROACH - DECORATIVE FRAME:
+Create a design where the photograph is centered in an ornamental frame/window, surrounded by illustrated cartoon-style regional elements.
+
+SPECIFIC REQUIREMENTS:
+- Place the photo in the center (30-40% of total composition)
+- Create an ornamental frame around it (geometric pattern, organic vines, or architectural elements)
+- Surround with illustrated regional elements: flora, fauna, cultural icons, food, landmarks
+- These elements should be CARTOON STYLE with thick outlines and vibrant colors
+- Text should be integrated into the decorative border layer
+- The decorative elements should interact with the frame, not just float randomly
+- Create depth and layering between frame, photo, and decorative elements`
+        };
+
+        fullInstruction += `\n\nIMPORTANT: After reading the image(s), determine if they are REAL PHOTOGRAPHS (not illustrations/designs). If they are photographs, you MUST create an illustrated design using this approach:
+
+${approachInstructions[params.photoStyle]}
+
+KEY REQUIREMENTS:
+- Extract regional/cultural elements from the destination and instructions
+- Use decoration level ${params.decorationLevel}/10 to control density of decorative elements
+- The photo should be ONE ELEMENT in a larger illustrated composition
+- DO NOT just add white text on top of the photo - that's lazy and unacceptable
+- Create a detailed, specific prompt that clearly describes how the photo integrates with illustrated elements`;
+      }
     }
 
     // Use echo piping for instruction (Claude Code will read images from working directory)
@@ -341,7 +397,7 @@ async function generateVariations(params, count, onVariationComplete) {
 // Server-Sent Events endpoint for streaming variations as they complete
 app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, style, ratio } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, style, ratio, productType, includeShapeConstraints, photoStyle } = req.body;
     const images = req.files || [];
     const count = parseInt(variationCount) || 1;
 
@@ -364,6 +420,9 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
+    // Map uploaded images (now includes user-selected shape references)
+    const allImages = images.map(img => path.join(__dirname, 'uploads', path.basename(img.path)));
+
     const params = {
       projectType,
       instructions,
@@ -373,7 +432,10 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       decorationLevel: decorationLevel || 8,
       style: style || '',
       ratio: ratio || '1:1',
-      images: images.map(img => path.join(__dirname, 'uploads', path.basename(img.path)))
+      productType: productType || 'bottle-opener',
+      includeShapeConstraints: includeShapeConstraints === 'true',
+      photoStyle: photoStyle || null,
+      images: allImages
     };
 
     console.log('\n📥 Received streaming request:', {

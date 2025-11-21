@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120">
+  <!-- A -->
+  <text x="10" y="90" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" fill="#E91E63">A</text>
+  <!-- X -->
+  <text x="100" y="90" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" fill="#7CB342">X</text>
+  <!-- K -->
+  <text x="190" y="90" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" fill="#FF9800">K</text>
+  <!-- A -->
+  <text x="280" y="90" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" fill="#00BCD4">A</text>
+  <!-- N -->
+  <text x="370" y="90" font-family="Arial Black, sans-serif" font-size="80" font-weight="900" fill="#F44336">N</text>
+</svg>

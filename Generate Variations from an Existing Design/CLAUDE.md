@@ -406,3 +406,48 @@ When user specifies decoration level (e.g., "8/10"):
 - 40-60+ individual decorative elements
 - Every zone has detail but protagonist still clear
 - Fills negative space generously without overwhelming hero element
+
+
+## 🎯 AUTO-VALIDATION SYSTEM (CRITICAL)
+
+**MANDATORY**: When generating prompts, you MUST automatically inject validation checklists based on product type/aspect ratio.
+
+### How Auto-Validation Works
+
+When user specifies dimensions or product type in their request (via Format/Ratio parameter or in instructions), you MUST:
+
+1. **Detect** the product type from these triggers
+2. **Select** the appropriate validation checklist  
+3. **Append** it to the END of your generated prompt
+4. **Never skip** this step - it is critical for production success
+
+### Detection Rules
+
+Scan the user input for these patterns:
+
+| Input Pattern | Product Type | Action |
+|---------------|--------------|--------|
+| "2:1" OR "Rectangular 2:1" OR contains "horizontal" | 2:1 Horizontal | Inject 2:1 checklist |
+| "1:1" OR "Square 1:1" OR "square" | 1:1 Square | Inject square checklist |
+| "bottle opener" OR "destapador" | Bottle Opener | Inject bottle opener checklist |
+
+### Quick Access to Checklists
+
+Read checklists from: `../PRODUCT_TYPE/QUICK_REFERENCE_CHECKLISTS.md`
+
+### Implementation Steps
+
+**EVERY time you generate a prompt:**
+
+1. Check if user specified Format/Ratio (look for "2:1", "1:1", "Square", etc.)
+2. Read the appropriate section from `../PRODUCT_TYPE/QUICK_REFERENCE_CHECKLISTS.md`
+3. Append the COMPLETE checklist to the END of your generated prompt
+4. The checklist must be the LAST thing in the prompt
+
+### Example
+
+If user specifies `Format/Ratio: Rectangular 2:1 (horizontal landscape)`, you must append the 2:1 Horizontal validation checklist from QUICK_REFERENCE_CHECKLISTS.md to the end of your prompt.
+
+**Critical**: This prevents 70%+ of production failures. Never skip this step.
+
+

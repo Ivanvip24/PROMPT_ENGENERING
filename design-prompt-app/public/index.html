@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Design Prompt Generator</title>
+    <title>Design Prompt Generator - AXKAN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,179 +14,808 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --axkan-pink: #E91E63;
+            --axkan-green: #7CB342;
+            --axkan-orange: #FF9800;
+            --axkan-turquoise: #00BCD4;
+            --axkan-red: #F44336;
+
+            --bg-primary: #F8F9FC;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #F1F3F9;
+
+            --text-primary: #1A202C;
+            --text-secondary: #4A5568;
+            --text-tertiary: #718096;
+
+            --border-light: #E2E8F0;
+            --border-medium: #CBD5E0;
+
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #667eea;
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        .container {
-            max-width: 1800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-
+        /* Header */
         .header {
-            background: #667eea;
-            color: white;
-            padding: 40px;
-            text-align: center;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-light);
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
         }
 
-        .project-title {
-            font-size: 2.5em;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .header-container {
+            max-width: 1600px;
+            margin: 0 auto;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .axkan-logo {
+            height: 48px;
+            display: block;
+        }
+
+        .brand-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-tagline {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .current-project-badge {
+            background: var(--bg-tertiary);
+            padding: 10px 20px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid var(--border-light);
         }
 
         .project-icon {
-            font-size: 1.2em;
+            font-size: 20px;
         }
 
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .project-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 3px solid #e9ecef;
-        }
-
-        .project-btn {
-            padding: 20px;
-            border: 3px solid transparent;
-            border-radius: 12px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1.1em;
+        .project-name {
+            font-size: 14px;
             font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .language-switcher {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            gap: 4px;
+            background: var(--bg-tertiary);
+            padding: 4px;
+            border-radius: var(--radius-md);
         }
 
-        .project-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        .lang-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .project-btn.active {
-            border-color: currentColor;
-            background-color: rgba(102, 126, 234, 0.1);
+        .lang-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
-        .main-content {
+        .lang-btn.active {
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
             padding: 40px;
         }
 
-        .form-section {
-            margin-bottom: 30px;
+        /* Card */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            margin-bottom: 24px;
         }
 
-        .form-section.hidden {
+        .card-header {
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Project Selector */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .project-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--axkan-pink), var(--axkan-green), var(--axkan-orange), var(--axkan-turquoise));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--axkan-pink);
+        }
+
+        .project-card:hover::before {
+            opacity: 1;
+        }
+
+        .project-card.active {
+            border-color: var(--axkan-pink);
+            border-width: 3px;
+            background: linear-gradient(135deg, rgba(233, 30, 99, 0.05), rgba(255, 152, 0, 0.05));
+            box-shadow: var(--shadow-lg);
+        }
+
+        .project-card.active::before {
+            opacity: 1;
+        }
+
+        .project-card-icon {
+            font-size: 40px;
+            line-height: 1;
+        }
+
+        .project-card-content {
+            flex: 1;
+        }
+
+        .project-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--axkan-pink);
+            box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 140px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-help {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--axkan-pink) 0%, var(--axkan-orange) 100%);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            background: var(--border-medium);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 2px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-medium);
+        }
+
+        .btn-icon {
+            padding: 10px 18px;
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 2px solid var(--border-light);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--axkan-pink);
+        }
+
+        /* Number Input */
+        .number-input-container {
+            display: flex;
+            justify-content: center;
+            margin: 24px 0;
+        }
+
+        .number-input {
+            width: 160px;
+            padding: 24px 32px;
+            border: 3px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            font-size: 72px;
+            font-weight: 900;
+            text-align: center;
+            background: linear-gradient(135deg, var(--axkan-pink) 0%, var(--axkan-orange) 100%);
+            color: white;
+            box-shadow: var(--shadow-xl);
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .number-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.2), var(--shadow-xl);
+        }
+
+        .number-input:hover {
+            transform: scale(1.05);
+        }
+
+        /* Product Selector */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .product-btn {
+            padding: 24px 20px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .product-btn:hover:not(.disabled) {
+            border-color: var(--axkan-green);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .product-btn.active {
+            border-color: var(--axkan-green);
+            border-width: 3px;
+            background: linear-gradient(135deg, rgba(124, 179, 66, 0.1), rgba(0, 188, 212, 0.1));
+            box-shadow: var(--shadow-md);
+        }
+
+        .product-btn.disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+            border-color: var(--border-light);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .product-icon {
+            font-size: 36px;
+        }
+
+        .product-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        /* Style Preset Pills */
+        .style-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .style-pill {
+            padding: 12px 24px;
+            border: 2px solid var(--border-light);
+            border-radius: 999px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .style-pill:hover {
+            border-color: var(--axkan-turquoise);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .style-pill.active {
+            border-color: var(--axkan-turquoise);
+            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .style-pill.no-style {
+            border-style: dashed;
+        }
+
+        .style-pill.no-style.active {
+            background: var(--text-secondary);
+        }
+
+        /* Ratio Buttons */
+        .ratio-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .ratio-btn {
+            flex: 1;
+            padding: 16px 24px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ratio-btn:hover {
+            border-color: var(--axkan-orange);
+            color: var(--text-primary);
+        }
+
+        .ratio-btn.active {
+            border-color: var(--axkan-orange);
+            border-width: 3px;
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(244, 67, 54, 0.1));
+            color: var(--text-primary);
+        }
+
+        .ratio-icon {
+            font-size: 24px;
+        }
+
+        /* Shape Gallery */
+        .shape-gallery {
+            background: var(--bg-tertiary);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            margin-top: 20px;
+            border: 2px solid var(--border-light);
             display: none;
         }
 
-        .form-section label {
+        .shape-gallery.visible {
             display: block;
-            font-size: 1.1em;
+        }
+
+        .shape-gallery-title {
+            font-size: 16px;
             font-weight: 600;
-            margin-bottom: 10px;
-            color: #2d3748;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .form-section input,
-        .form-section textarea,
-        .form-section select {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1em;
-            font-family: inherit;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-section input:focus,
-        .form-section textarea:focus,
-        .form-section select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .form-section textarea {
-            min-height: 150px;
-            resize: vertical;
-        }
-
-        .optional-fields {
+        .shape-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
         }
 
-        .image-upload {
-            border: 3px dashed #cbd5e0;
-            border-radius: 10px;
-            padding: 30px;
+        .shape-option {
+            position: relative;
+            cursor: pointer;
+            border: 3px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: var(--bg-secondary);
+        }
+
+        .shape-option:hover {
+            border-color: var(--axkan-turquoise);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .shape-option.selected {
+            border-color: var(--axkan-green);
+            border-width: 4px;
+            box-shadow: 0 0 0 4px rgba(124, 179, 66, 0.2);
+        }
+
+        .shape-option img {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+            padding: 16px;
+            background: var(--bg-secondary);
+        }
+
+        .shape-label {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .shape-option.selected .shape-label {
+            background: var(--axkan-green);
+            color: white;
+        }
+
+        .shape-checkmark {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: var(--axkan-green);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .shape-option.selected .shape-checkmark {
+            display: flex;
+        }
+
+        /* Photo Style Selector */
+        .photo-style-selector {
+            background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            margin-top: 20px;
+            border: 2px solid var(--axkan-orange);
+            display: none;
+        }
+
+        .photo-style-selector.visible {
+            display: block;
+        }
+
+        .photo-style-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #E65100;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .style-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .style-option {
+            position: relative;
+            cursor: pointer;
+            border: 3px solid #FFE0B2;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .style-option:hover {
+            border-color: var(--axkan-orange);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .style-option.selected {
+            border-color: #FF6F00;
+            border-width: 4px;
+            box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.2);
+            background: #FFF3E0;
+        }
+
+        .style-option-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .style-option-label {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .style-option-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .style-radio {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-medium);
+            border-radius: 50%;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .style-option.selected .style-radio {
+            background: #FF6F00;
+            border-color: #FF6F00;
+        }
+
+        .style-option.selected .style-radio::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* Image Upload */
+        .image-upload-zone {
+            border: 3px dashed var(--border-medium);
+            border-radius: var(--radius-lg);
+            padding: 40px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            background: #f7fafc;
+            background: var(--bg-tertiary);
         }
 
-        .image-upload:hover {
-            border-color: #667eea;
-            background: #edf2f7;
+        .image-upload-zone:hover {
+            border-color: var(--axkan-turquoise);
+            background: var(--bg-secondary);
         }
 
-        .image-upload input {
+        .image-upload-zone input {
             display: none;
         }
 
-        .image-preview {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 15px;
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
         }
 
         .preview-img-container {
             position: relative;
-            display: inline-block;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-light);
         }
 
         .preview-img {
-            width: 120px;
-            height: 120px;
+            width: 100%;
+            height: 140px;
             object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid #e2e8f0;
+            display: block;
         }
 
         .remove-img-btn {
             position: absolute;
-            top: -8px;
-            right: -8px;
+            top: 8px;
+            right: 8px;
             width: 28px;
             height: 28px;
-            background: #e53e3e;
+            background: var(--axkan-red);
             color: white;
             border: 2px solid white;
             border-radius: 50%;
@@ -193,88 +825,126 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-md);
         }
 
         .remove-img-btn:hover {
-            background: #c53030;
+            background: #C62828;
             transform: scale(1.1);
         }
 
+        .image-count-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            color: white;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
         .paste-hint {
-            background: #edf2f7;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #4a5568;
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        kbd {
+            background: var(--text-primary);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            border: 1px solid var(--text-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Template Window */
+        .instructions-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .template-window {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            position: sticky;
+            top: 100px;
+        }
+
+        .template-window.hidden {
+            display: none;
+        }
+
+        .template-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .template-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .image-count {
-            background: #667eea;
+        .template-copy-btn {
+            padding: 8px 16px;
+            background: var(--axkan-green);
             color: white;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-weight: 600;
-            margin-top: 10px;
-            display: inline-block;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .btn {
-            padding: 18px 35px;
             border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
+            border-radius: var(--radius-sm);
             font-weight: 600;
+            font-size: 13px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: center;
+            transition: all 0.2s ease;
         }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
-            flex: 1;
+        .template-copy-btn:hover {
+            background: #689F38;
+            transform: translateY(-1px);
         }
 
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        .template-copy-btn.copied {
+            background: var(--axkan-turquoise);
         }
 
-        .btn-primary:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-            transform: none;
+        .template-text {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
         }
 
-        .btn-secondary {
-            background: #48bb78;
-            color: white;
-            flex: 1;
-        }
-
-        .btn-secondary:hover {
-            background: #38a169;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
-        }
-
+        /* Output Section */
         .output-section {
-            margin-top: 40px;
+            margin-top: 32px;
             display: none;
         }
 
@@ -282,96 +952,77 @@
             display: block;
         }
 
-        #variationsContainer {
+        .variations-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 1600px) {
-            #variationsContainer {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        @media (max-width: 1200px) {
-            #variationsContainer {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (max-width: 900px) {
-            #variationsContainer {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 600px) {
-            #variationsContainer {
-                grid-template-columns: 1fr;
-            }
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
         }
 
         .variation-card {
-            background: #f7fafc;
-            border-radius: 12px;
-            border: 2px solid #e2e8f0;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--border-light);
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 400px;
+            height: 420px;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .variation-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
         }
 
         .variation-header {
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border-bottom: 2px solid var(--border-light);
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 12px 15px;
-            background: #edf2f7;
-            border-bottom: 2px solid #e2e8f0;
-            flex-shrink: 0;
+            gap: 10px;
         }
 
         .variation-title {
-            font-size: 0.95em;
-            font-weight: bold;
-            color: #2d3748;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
             text-align: center;
         }
 
         .copy-btn {
-            padding: 6px 12px;
-            background: #4299e1;
+            padding: 8px 16px;
+            background: var(--axkan-turquoise);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
-            font-size: 0.85em;
+            font-size: 13px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
+            transition: all 0.2s ease;
         }
 
         .copy-btn:hover {
-            background: #3182ce;
+            background: #00ACC1;
             transform: translateY(-1px);
         }
 
         .copy-btn.copied {
-            background: #48bb78;
+            background: var(--axkan-green);
         }
 
         .prompt-output {
-            background: white;
-            padding: 15px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.75em;
-            line-height: 1.5;
+            background: var(--bg-secondary);
+            padding: 20px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-y: auto;
             flex: 1;
+            color: var(--text-secondary);
         }
 
         .prompt-output::-webkit-scrollbar {
@@ -379,19 +1030,20 @@
         }
 
         .prompt-output::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: var(--bg-tertiary);
             border-radius: 4px;
         }
 
         .prompt-output::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
+            background: var(--border-medium);
             border-radius: 4px;
         }
 
         .prompt-output::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0;
+            background: var(--text-tertiary);
         }
 
+        /* Loading State */
         .loading {
             text-align: center;
             padding: 60px;
@@ -399,8 +1051,8 @@
         }
 
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 4px solid var(--border-light);
+            border-top: 4px solid var(--axkan-pink);
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -409,8 +1061,9 @@
         }
 
         .loading-text {
-            font-size: 1.2em;
-            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
             margin-top: 20px;
         }
 
@@ -430,79 +1083,7 @@
             }
         }
 
-        .help-text {
-            font-size: 0.9em;
-            color: #718096;
-            margin-top: 8px;
-        }
-
-        .slider-container {
-            margin-top: 10px;
-        }
-
-        .slider {
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: #e2e8f0;
-            outline: none;
-            margin-top: 15px;
-        }
-
-        .slider-value {
-            display: inline-block;
-            padding: 5px 12px;
-            background: #667eea;
-            color: white;
-            border-radius: 5px;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .number-input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .settings-icon {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: #667eea;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8em;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .settings-icon:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 30px rgba(102, 126, 234, 0.6);
-        }
-
+        /* Settings Modal */
         .modal {
             display: none;
             position: fixed;
@@ -510,7 +1091,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -521,139 +1103,261 @@
         }
 
         .modal-content {
-            background: white;
+            background: var(--bg-secondary);
             padding: 40px;
-            border-radius: 15px;
+            border-radius: var(--radius-xl);
             max-width: 500px;
             width: 90%;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
         }
 
         .modal-title {
-            font-size: 1.8em;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #2d3748;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .modal-close {
-            float: right;
-            font-size: 1.5em;
+            font-size: 28px;
             cursor: pointer;
-            color: #718096;
+            color: var(--text-tertiary);
+            transition: color 0.2s ease;
         }
 
-        kbd {
-            background: #2d3748;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-            font-family: monospace;
-            border: 1px solid #4a5568;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .modal-close:hover {
+            color: var(--axkan-red);
         }
 
-        /* Style Preset Buttons */
-        .preset-section {
-            margin: 20px 0;
-        }
-
-        .preset-label {
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #2d3748;
-            font-size: 1em;
-        }
-
-        .preset-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .preset-btn {
-            padding: 10px 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9em;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .preset-btn:hover {
-            border-color: #667eea;
-            background: #f7fafc;
-            transform: translateY(-2px);
-        }
-
-        .preset-btn.active {
-            border-color: #667eea;
-            background: #667eea;
-            color: white;
-        }
-
-        /* Ratio Buttons */
-        .ratio-buttons {
+        /* Settings Floating Button */
+        .settings-fab {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            border-radius: 50%;
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .ratio-btn {
-            flex: 1;
-            padding: 12px 20px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1em;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .ratio-btn:hover {
-            border-color: #48bb78;
-            background: #f0fff4;
-        }
-
-        .ratio-btn.active {
-            border-color: #48bb78;
-            background: #48bb78;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
             color: white;
+            cursor: pointer;
+            box-shadow: var(--shadow-xl);
+            transition: all 0.3s ease;
+            z-index: 99;
+        }
+
+        .settings-fab:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 20px 40px rgba(233, 30, 99, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .instructions-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .template-window {
+                position: static;
+            }
+
+            .variations-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 16px 20px;
+            }
+
+            .header-container {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .main-container {
+                padding: 20px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .project-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .product-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+
+            .style-options {
+                grid-template-columns: 1fr;
+            }
+
+            .variations-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Optional Fields Grid */
+        .optional-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        /* Slider */
+        .slider-container {
+            margin-top: 16px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--border-light);
+            outline: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            border: none;
+        }
+
+        .slider-value {
+            display: inline-block;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            color: white;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-left: 12px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="project-title">
-                <span class="project-icon" id="currentIcon">🎨</span>
-                <span id="currentProject">Design Prompt Generator</span>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="/axkan-logo.svg" alt="AXKAN" class="axkan-logo">
+                <div class="brand-section">
+                    <div class="brand-name">AXKAN</div>
+                    <div class="brand-tagline" data-translate="header.tagline">Design Prompt Generator</div>
+                </div>
             </div>
-            <div class="subtitle">Select your project below to get started</div>
+            <div class="header-right">
+                <div class="current-project-badge">
+                    <span class="project-icon" id="currentIcon">🎨</span>
+                    <span class="project-name" id="currentProject" data-translate="header.selectProject">Select Project</span>
+                </div>
+                <div class="language-switcher">
+                    <button class="lang-btn active" onclick="setLanguage('en')" id="lang-en">EN</button>
+                    <button class="lang-btn" onclick="setLanguage('es')" id="lang-es">ES</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Project Selection Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>🎯</span>
+                    <span data-translate="projectCard.title">Choose Your Project Type</span>
+                </h2>
+                <p class="card-description" data-translate="projectCard.description">Select the type of design project you want to work on</p>
+            </div>
+            <div class="project-grid" id="projectSelector">
+                <!-- Projects will be loaded here dynamically -->
+            </div>
         </div>
 
-        <div class="project-selector" id="projectSelector">
-            <!-- Projects will be loaded here dynamically -->
+        <!-- Instructions Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>✍️</span>
+                    <span data-translate="instructionsCard.title">What Would You Like to Create?</span>
+                </h2>
+                <p class="card-description" data-translate="instructionsCard.description">Describe your design idea in detail</p>
+            </div>
+            <div class="instructions-layout">
+                <div>
+                    <textarea
+                        id="instructions"
+                        class="form-textarea"
+                        data-translate-placeholder="instructionsCard.placeholder"
+                        placeholder="Describe what you want... For example: 'Create a variation with the Ángel swimming in water with marine decorations' or 'Change the character's clothing to traditional Mexican dress'"
+                    ></textarea>
+                    <div class="form-help">
+                        <span>💡</span>
+                        <span data-translate="instructionsCard.help">Be as specific as possible about what you want to change or create</span>
+                    </div>
+                </div>
+                <div class="template-window" id="templateWindow">
+                    <div class="template-header">
+                        <div class="template-title" data-translate="template.title">📋 Quick Template</div>
+                        <button class="template-copy-btn" onclick="copyTemplate()" data-translate="template.copyBtn">Copy</button>
+                    </div>
+                    <div class="template-text" id="templateText">Crea un diseño con [___] como elemento principal.
+
+Incluir:
+- Decora con elementos y cosas locales típicas de la región
+- Letras coloridas
+- Recorte a figura, sigue el contorno de los elementos
+- Para el nuevo estilo del diseño y la organización de los elementos toma como referencia el diseño de:</div>
+                </div>
+            </div>
         </div>
 
-        <div class="main-content">
-            <div class="form-section">
-                <label for="instructions">What would you like to create or modify?</label>
-                <textarea
-                    id="instructions"
-                    placeholder="Describe what you want... For example: 'Create a variation with the Ángel swimming in water with marine decorations' or 'Change the character's clothing to traditional Mexican dress'"
-                ></textarea>
-                <div class="help-text">Be as specific as possible about what you want to change or create.</div>
+        <!-- Variation Count Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>🔢</span>
+                    <span data-translate="variationCard.title">Number of Variations</span>
+                </h2>
+                <p class="card-description" data-translate="variationCard.description">Each variation will be generated with a unique approach</p>
             </div>
-
-            <div class="form-section">
-                <label>How many variations do you want?</label>
+            <div class="number-input-container">
                 <input
                     type="number"
                     id="variationCount"
@@ -661,99 +1365,456 @@
                     value="1"
                     min="1"
                     max="10"
-                    placeholder="Number of variations"
+                    placeholder="#"
                 >
-                <div class="help-text">Each variation will be generated with a unique approach (1-10)</div>
             </div>
-
-            <!-- Dynamic fields based on project type -->
-            <div id="dynamicFields">
-                <!-- Fields will be inserted here based on selected project -->
+            <div class="form-help" style="text-align: center; justify-content: center;">
+                <span>📊</span>
+                <span data-translate="variationCard.help">Generate between 1 and 10 unique variations</span>
             </div>
+        </div>
 
-            <div class="form-section">
-                <label>Attach Reference Images (Optional)</label>
-                <div class="image-upload" id="imageUpload">
-                    <div style="font-size: 3em; margin-bottom: 10px;">📷</div>
-                    <div style="font-size: 1.1em; font-weight: 600;">Click to upload images or paste (Cmd+V / Ctrl+V)</div>
-                    <div class="help-text">PNG, JPG, or GIF - You can add as many as you need!</div>
-                    <input type="file" id="imageInput" multiple accept="image/*">
-                </div>
-                <div class="paste-hint">
-                    💡 <strong>Pro Tip:</strong> Copy an image and press <kbd>Cmd+V</kbd> (Mac) or <kbd>Ctrl+V</kbd> (Windows) anywhere on this page to add it!
-                </div>
-                <div id="imageCountDisplay" class="image-count" style="display: none;">
-                    📸 <span id="imageCount">0</span> image(s) attached
-                    <button onclick="clearAllImages()" style="margin-left: 15px; padding: 5px 12px; background: #e53e3e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em;">Clear All</button>
-                </div>
-                <div class="help-text" id="imagesPersistNote" style="display: none; color: #4299e1; font-weight: 600;">
-                    ✓ Images will be used for all generations until you remove them
-                </div>
-                <div class="image-preview" id="imagePreview"></div>
+        <!-- Dynamic Fields Container -->
+        <div id="dynamicFields">
+            <!-- Fields will be inserted here based on selected project -->
+        </div>
+
+        <!-- Image Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>🖼️</span>
+                    <span data-translate="imageCard.title">Reference Images (Optional)</span>
+                </h2>
+                <p class="card-description" data-translate="imageCard.description">Upload images to guide the design generation</p>
             </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="generateBtn">
-                    <span>✨</span>
-                    <span>Generate Prompts</span>
-                </button>
+            <div class="image-upload-zone" id="imageUpload">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text" data-translate="imageCard.uploadText">Click to upload or paste images</div>
+                <div class="upload-hint" data-translate="imageCard.uploadHint">PNG, JPG, or GIF - Add as many as you need!</div>
+                <input type="file" id="imageInput" multiple accept="image/*">
             </div>
+            <div class="paste-hint">
+                <span>💡</span>
+                <span data-translate="imageCard.pasteHint"><strong>Pro Tip:</strong> Copy an image and press <kbd>Cmd+V</kbd> (Mac) or <kbd>Ctrl+V</kbd> (Windows) anywhere on this page to add it!</span>
+            </div>
+            <div id="imageCountDisplay" class="image-count-badge" style="display: none;">
+                <span>📸</span>
+                <span id="imageCount">0</span> <span data-translate="imageCard.imagesAttached">image(s) attached</span>
+                <button onclick="clearAllImages()" class="btn-icon" style="margin-left: 12px; padding: 6px 12px; background: var(--axkan-red); color: white; border: none;" data-translate="imageCard.clearAll">Clear All</button>
+            </div>
+            <div class="form-help" id="imagesPersistNote" style="display: none; color: var(--axkan-turquoise); font-weight: 600;">
+                <span>✓</span>
+                <span data-translate="imageCard.persistNote">Images will be used for all generations until you remove them</span>
+            </div>
+            <div class="image-preview-grid" id="imagePreview"></div>
+        </div>
 
-            <div class="output-section" id="outputSection">
-                <div id="variationsContainer">
+        <!-- Generate Button -->
+        <div class="card">
+            <button class="btn btn-primary" id="generateBtn" style="width: 100%; padding: 20px; font-size: 17px;">
+                <span style="font-size: 24px;">✨</span>
+                <span data-translate="generateBtn.text">Generate Design Prompts</span>
+            </button>
+        </div>
+
+        <!-- Output Section -->
+        <div class="output-section" id="outputSection">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>🎨</span>
+                        <span data-translate="outputCard.title">Generated Prompts</span>
+                    </h2>
+                    <p class="card-description" data-translate="outputCard.description">Copy and use these prompts in your design tool</p>
+                </div>
+                <div class="variations-grid" id="variationsContainer">
                     <!-- Variation cards will be inserted here -->
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
-            <span class="modal-close" onclick="closeSettings()">&times;</span>
-            <div class="modal-title">⚙️ Settings</div>
-            <div class="form-section">
-                <label for="apiKey">Claude API Key (Optional)</label>
+            <div class="modal-header">
+                <div class="modal-title" data-translate="settings.title">⚙️ Settings</div>
+                <span class="modal-close" onclick="closeSettings()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="apiKey" data-translate="settings.apiKeyLabel">Claude API Key (Optional)</label>
                 <input
                     type="password"
                     id="apiKey"
+                    class="form-input"
                     placeholder="sk-ant-..."
                 >
-                <div class="help-text">Add your Anthropic API key to enable automatic prompt generation. Leave empty to use template mode.</div>
+                <div class="form-help">
+                    <span>🔑</span>
+                    <span data-translate="settings.apiKeyHelp">Add your Anthropic API key to enable automatic prompt generation. Leave empty to use template mode.</span>
+                </div>
             </div>
-            <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveSettings()">
+            <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" onclick="saveSettings()" data-translate="settings.saveBtn">
                 Save Settings
             </button>
         </div>
     </div>
 
-    <div class="settings-icon" onclick="openSettings()">⚙️</div>
+    <!-- Settings Floating Action Button -->
+    <div class="settings-fab" onclick="openSettings()">⚙️</div>
 
     <script>
         let currentProject = null;
         let selectedImages = [];
         let selectedStyle = '';
         let selectedRatio = '1:1';
+        let selectedProduct = '';
+        let selectedShapes = [];
+        let selectedPhotoStyle = null;
+        let currentLanguage = 'en';
+
+        // Translations object
+        const translations = {
+            en: {
+                header: {
+                    tagline: 'Design Prompt Generator',
+                    selectProject: 'Select Project'
+                },
+                projectCard: {
+                    title: 'Choose Your Project Type',
+                    description: 'Select the type of design project you want to work on'
+                },
+                instructionsCard: {
+                    title: 'What Would You Like to Create?',
+                    description: 'Describe your design idea in detail',
+                    placeholder: "Describe what you want... For example: 'Create a variation with the Ángel swimming in water with marine decorations' or 'Change the character's clothing to traditional Mexican dress'",
+                    help: 'Be as specific as possible about what you want to change or create'
+                },
+                template: {
+                    title: '📋 Quick Template',
+                    copyBtn: 'Copy'
+                },
+                variationCard: {
+                    title: 'Number of Variations',
+                    description: 'Each variation will be generated with a unique approach',
+                    help: 'Generate between 1 and 10 unique variations'
+                },
+                imageCard: {
+                    title: 'Reference Images (Optional)',
+                    description: 'Upload images to guide the design generation',
+                    uploadText: 'Click to upload or paste images',
+                    uploadHint: 'PNG, JPG, or GIF - Add as many as you need!',
+                    pasteHint: '<strong>Pro Tip:</strong> Copy an image and press <kbd>Cmd+V</kbd> (Mac) or <kbd>Ctrl+V</kbd> (Windows) anywhere on this page to add it!',
+                    imagesAttached: 'image(s) attached',
+                    clearAll: 'Clear All',
+                    persistNote: 'Images will be used for all generations until you remove them'
+                },
+                generateBtn: {
+                    text: 'Generate Design Prompts'
+                },
+                outputCard: {
+                    title: 'Generated Prompts',
+                    description: 'Copy and use these prompts in your design tool'
+                },
+                settings: {
+                    title: '⚙️ Settings',
+                    apiKeyLabel: 'Claude API Key (Optional)',
+                    apiKeyHelp: 'Add your Anthropic API key to enable automatic prompt generation. Leave empty to use template mode.',
+                    saveBtn: 'Save Settings'
+                },
+                styleCard: {
+                    title: 'Choose a Style',
+                    description: 'Select an artistic style for your design',
+                    noStyle: 'No Style - Keep Original'
+                },
+                ratioCard: {
+                    title: 'Image Ratio',
+                    description: 'Choose the aspect ratio for your design',
+                    square: '1:1 Square',
+                    rectangular: '2:1 Rectangular'
+                },
+                productCard: {
+                    title: 'Product Type',
+                    description: "Select the type of product you're designing for",
+                    magnet: 'Magnet',
+                    keychain: 'Keychain',
+                    bottleOpener: 'Bottle Opener',
+                    shapeTitle: 'Select Bottle Opener Shape',
+                    verticalShape: 'Vertical Shape',
+                    horizontalShape: 'Horizontal Shape',
+                    shapeHelp: 'Click one or more shapes - they will be added to your reference images automatically'
+                },
+                photoStyleCard: {
+                    title: 'Photography Design Style',
+                    help: 'Choose how real photography should be incorporated into the design',
+                    clippingMask: 'Clipping Mask',
+                    clippingMaskDesc: 'Photo placed INSIDE a regional shape (animal, landmark). The photograph becomes the texture/fill of an iconic silhouette.',
+                    decorativeFrame: 'Decorative Frame',
+                    decorativeFrameDesc: 'Photo centered in ornamental frame, surrounded by illustrated regional elements (flora, fauna, cultural icons).'
+                },
+                parametersCard: {
+                    title: 'Project Parameters',
+                    description: 'Provide details about your design requirements',
+                    destination: 'Destination *',
+                    destinationPlaceholder: 'e.g., Hermosillo, CDMX',
+                    theme: 'Theme',
+                    themePlaceholder: 'e.g., Christmas, Summer',
+                    elementDescription: 'Previous Element Description',
+                    elementPlaceholder: 'Describe the element to build from',
+                    transformeterLevel: 'Transformeter Level:',
+                    transformeterHelp: '1-3: Minor changes | 4-6: Moderate changes | 7-10: Major transformation',
+                    decorationLevel: 'Decoration Level:',
+                    decorationHelp: 'How much decorative detail to include (1: minimal, 10: maximum)'
+                },
+                modifyCard: {
+                    title: 'Modification Instructions',
+                    description: 'Upload the design you want to modify, then describe the changes in the instructions field'
+                },
+                projects: {
+                    variations: 'Generate Variations from an Existing Design',
+                    fromscratch: 'Create a New Design from Scratch',
+                    previouselement: 'Design Using a Previous Element as a Base',
+                    modify: 'Modify an Existing Design'
+                },
+                alerts: {
+                    selectProject: 'Please select a project first!',
+                    provideInstructions: 'Please provide instructions for what you want to create!',
+                    variationRange: 'Please enter a number between 1 and 10 for variations',
+                    clearImages: 'Remove all images and shape references? You can add them again anytime.',
+                    settingsSaved: 'Settings saved! The app will now use Claude API for intelligent prompt generation.',
+                    settingsSavedTemplate: 'Settings saved! The app will use template mode.'
+                },
+                loading: {
+                    starting: 'Starting generation of',
+                    variation: 'variation',
+                    variations: 'variations',
+                    willAppear: 'Variations will appear below as they complete',
+                    generating: 'Generating',
+                    complete: 'complete'
+                },
+                variationTitle: 'Variation',
+                copyToClipboard: 'Copy to Clipboard',
+                copied: '✓ Copied!'
+            },
+            es: {
+                header: {
+                    tagline: 'Generador de Prompts de Diseño',
+                    selectProject: 'Seleccionar Proyecto'
+                },
+                projectCard: {
+                    title: 'Elige tu Tipo de Proyecto',
+                    description: 'Selecciona el tipo de proyecto de diseño en el que quieres trabajar'
+                },
+                instructionsCard: {
+                    title: '¿Qué te Gustaría Crear?',
+                    description: 'Describe tu idea de diseño en detalle',
+                    placeholder: "Describe lo que quieres... Por ejemplo: 'Crea una variación con el Ángel nadando en agua con decoraciones marinas' o 'Cambia la ropa del personaje a vestimenta tradicional mexicana'",
+                    help: 'Sé lo más específico posible sobre lo que quieres cambiar o crear'
+                },
+                template: {
+                    title: '📋 Plantilla Rápida',
+                    copyBtn: 'Copiar'
+                },
+                variationCard: {
+                    title: 'Número de Variaciones',
+                    description: 'Cada variación se generará con un enfoque único',
+                    help: 'Genera entre 1 y 10 variaciones únicas'
+                },
+                imageCard: {
+                    title: 'Imágenes de Referencia (Opcional)',
+                    description: 'Sube imágenes para guiar la generación del diseño',
+                    uploadText: 'Haz clic para subir o pegar imágenes',
+                    uploadHint: 'PNG, JPG o GIF - ¡Agrega tantas como necesites!',
+                    pasteHint: '<strong>Consejo:</strong> Copia una imagen y presiona <kbd>Cmd+V</kbd> (Mac) o <kbd>Ctrl+V</kbd> (Windows) en cualquier lugar de esta página para agregarla!',
+                    imagesAttached: 'imagen(es) adjunta(s)',
+                    clearAll: 'Limpiar Todo',
+                    persistNote: 'Las imágenes se usarán para todas las generaciones hasta que las elimines'
+                },
+                generateBtn: {
+                    text: 'Generar Prompts de Diseño'
+                },
+                outputCard: {
+                    title: 'Prompts Generados',
+                    description: 'Copia y usa estos prompts en tu herramienta de diseño'
+                },
+                settings: {
+                    title: '⚙️ Configuración',
+                    apiKeyLabel: 'Clave API de Claude (Opcional)',
+                    apiKeyHelp: 'Agrega tu clave API de Anthropic para habilitar la generación automática de prompts. Déjala vacía para usar el modo de plantilla.',
+                    saveBtn: 'Guardar Configuración'
+                },
+                styleCard: {
+                    title: 'Elige un Estilo',
+                    description: 'Selecciona un estilo artístico para tu diseño',
+                    noStyle: 'Sin Estilo - Mantener Original'
+                },
+                ratioCard: {
+                    title: 'Proporción de Imagen',
+                    description: 'Elige la relación de aspecto para tu diseño',
+                    square: '1:1 Cuadrado',
+                    rectangular: '2:1 Rectangular'
+                },
+                productCard: {
+                    title: 'Tipo de Producto',
+                    description: 'Selecciona el tipo de producto para el que estás diseñando',
+                    magnet: 'Imán',
+                    keychain: 'Llavero',
+                    bottleOpener: 'Abrebotellas',
+                    shapeTitle: 'Seleccionar Forma de Abrebotellas',
+                    verticalShape: 'Forma Vertical',
+                    horizontalShape: 'Forma Horizontal',
+                    shapeHelp: 'Haz clic en una o más formas - se agregarán automáticamente a tus imágenes de referencia'
+                },
+                photoStyleCard: {
+                    title: 'Estilo de Diseño Fotográfico',
+                    help: 'Elige cómo se debe incorporar la fotografía real en el diseño',
+                    clippingMask: 'Máscara de Recorte',
+                    clippingMaskDesc: 'Foto colocada DENTRO de una forma regional (animal, monumento). La fotografía se convierte en la textura/relleno de una silueta icónica.',
+                    decorativeFrame: 'Marco Decorativo',
+                    decorativeFrameDesc: 'Foto centrada en un marco ornamental, rodeada de elementos regionales ilustrados (flora, fauna, iconos culturales).'
+                },
+                parametersCard: {
+                    title: 'Parámetros del Proyecto',
+                    description: 'Proporciona detalles sobre los requisitos de tu diseño',
+                    destination: 'Destino *',
+                    destinationPlaceholder: 'ej., Hermosillo, CDMX',
+                    theme: 'Tema',
+                    themePlaceholder: 'ej., Navidad, Verano',
+                    elementDescription: 'Descripción del Elemento Anterior',
+                    elementPlaceholder: 'Describe el elemento del cual partir',
+                    transformeterLevel: 'Nivel de Transformación:',
+                    transformeterHelp: '1-3: Cambios menores | 4-6: Cambios moderados | 7-10: Transformación mayor',
+                    decorationLevel: 'Nivel de Decoración:',
+                    decorationHelp: 'Cuánto detalle decorativo incluir (1: mínimo, 10: máximo)'
+                },
+                modifyCard: {
+                    title: 'Instrucciones de Modificación',
+                    description: 'Sube el diseño que quieres modificar, luego describe los cambios en el campo de instrucciones'
+                },
+                projects: {
+                    variations: 'Generar Variaciones de un Diseño Existente',
+                    fromscratch: 'Crear un Nuevo Diseño desde Cero',
+                    previouselement: 'Diseñar Usando un Elemento Anterior como Base',
+                    modify: 'Modificar un Diseño Existente'
+                },
+                alerts: {
+                    selectProject: '¡Por favor selecciona un proyecto primero!',
+                    provideInstructions: '¡Por favor proporciona instrucciones sobre lo que quieres crear!',
+                    variationRange: 'Por favor ingresa un número entre 1 y 10 para las variaciones',
+                    clearImages: '¿Eliminar todas las imágenes y referencias de formas? Puedes agregarlas de nuevo en cualquier momento.',
+                    settingsSaved: '¡Configuración guardada! La aplicación ahora usará la API de Claude para generación inteligente de prompts.',
+                    settingsSavedTemplate: '¡Configuración guardada! La aplicación usará el modo de plantilla.'
+                },
+                loading: {
+                    starting: 'Iniciando generación de',
+                    variation: 'variación',
+                    variations: 'variaciones',
+                    willAppear: 'Las variaciones aparecerán abajo a medida que se completen',
+                    generating: 'Generando',
+                    complete: 'completada(s)'
+                },
+                variationTitle: 'Variación',
+                copyToClipboard: 'Copiar al Portapapeles',
+                copied: '✓ ¡Copiado!'
+            }
+        };
+
+        // Language switcher function
+        function setLanguage(lang) {
+            currentLanguage = lang;
+
+            // Update button states
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('lang-' + lang).classList.add('active');
+
+            // Translate all elements with data-translate attribute
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                const keys = key.split('.');
+                let translation = translations[lang];
+
+                for (const k of keys) {
+                    translation = translation[k];
+                    if (!translation) break;
+                }
+
+                if (translation) {
+                    element.innerHTML = translation;
+                }
+            });
+
+            // Translate placeholders
+            document.querySelectorAll('[data-translate-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-translate-placeholder');
+                const keys = key.split('.');
+                let translation = translations[lang];
+
+                for (const k of keys) {
+                    translation = translation[k];
+                    if (!translation) break;
+                }
+
+                if (translation) {
+                    element.placeholder = translation;
+                }
+            });
+
+            console.log('Language changed to:', lang);
+
+            // Store in localStorage
+            localStorage.setItem('language', lang);
+        }
+
+        // Shape reference data
+        const shapeReferences = {
+            'shape-1': {
+                path: '/presets/bottle-opener-shape-1.png',
+                name: 'Vertical Bottle Opener Shape',
+                type: 'shape-reference'
+            },
+            'shape-2': {
+                path: '/presets/bottle-opener-shape-2.png',
+                name: 'Horizontal Bottle Opener Shape',
+                type: 'shape-reference'
+            }
+        };
 
         const stylePresets = [
-            { value: 'cartoon', label: '🎨 Cartoon', description: 'Playful cartoon style with bold outlines' },
-            { value: 'realistic-illustration', label: '🖼️ Realistic Illustration', description: 'Detailed illustrative style' },
-            { value: 'photography', label: '📸 Photography', description: 'Photographic realistic style' },
-            { value: 'vintage', label: '🗺️ Vintage', description: 'Classic vintage aesthetic' },
-            { value: 'dense-collage', label: '🎭 Dense Collage', description: 'Layered, dense composition' },
-            { value: 'collage', label: '✂️ Collage', description: 'Mixed media collage style' },
-            { value: 'elegant', label: '💎 Elegant', description: 'Sophisticated, refined style' },
-            { value: 'thematic-frame', label: '🖼️ Thematic Frame', description: 'Frame-within-frame composition' },
-            { value: 'bold-illustration', label: '⚡ Bold Illustration', description: 'Strong, bold illustrative style' }
+            { value: 'cartoon', label: '🎨 Cartoon', description: 'Modern illustrative style with clean vector shapes, bold outlines, and sophisticated compositions' },
+            { value: 'realistic', label: '🖼️ Realistic', description: 'Detailed realistic illustration with natural colors and textures' },
+            { value: 'collage', label: '✂️ Collage', description: 'Mixed media collage with layered elements, textures, and cutout style' },
+            { value: 'photography', label: '📸 Photography', description: 'Photography-based designs with real photo elements integrated into the composition' },
+            { value: 'secret', label: '🎲 Secret Style', description: 'Randomly chosen from unique artistic styles - surprise me!' }
         ];
 
-        function renderStylePresets() {
+        // Secret styles that will be randomly selected
+        const secretStyles = [
+            'destination badge style with flat illustration, layered elements, dimensional typography, and decorative framing',
+            'photo collage with mixed media - combining real photography of landmarks/objects with illustrated cartoon characters, decorative pattern backgrounds, and vibrant dimensional typography'
+        ];
+
+        function renderStylePresets(includeNoStyle = false) {
             return `
-                <div class="preset-section">
-                    <div class="preset-label">🎨 Choose a Style (Click to Select)</div>
-                    <div class="preset-buttons">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🎨</span>
+                            <span data-translate="styleCard.title">Choose a Style</span>
+                        </h3>
+                        <p class="card-description" data-translate="styleCard.description">Select an artistic style for your design</p>
+                    </div>
+                    ${includeNoStyle ? `
+                    <div style="margin-bottom: 20px;">
+                        <button type="button" class="style-pill no-style" onclick="selectStyle('none')" id="style-none" title="Generate without applying any specific style - use the original design's style" style="width: 100%;">
+                            <span>🚫</span>
+                            <span data-translate="styleCard.noStyle">No Style - Keep Original</span>
+                        </button>
+                    </div>
+                    ` : ''}
+                    <div class="style-pills">
                         ${stylePresets.map(style => `
-                            <button type="button" class="preset-btn" onclick="selectStyle('${style.value}')" id="style-${style.value}" title="${style.description}">
+                            <button type="button" class="style-pill" onclick="selectStyle('${style.value}')" id="style-${style.value}" title="${style.description}">
                                 ${style.label}
                             </button>
                         `).join('')}
@@ -764,118 +1825,384 @@
 
         function renderRatioButtons() {
             return `
-                <div class="preset-section">
-                    <div class="preset-label">📐 Image Ratio</div>
-                    <div class="ratio-buttons">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>📐</span>
+                            <span data-translate="ratioCard.title">Image Ratio</span>
+                        </h3>
+                        <p class="card-description" data-translate="ratioCard.description">Choose the aspect ratio for your design</p>
+                    </div>
+                    <div class="ratio-group">
                         <button type="button" class="ratio-btn active" onclick="selectRatio('1:1')" id="ratio-1-1">
-                            ⬜ 1:1 Square
+                            <span class="ratio-icon">⬜</span>
+                            <span data-translate="ratioCard.square">1:1 Square</span>
                         </button>
                         <button type="button" class="ratio-btn" onclick="selectRatio('2:1')" id="ratio-2-1">
-                            ▭ 2:1 Rectangular
+                            <span class="ratio-icon">▭</span>
+                            <span data-translate="ratioCard.rectangular">2:1 Rectangular</span>
                         </button>
                     </div>
                 </div>
             `;
         }
 
+        function updatePhotoStyleSelectorVisibility() {
+            const photoStyleSelector = document.getElementById('photoStyleSelector');
+            if (photoStyleSelector) {
+                if (currentProject === 'previous-element' && selectedStyle === 'photography') {
+                    photoStyleSelector.classList.add('visible');
+                } else {
+                    photoStyleSelector.classList.remove('visible');
+                }
+            }
+        }
+
         function selectStyle(style) {
-            selectedStyle = style;
-            // Remove active class from all style buttons
-            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to selected button
+            if (style === 'secret') {
+                const randomIndex = Math.floor(Math.random() * secretStyles.length);
+                selectedStyle = secretStyles[randomIndex];
+                console.log('Secret style selected:', selectedStyle);
+            } else if (style === 'none') {
+                selectedStyle = '';
+                console.log('No style selected - keeping original design style');
+            } else {
+                selectedStyle = style;
+            }
+            document.querySelectorAll('.style-pill').forEach(btn => btn.classList.remove('active'));
             document.getElementById('style-' + style).classList.add('active');
+
+            // Update photo style selector visibility
+            updatePhotoStyleSelectorVisibility();
         }
 
         function selectRatio(ratio) {
             selectedRatio = ratio;
-            // Remove active class from all ratio buttons
             document.querySelectorAll('.ratio-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to selected button
             document.getElementById('ratio-' + ratio.replace(':', '-')).classList.add('active');
+        }
+
+        function selectProduct(product) {
+            selectedProduct = product;
+
+            document.querySelectorAll('.product-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById('product-' + product).classList.add('active');
+
+            const shapeGallery = document.getElementById('shapeGallery');
+            if (product === 'bottle-opener') {
+                shapeGallery.classList.add('visible');
+                console.log('Bottle opener selected - shape constraints will be applied');
+            } else {
+                shapeGallery.classList.remove('visible');
+                console.log(product + ' selected');
+            }
+        }
+
+        function selectPhotoStyle(style) {
+            selectedPhotoStyle = style;
+
+            document.querySelectorAll('.style-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.getElementById('style-' + style).classList.add('selected');
+
+            console.log('Photography style selected:', style);
+        }
+
+        async function copyTemplate() {
+            const templateText = document.getElementById('templateText').textContent;
+            await navigator.clipboard.writeText(templateText);
+
+            const btn = document.querySelector('.template-copy-btn');
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            btn.classList.add('copied');
+
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.classList.remove('copied');
+            }, 2000);
+        }
+
+        async function toggleShapeSelection(shapeId) {
+            const shapeOption = document.getElementById('shape-option-' + shapeId.split('-')[1]);
+            const shapeData = shapeReferences[shapeId];
+
+            if (!shapeData) return;
+
+            const isSelected = shapeOption.classList.contains('selected');
+
+            if (isSelected) {
+                shapeOption.classList.remove('selected');
+                selectedShapes = selectedShapes.filter(s => s.id !== shapeId);
+
+                const preview = document.getElementById('imagePreview');
+                const existingShape = preview.querySelector(`[data-shape-id="${shapeId}"]`);
+                if (existingShape) {
+                    existingShape.remove();
+                }
+            } else {
+                shapeOption.classList.add('selected');
+
+                try {
+                    const response = await fetch(shapeData.path);
+                    const blob = await response.blob();
+                    const file = new File([blob], shapeData.name + '.png', { type: 'image/png' });
+
+                    selectedShapes.push({
+                        id: shapeId,
+                        file: file,
+                        name: shapeData.name
+                    });
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        addShapeToPreview(e.target.result, shapeId, shapeData.name);
+                    };
+                    reader.readAsDataURL(file);
+                } catch (error) {
+                    console.error('Error loading shape image:', error);
+                    alert('Failed to load shape image. Please try again.');
+                }
+            }
+
+            updateImageCount();
+        }
+
+        function addShapeToPreview(src, shapeId, name) {
+            const preview = document.getElementById('imagePreview');
+
+            const container = document.createElement('div');
+            container.className = 'preview-img-container';
+            container.dataset.shapeId = shapeId;
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'preview-img';
+            img.title = name;
+
+            const removeBtn = document.createElement('div');
+            removeBtn.className = 'remove-img-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove shape reference';
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeShapeReference(shapeId);
+            };
+
+            const label = document.createElement('div');
+            label.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green)); color: white; padding: 6px; font-size: 11px; text-align: center; font-weight: 600;';
+            label.textContent = '📐 Shape Reference';
+
+            container.appendChild(img);
+            container.appendChild(removeBtn);
+            container.appendChild(label);
+            preview.appendChild(container);
+        }
+
+        function removeShapeReference(shapeId) {
+            selectedShapes = selectedShapes.filter(s => s.id !== shapeId);
+
+            const preview = document.getElementById('imagePreview');
+            const existingShape = preview.querySelector(`[data-shape-id="${shapeId}"]`);
+            if (existingShape) {
+                existingShape.remove();
+            }
+
+            const shapeOption = document.getElementById('shape-option-' + shapeId.split('-')[1]);
+            if (shapeOption) {
+                shapeOption.classList.remove('selected');
+            }
+
+            updateImageCount();
+        }
+
+        function renderProductSelector() {
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🎁</span>
+                            <span data-translate="productCard.title">Product Type</span>
+                        </h3>
+                        <p class="card-description" data-translate="productCard.description">Select the type of product you're designing for</p>
+                    </div>
+                    <div class="product-grid">
+                        <button type="button" class="product-btn" onclick="selectProduct('magnet')" id="product-magnet">
+                            <span class="product-icon">🧲</span>
+                            <span class="product-label" data-translate="productCard.magnet">Magnet</span>
+                        </button>
+                        <button type="button" class="product-btn disabled" id="product-keychain">
+                            <span class="product-icon">🔑</span>
+                            <span class="product-label" data-translate="productCard.keychain">Keychain</span>
+                        </button>
+                        <button type="button" class="product-btn" onclick="selectProduct('bottle-opener')" id="product-bottle-opener">
+                            <span class="product-icon">🍺</span>
+                            <span class="product-label" data-translate="productCard.bottleOpener">Bottle Opener</span>
+                        </button>
+                    </div>
+
+                    <div class="shape-gallery" id="shapeGallery">
+                        <div class="shape-gallery-title">
+                            <span>📐</span>
+                            <span data-translate="productCard.shapeTitle">Select Bottle Opener Shape</span>
+                        </div>
+                        <div class="shape-grid">
+                            <div class="shape-option" onclick="toggleShapeSelection('shape-1')" id="shape-option-1">
+                                <div class="shape-checkmark">✓</div>
+                                <img src="/presets/bottle-opener-shape-1.png" alt="Bottle Opener Shape 1">
+                                <div class="shape-label" data-translate="productCard.verticalShape">Vertical Shape</div>
+                            </div>
+                            <div class="shape-option" onclick="toggleShapeSelection('shape-2')" id="shape-option-2">
+                                <div class="shape-checkmark">✓</div>
+                                <img src="/presets/bottle-opener-shape-2.png" alt="Bottle Opener Shape 2">
+                                <div class="shape-label" data-translate="productCard.horizontalShape">Horizontal Shape</div>
+                            </div>
+                        </div>
+                        <div class="form-help" style="margin-top: 16px;">
+                            <span>💡</span>
+                            <span data-translate="productCard.shapeHelp">Click one or more shapes - they will be added to your reference images automatically</span>
+                        </div>
+                    </div>
+
+                    <div class="photo-style-selector" id="photoStyleSelector">
+                        <div class="photo-style-title">
+                            <span>📸</span>
+                            <span data-translate="photoStyleCard.title">Photography Design Style</span>
+                        </div>
+                        <div class="form-help" style="margin-bottom: 16px; color: #E65100;">
+                            <span>⚠️</span>
+                            <span data-translate="photoStyleCard.help">Choose how real photography should be incorporated into the design</span>
+                        </div>
+                        <div class="style-options">
+                            <div class="style-option" onclick="selectPhotoStyle('clipping-mask')" id="style-clipping-mask">
+                                <div class="style-radio"></div>
+                                <div class="style-option-icon">🦌</div>
+                                <div class="style-option-label" data-translate="photoStyleCard.clippingMask">Clipping Mask</div>
+                                <div class="style-option-description" data-translate="photoStyleCard.clippingMaskDesc">
+                                    Photo placed INSIDE a regional shape (animal, landmark). The photograph becomes the texture/fill of an iconic silhouette.
+                                </div>
+                            </div>
+                            <div class="style-option" onclick="selectPhotoStyle('decorative-frame')" id="style-decorative-frame">
+                                <div class="style-radio"></div>
+                                <div class="style-option-icon">🖼️</div>
+                                <div class="style-option-label" data-translate="photoStyleCard.decorativeFrame">Decorative Frame</div>
+                                <div class="style-option-description" data-translate="photoStyleCard.decorativeFrameDesc">
+                                    Photo centered in ornamental frame, surrounded by illustrated regional elements (flora, fauna, cultural icons).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         const projectFields = {
             'variations': `
-                ${renderStylePresets()}
+                ${renderProductSelector()}
+                ${renderStylePresets(true)}
                 ${renderRatioButtons()}
-                <div class="form-section">
-                    <label>Project Parameters</label>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🎯</span>
+                            <span data-translate="parametersCard.title">Project Parameters</span>
+                        </h3>
+                        <p class="card-description" data-translate="parametersCard.description">Provide details about your design requirements</p>
+                    </div>
                     <div class="optional-fields">
-                        <div>
-                            <label for="destination">Destination *</label>
-                            <input type="text" id="destination" placeholder="e.g., Hermosillo, CDMX" required>
+                        <div class="form-group">
+                            <label class="form-label" for="destination" data-translate="parametersCard.destination">Destination *</label>
+                            <input type="text" id="destination" class="form-input" data-translate-placeholder="parametersCard.destinationPlaceholder" placeholder="e.g., Hermosillo, CDMX" required>
                         </div>
-                        <div>
-                            <label for="theme">Theme</label>
-                            <input type="text" id="theme" placeholder="e.g., Christmas, Summer">
+                        <div class="form-group">
+                            <label class="form-label" for="theme" data-translate="parametersCard.theme">Theme</label>
+                            <input type="text" id="theme" class="form-input" data-translate-placeholder="parametersCard.themePlaceholder" placeholder="e.g., Christmas, Summer">
                         </div>
                     </div>
                 </div>
-                <div class="form-section">
-                    <label>Transformeter Level: <span class="slider-value" id="levelValue">5</span></label>
-                    <div class="slider-container">
-                        <input type="range" min="1" max="10" value="5" class="slider" id="level" oninput="updateSlider('level', 'levelValue')">
+                <div class="card">
+                    <div class="form-group">
+                        <label class="form-label"><span data-translate="parametersCard.transformeterLevel">Transformeter Level:</span> <span class="slider-value" id="levelValue">5</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="10" value="5" class="slider" id="level" oninput="updateSlider('level', 'levelValue')">
+                        </div>
+                        <div class="form-help">
+                            <span>📊</span>
+                            <span data-translate="parametersCard.transformeterHelp">1-3: Minor changes | 4-6: Moderate changes | 7-10: Major transformation</span>
+                        </div>
                     </div>
-                    <div class="help-text">1-3: Minor changes | 4-6: Moderate changes | 7-10: Major transformation</div>
-                </div>
-                <div class="form-section">
-                    <label>Decoration Level: <span class="slider-value" id="decorationValue">8</span></label>
-                    <div class="slider-container">
-                        <input type="range" min="1" max="10" value="8" class="slider" id="decoration" oninput="updateSlider('decoration', 'decorationValue')">
+                    <div class="form-group">
+                        <label class="form-label"><span data-translate="parametersCard.decorationLevel">Decoration Level:</span> <span class="slider-value" id="decorationValue">8</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="10" value="8" class="slider" id="decoration" oninput="updateSlider('decoration', 'decorationValue')">
+                        </div>
+                        <div class="form-help">
+                            <span>🎨</span>
+                            <span data-translate="parametersCard.decorationHelp">How much decorative detail to include (1: minimal, 10: maximum)</span>
+                        </div>
                     </div>
-                    <div class="help-text">How much decorative detail to include (1: minimal, 10: maximum)</div>
                 </div>
             `,
             'from-scratch': `
+                ${renderProductSelector()}
                 ${renderStylePresets()}
                 ${renderRatioButtons()}
-                <div class="form-section">
-                    <label>Project Parameters</label>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🎯</span>
+                            <span data-translate="parametersCard.title">Project Parameters</span>
+                        </h3>
+                        <p class="card-description" data-translate="parametersCard.description">Provide details about your design requirements</p>
+                    </div>
                     <div class="optional-fields">
-                        <div>
-                            <label for="destination">Destination *</label>
-                            <input type="text" id="destination" placeholder="e.g., Hermosillo, CDMX" required>
+                        <div class="form-group">
+                            <label class="form-label" for="destination" data-translate="parametersCard.destination">Destination *</label>
+                            <input type="text" id="destination" class="form-input" data-translate-placeholder="parametersCard.destinationPlaceholder" placeholder="e.g., Hermosillo, CDMX" required>
                         </div>
-                        <div>
-                            <label for="theme">Theme</label>
-                            <input type="text" id="theme" placeholder="e.g., Traditional, Modern">
-                        </div>
-                        <div>
-                            <label for="format">Format</label>
-                            <input type="text" id="format" placeholder="e.g., 2:1 horizontal, square">
+                        <div class="form-group">
+                            <label class="form-label" for="theme" data-translate="parametersCard.theme">Theme</label>
+                            <input type="text" id="theme" class="form-input" data-translate-placeholder="parametersCard.themePlaceholder" placeholder="e.g., Traditional, Modern">
                         </div>
                     </div>
                 </div>
             `,
             'previous-element': `
+                ${renderProductSelector()}
                 ${renderStylePresets()}
                 ${renderRatioButtons()}
-                <div class="form-section">
-                    <label>Project Parameters</label>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🎯</span>
+                            <span data-translate="parametersCard.title">Project Parameters</span>
+                        </h3>
+                        <p class="card-description" data-translate="parametersCard.description">Provide details about your design requirements</p>
+                    </div>
                     <div class="optional-fields">
-                        <div>
-                            <label for="destination">Destination *</label>
-                            <input type="text" id="destination" placeholder="e.g., Hermosillo, CDMX" required>
+                        <div class="form-group">
+                            <label class="form-label" for="destination" data-translate="parametersCard.destination">Destination *</label>
+                            <input type="text" id="destination" class="form-input" data-translate-placeholder="parametersCard.destinationPlaceholder" placeholder="e.g., Hermosillo, CDMX" required>
                         </div>
-                        <div>
-                            <label for="elementDescription">Previous Element Description</label>
-                            <input type="text" id="elementDescription" placeholder="Describe the element to build from">
+                        <div class="form-group">
+                            <label class="form-label" for="elementDescription" data-translate="parametersCard.elementDescription">Previous Element Description</label>
+                            <input type="text" id="elementDescription" class="form-input" data-translate-placeholder="parametersCard.elementPlaceholder" placeholder="Describe the element to build from">
                         </div>
                     </div>
                 </div>
             `,
             'modify': `
-                ${renderRatioButtons()}
-                <div class="form-section">
-                    <label>Modification Type</label>
-                    <select id="modificationType">
-                        <option value="clothing">Clothing Change</option>
-                        <option value="pose">Pose Transformation</option>
-                        <option value="background">Background Replacement</option>
-                        <option value="angle">Angle Change</option>
-                        <option value="elements">Element Addition</option>
-                    </select>
-                    <div class="help-text">What type of modification are you making?</div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <span>🔧</span>
+                            <span data-translate="modifyCard.title">Modification Instructions</span>
+                        </h3>
+                        <p class="card-description" data-translate="modifyCard.description">Upload the design you want to modify, then describe the changes in the instructions field</p>
+                    </div>
                 </div>
             `
         };
@@ -890,33 +2217,61 @@
                 selector.innerHTML = '';
 
                 Object.entries(projects).forEach(([key, project]) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'project-btn';
-                    btn.style.color = project.color;
-                    btn.innerHTML = `<span style="font-size: 1.5em;">${project.icon}</span><span>${project.name}</span>`;
-                    btn.onclick = () => selectProject(key, project);
-                    selector.appendChild(btn);
+                    const card = document.createElement('button');
+                    card.className = 'project-card';
+                    card.style.color = project.color;
+                    const translationKey = `projects.${key.replace(/-/g, '')}`;
+                    card.innerHTML = `
+                        <span class="project-card-icon">${project.icon}</span>
+                        <div class="project-card-content">
+                            <div class="project-card-title" data-translate="${translationKey}">${project.name}</div>
+                        </div>
+                    `;
+                    card.onclick = () => selectProject(key, project, card);
+                    selector.appendChild(card);
                 });
+
+                // Translate project cards
+                setLanguage(currentLanguage);
             } catch (error) {
                 console.error('Error loading projects:', error);
             }
         }
 
-        function selectProject(key, project) {
+        function selectProject(key, project, element) {
             currentProject = key;
 
-            // Update header
+            // Update header with translated project name
             document.getElementById('currentIcon').textContent = project.icon;
-            document.getElementById('currentProject').textContent = project.name;
-            document.querySelector('.header').style.background = project.color;
+            const projectNameKey = `projects.${key.replace(/-/g, '')}`;
+            const projectName = translations[currentLanguage].projects[key.replace(/-/g, '')] || project.name;
+            document.getElementById('currentProject').textContent = projectName;
 
             // Update active button
-            document.querySelectorAll('.project-btn').forEach(btn => btn.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.project-card').forEach(card => card.classList.remove('active'));
+            element.classList.add('active');
 
             // Load project-specific fields
             const dynamicFields = document.getElementById('dynamicFields');
             dynamicFields.innerHTML = projectFields[key] || '';
+
+            // Translate the newly added dynamic fields
+            setTimeout(() => {
+                setLanguage(currentLanguage);
+            }, 0);
+
+            // Hide template window for modify project
+            const templateWindow = document.getElementById('templateWindow');
+            if (key === 'modify') {
+                templateWindow.classList.add('hidden');
+            } else {
+                templateWindow.classList.remove('hidden');
+            }
+
+            // Update photo style selector visibility based on both project and style
+            setTimeout(() => {
+                updatePhotoStyleSelectorVisibility();
+            }, 100);
         }
 
         function updateSlider(sliderId, valueId) {
@@ -937,18 +2292,18 @@
             return new Blob([u8arr], {type: mime});
         }
 
-        // Image upload handling - supports multiple images and paste
-        let imageDataUrls = []; // Store image data URLs for pasted images
+        // Image upload handling
+        let imageDataUrls = [];
 
         function updateImageCount() {
-            const count = selectedImages.length + imageDataUrls.length;
+            const count = selectedImages.length + imageDataUrls.length + selectedShapes.length;
             const countDisplay = document.getElementById('imageCountDisplay');
             const countText = document.getElementById('imageCount');
             const persistNote = document.getElementById('imagesPersistNote');
 
             if (count > 0) {
-                countDisplay.style.display = 'inline-block';
-                persistNote.style.display = 'block';
+                countDisplay.style.display = 'inline-flex';
+                persistNote.style.display = 'flex';
                 countText.textContent = count;
             } else {
                 countDisplay.style.display = 'none';
@@ -957,9 +2312,18 @@
         }
 
         function clearAllImages() {
-            if (confirm('Remove all images? You can upload them again anytime.')) {
+            if (confirm(translations[currentLanguage].alerts.clearImages)) {
                 selectedImages = [];
                 imageDataUrls = [];
+
+                selectedShapes.forEach(shape => {
+                    const shapeOption = document.getElementById('shape-option-' + shape.id.split('-')[1]);
+                    if (shapeOption) {
+                        shapeOption.classList.remove('selected');
+                    }
+                });
+                selectedShapes = [];
+
                 refreshImagePreviews();
             }
         }
@@ -1003,7 +2367,6 @@
             const preview = document.getElementById('imagePreview');
             preview.innerHTML = '';
 
-            // Add file-based images
             selectedImages.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -1012,9 +2375,16 @@
                 reader.readAsDataURL(file);
             });
 
-            // Add pasted images
             imageDataUrls.forEach((dataUrl, index) => {
                 addImageToPreview(dataUrl, index, true);
+            });
+
+            selectedShapes.forEach((shape) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    addShapeToPreview(e.target.result, shape.id, shape.name);
+                };
+                reader.readAsDataURL(shape.file);
             });
 
             updateImageCount();
@@ -1025,17 +2395,15 @@
             document.getElementById('imageInput').click();
         };
 
-        // File input change - ADD to existing images, don't replace
+        // File input change
         document.getElementById('imageInput').addEventListener('change', (e) => {
             const newFiles = Array.from(e.target.files);
             selectedImages = [...selectedImages, ...newFiles];
             refreshImagePreviews();
-
-            // Reset input so same file can be added again
             e.target.value = '';
         });
 
-        // Paste image handling - works anywhere on the page
+        // Paste image handling
         document.addEventListener('paste', (e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -1059,10 +2427,9 @@
 
             if (imageFound) {
                 e.preventDefault();
-                // Show a brief notification
                 const imageUpload = document.getElementById('imageUpload');
                 const originalBorder = imageUpload.style.borderColor;
-                imageUpload.style.borderColor = '#48bb78';
+                imageUpload.style.borderColor = 'var(--axkan-green)';
                 imageUpload.style.borderWidth = '3px';
                 setTimeout(() => {
                     imageUpload.style.borderColor = originalBorder;
@@ -1071,22 +2438,22 @@
             }
         });
 
-        // Generate prompts with real-time streaming
+        // Generate prompts
         async function generatePrompts() {
             if (!currentProject) {
-                alert('Please select a project first!');
+                alert(translations[currentLanguage].alerts.selectProject);
                 return;
             }
 
             const instructions = document.getElementById('instructions').value;
             if (!instructions.trim()) {
-                alert('Please provide instructions for what you want to create!');
+                alert(translations[currentLanguage].alerts.provideInstructions);
                 return;
             }
 
             const variationCount = parseInt(document.getElementById('variationCount').value) || 1;
             if (variationCount < 1 || variationCount > 10) {
-                alert('Please enter a number between 1 and 10 for variations');
+                alert(translations[currentLanguage].alerts.variationRange);
                 return;
             }
 
@@ -1094,14 +2461,21 @@
             formData.append('projectType', currentProject);
             formData.append('instructions', instructions);
             formData.append('variationCount', variationCount);
+            formData.append('productType', selectedProduct);
 
-            // Add style and ratio if selected
             if (selectedStyle) {
                 formData.append('style', selectedStyle);
             }
             formData.append('ratio', selectedRatio);
 
-            // Add project-specific fields
+            if (selectedProduct === 'bottle-opener') {
+                formData.append('includeShapeConstraints', 'true');
+            }
+
+            if (selectedPhotoStyle) {
+                formData.append('photoStyle', selectedPhotoStyle);
+            }
+
             const fields = ['destination', 'theme', 'level', 'decoration', 'format', 'elementDescription', 'modificationType'];
             fields.forEach(field => {
                 const element = document.getElementById(field);
@@ -1110,26 +2484,28 @@
                 }
             });
 
-            // Add file-based images
             selectedImages.forEach(file => {
                 formData.append('images', file);
             });
 
-            // Add pasted images (convert data URLs to blobs)
             imageDataUrls.forEach((dataUrl, index) => {
                 const blob = dataURLtoBlob(dataUrl);
                 formData.append('images', blob, `pasted-image-${index}.png`);
             });
 
-            // Show loading and prepare container
+            selectedShapes.forEach(shape => {
+                formData.append('images', shape.file);
+            });
+
             const outputSection = document.getElementById('outputSection');
             const variationsContainer = document.getElementById('variationsContainer');
             outputSection.classList.add('visible');
+            const varText = variationCount > 1 ? translations[currentLanguage].loading.variations : translations[currentLanguage].loading.variation;
             variationsContainer.innerHTML = `
                 <div class="loading" id="streamingStatus">
                     <div class="spinner"></div>
-                    <div class="loading-text">Starting generation of ${variationCount} variation${variationCount > 1 ? 's' : ''}...</div>
-                    <div class="help-text">Variations will appear below as they complete</div>
+                    <div class="loading-text">${translations[currentLanguage].loading.starting} ${variationCount} ${varText}...</div>
+                    <div class="form-help" style="justify-content: center;">${translations[currentLanguage].loading.willAppear}</div>
                 </div>
             `;
 
@@ -1159,7 +2535,6 @@
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
 
-                    // Keep the last incomplete line in the buffer
                     buffer = lines.pop();
 
                     for (const line of lines) {
@@ -1170,23 +2545,21 @@
                                 totalCount = data.total;
                                 const statusDiv = document.getElementById('streamingStatus');
                                 if (statusDiv) {
+                                    const varText = totalCount > 1 ? translations[currentLanguage].loading.variations : translations[currentLanguage].loading.variation;
                                     statusDiv.querySelector('.loading-text').textContent =
-                                        `Generating ${totalCount} variation${totalCount > 1 ? 's' : ''}... (0/${totalCount} complete)`;
+                                        `${translations[currentLanguage].loading.generating} ${totalCount} ${varText}... (0/${totalCount} ${translations[currentLanguage].loading.complete})`;
                                 }
                             } else if (data.type === 'variation') {
                                 receivedCount++;
 
-                                // Update status
                                 const statusDiv = document.getElementById('streamingStatus');
                                 if (statusDiv) {
                                     statusDiv.querySelector('.loading-text').textContent =
-                                        `Generating variations... (${receivedCount}/${totalCount} complete)`;
+                                        `${translations[currentLanguage].loading.generating} ${translations[currentLanguage].loading.variations}... (${receivedCount}/${totalCount} ${translations[currentLanguage].loading.complete})`;
                                 }
 
-                                // Display this variation immediately
                                 displayVariation(data.variation, data.index);
 
-                                // Scroll the new variation into view
                                 setTimeout(() => {
                                     const newCard = document.getElementById(`variation-card-${data.index}`);
                                     if (newCard) {
@@ -1194,23 +2567,21 @@
                                     }
                                 }, 100);
                             } else if (data.type === 'complete') {
-                                // Remove loading spinner
                                 const statusDiv = document.getElementById('streamingStatus');
                                 if (statusDiv) {
                                     statusDiv.remove();
                                 }
                             } else if (data.type === 'error') {
-                                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: #e53e3e;">Error: ${data.error}</div></div>`;
+                                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--axkan-red);">Error: ${data.error}</div></div>`;
                             }
                         }
                     }
                 }
             } catch (error) {
-                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: #e53e3e;">Error: ${error.message}</div></div>`;
+                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--axkan-red);">Error: ${error.message}</div></div>`;
             }
         }
 
-        // Display a single variation as it becomes ready (for streaming)
         function displayVariation(variation, index) {
             const container = document.getElementById('variationsContainer');
 
@@ -1220,22 +2591,12 @@
             card.style.animation = 'fadeIn 0.5s ease-in';
             card.innerHTML = `
                 <div class="variation-header">
-                    <div class="variation-title">${variation.title || `Variation ${index + 1}`}</div>
-                    <button class="copy-btn" onclick="copyToClipboard(${index})">Copy to Clipboard</button>
+                    <div class="variation-title">${variation.title || `${translations[currentLanguage].variationTitle} ${index + 1}`}</div>
+                    <button class="copy-btn" onclick="copyToClipboard(${index})">${translations[currentLanguage].copyToClipboard}</button>
                 </div>
                 <div class="prompt-output" id="prompt-${index}">${variation.prompt}</div>
             `;
             container.appendChild(card);
-        }
-
-        // Legacy function for batch display (kept for compatibility)
-        function displayVariations(variations) {
-            const container = document.getElementById('variationsContainer');
-            container.innerHTML = '';
-
-            variations.forEach((variation, index) => {
-                displayVariation(variation, index);
-            });
         }
 
         async function copyToClipboard(index) {
@@ -1245,7 +2606,7 @@
             const btns = document.querySelectorAll('.copy-btn');
             const btn = btns[index];
             const originalText = btn.textContent;
-            btn.textContent = '✓ Copied!';
+            btn.textContent = translations[currentLanguage].copied;
             btn.classList.add('copied');
 
             setTimeout(() => {
@@ -1271,19 +2632,24 @@
             const apiKey = document.getElementById('apiKey').value;
             if (apiKey) {
                 localStorage.setItem('claudeApiKey', apiKey);
-                alert('Settings saved! The app will now use Claude API for intelligent prompt generation.');
+                alert(translations[currentLanguage].alerts.settingsSaved);
             } else {
                 localStorage.removeItem('claudeApiKey');
-                alert('Settings saved! The app will use template mode.');
+                alert(translations[currentLanguage].alerts.settingsSavedTemplate);
             }
             closeSettings();
         }
 
-        // Button event
-        document.getElementById('generateBtn').onclick = generatePrompts;
-
         // Initialize
+        document.getElementById('generateBtn').onclick = generatePrompts;
         loadProjects();
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('language');
+            if (savedLang) {
+                setLanguage(savedLang);
+            }
+        });
     </script>
 </body>
 </html>
