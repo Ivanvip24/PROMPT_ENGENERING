@@ -2476,13 +2476,19 @@ Incluir:
                 formData.append('photoStyle', selectedPhotoStyle);
             }
 
-            const fields = ['destination', 'theme', 'level', 'decoration', 'format', 'elementDescription', 'modificationType'];
+            const fields = ['destination', 'theme', 'level', 'format', 'elementDescription', 'modificationType'];
             fields.forEach(field => {
                 const element = document.getElementById(field);
                 if (element) {
                     formData.append(field, element.value);
                 }
             });
+
+            // Handle decoration level with correct parameter name expected by server
+            const decorationElement = document.getElementById('decoration');
+            if (decorationElement) {
+                formData.append('decorationLevel', decorationElement.value);
+            }
 
             selectedImages.forEach(file => {
                 formData.append('images', file);

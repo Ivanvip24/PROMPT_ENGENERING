@@ -91,10 +91,10 @@ async function invokeClaude(projectType, instruction, params) {
       fullInstruction += `\nTheme: ${params.theme}`;
     }
     if (params.level) {
-      fullInstruction += `\nTransformeter Level: ${params.level}/10`;
+      fullInstruction += `\n\n**MANDATORY TRANSFORMETER LEVEL: ${params.level}/10** - You MUST use exactly this transformation level in your output. Do not default to any other value.`;
     }
     if (params.decorationLevel) {
-      fullInstruction += `\nDecoration Level: ${params.decorationLevel}/10`;
+      fullInstruction += `\n**MANDATORY DECORATION LEVEL: ${params.decorationLevel}/10** - You MUST use exactly this decoration level in your output. Do not default to 8/10 or any other value.`;
     }
     if (params.style) {
       const styleNames = {
@@ -137,7 +137,7 @@ VISUAL CHECK: If someone saw just the outline/silhouette, would they recognize i
     console.log(`🎨 INVOKING CLAUDE CODE`);
     console.log(`Project: ${project.name}`);
     console.log(`Directory: ${projectPath}`);
-    console.log(`Instruction: ${fullInstruction.substring(0, 150)}...`);
+    console.log(`Instruction: ${fullInstruction.substring(0, 200)}...`);
     if (projectImages.length > 0) {
       console.log(`Images: ${projectImages.length} file(s) (copied to project directory)`);
       projectImages.forEach((img, i) => {
@@ -442,7 +442,9 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       project: PROJECTS[projectType].name,
       variations: count,
       hasImages: images.length > 0,
-      imageFiles: images.map(img => img.filename)
+      imageFiles: images.map(img => img.filename),
+      level: params.level,
+      decorationLevel: params.decorationLevel
     });
 
     // Send initial message
