@@ -1,0 +1,1 @@
+/Users/ivanvalenciaperez/Downloads/CLAUDE/.claude/commands/study.md

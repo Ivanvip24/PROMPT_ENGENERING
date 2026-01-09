@@ -90,11 +90,21 @@ async function invokeClaude(projectType, instruction, params) {
     if (params.theme) {
       fullInstruction += `\nTheme: ${params.theme}`;
     }
-    if (params.level) {
+    // Only include Transformeter for 'variations' project type
+    if (params.level && params.projectType === 'variations') {
       fullInstruction += `\n\n**MANDATORY TRANSFORMETER LEVEL: ${params.level}/10** - You MUST use exactly this transformation level in your output. Do not default to any other value.`;
     }
-    if (params.decorationLevel) {
+    // Only include Decoration Level for 'variations' project type (the only one with that slider)
+    if (params.decorationLevel && params.projectType === 'variations') {
       fullInstruction += `\n**MANDATORY DECORATION LEVEL: ${params.decorationLevel}/10** - You MUST use exactly this decoration level in your output. Do not default to 8/10 or any other value.`;
+    }
+    // Only include Crazymeter for 'from-scratch' and 'previous-element' project types
+    if (params.crazymeter && (params.projectType === 'from-scratch' || params.projectType === 'previous-element')) {
+      fullInstruction += `\n\n**MANDATORY CRAZYMETER LEVEL: ${params.crazymeter}/10** - This controls how creative/unconventional the design should be:
+  - 1-3: Traditional, safe, expected design concepts
+  - 4-6: Balanced creativity with unique twists
+  - 7-10: Wild, unexpected, boundary-pushing ideas
+You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 means ${params.crazymeter <= 3 ? 'keep designs traditional and safe' : params.crazymeter <= 6 ? 'add creative twists while staying grounded' : 'push boundaries with wild, unconventional ideas'}.`;
     }
     if (params.style) {
       const styleNames = {
@@ -397,7 +407,7 @@ async function generateVariations(params, count, onVariationComplete) {
 // Server-Sent Events endpoint for streaming variations as they complete
 app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, style, ratio, productType, includeShapeConstraints, photoStyle } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, ratio, productType, includeShapeConstraints, photoStyle } = req.body;
     const images = req.files || [];
     const count = parseInt(variationCount) || 1;
 
@@ -430,6 +440,7 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       theme,
       level: level || 5,
       decorationLevel: decorationLevel || 8,
+      crazymeter: crazymeter || null,
       style: style || '',
       ratio: ratio || '1:1',
       productType: productType || 'bottle-opener',
@@ -444,7 +455,8 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       hasImages: images.length > 0,
       imageFiles: images.map(img => img.filename),
       level: params.level,
-      decorationLevel: params.decorationLevel
+      decorationLevel: params.decorationLevel,
+      crazymeter: params.crazymeter
     });
 
     // Send initial message

@@ -1565,7 +1565,9 @@ Incluir:
                     transformeterLevel: 'Transformeter Level:',
                     transformeterHelp: '1-3: Minor changes | 4-6: Moderate changes | 7-10: Major transformation',
                     decorationLevel: 'Decoration Level:',
-                    decorationHelp: 'How much decorative detail to include (1: minimal, 10: maximum)'
+                    decorationHelp: 'How much decorative detail to include (1: minimal, 10: maximum)',
+                    crazymeterLevel: 'Crazymeter Level:',
+                    crazymeterHelp: '1-3: Traditional designs | 4-6: Creative twists | 7-10: Wild, unconventional ideas'
                 },
                 modifyCard: {
                     title: 'Modification Instructions',
@@ -1686,7 +1688,9 @@ Incluir:
                     transformeterLevel: 'Nivel de Transformación:',
                     transformeterHelp: '1-3: Cambios menores | 4-6: Cambios moderados | 7-10: Transformación mayor',
                     decorationLevel: 'Nivel de Decoración:',
-                    decorationHelp: 'Cuánto detalle decorativo incluir (1: mínimo, 10: máximo)'
+                    decorationHelp: 'Cuánto detalle decorativo incluir (1: mínimo, 10: máximo)',
+                    crazymeterLevel: 'Nivel de Locura:',
+                    crazymeterHelp: '1-3: Diseños tradicionales | 4-6: Toques creativos | 7-10: Ideas salvajes y poco convencionales'
                 },
                 modifyCard: {
                     title: 'Instrucciones de Modificación',
@@ -2169,6 +2173,18 @@ Incluir:
                         </div>
                     </div>
                 </div>
+                <div class="card">
+                    <div class="form-group">
+                        <label class="form-label"><span data-translate="parametersCard.crazymeterLevel">Crazymeter Level:</span> <span class="slider-value" id="crazymeterValue">5</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="10" value="5" class="slider" id="crazymeter" oninput="updateSlider('crazymeter', 'crazymeterValue')">
+                        </div>
+                        <div class="form-help">
+                            <span>🤪</span>
+                            <span data-translate="parametersCard.crazymeterHelp">1-3: Traditional designs | 4-6: Creative twists | 7-10: Wild, unconventional ideas</span>
+                        </div>
+                    </div>
+                </div>
             `,
             'previous-element': `
                 ${renderProductSelector()}
@@ -2190,6 +2206,18 @@ Incluir:
                         <div class="form-group">
                             <label class="form-label" for="elementDescription" data-translate="parametersCard.elementDescription">Previous Element Description</label>
                             <input type="text" id="elementDescription" class="form-input" data-translate-placeholder="parametersCard.elementPlaceholder" placeholder="Describe the element to build from">
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="form-group">
+                        <label class="form-label"><span data-translate="parametersCard.crazymeterLevel">Crazymeter Level:</span> <span class="slider-value" id="crazymeterValue">5</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="10" value="5" class="slider" id="crazymeter" oninput="updateSlider('crazymeter', 'crazymeterValue')">
+                        </div>
+                        <div class="form-help">
+                            <span>🤪</span>
+                            <span data-translate="parametersCard.crazymeterHelp">1-3: Traditional designs | 4-6: Creative twists | 7-10: Wild, unconventional ideas</span>
                         </div>
                     </div>
                 </div>
@@ -2488,6 +2516,12 @@ Incluir:
             const decorationElement = document.getElementById('decoration');
             if (decorationElement) {
                 formData.append('decorationLevel', decorationElement.value);
+            }
+
+            // Handle crazymeter level for from-scratch and previous-element projects
+            const crazymeterElement = document.getElementById('crazymeter');
+            if (crazymeterElement) {
+                formData.append('crazymeter', crazymeterElement.value);
             }
 
             selectedImages.forEach(file => {
