@@ -51,6 +51,114 @@ const PROJECTS = {
   }
 };
 
+// TURBO MODE: Ultra-fast function that skips documentation reading
+async function invokeClaudeTurbo(instruction, params) {
+  return new Promise(async (resolve, reject) => {
+    // Build a self-contained turbo prompt with everything needed
+    const turboPrompt = `⚡ TURBO PROMPT GENERATOR - MAXIMUM SPEED ⚡
+
+OUTPUT EXACTLY THIS FORMAT (150-250 words MAX):
+
+FORMAT: ${params.ratio || '1:1'}
+SUBJECT: [Describe main element + destination in ONE sentence]
+COMPOSITION:
+• [Hero element position and size %]
+• [Supporting elements arrangement]
+• [Visual flow direction]
+PROTAGONIST: [Main character/element - 25 words max]
+ELEMENTS:
+• [Element 1]
+• [Element 2]
+• [Element 3]
+• [Element 4]
+• [Element 5]
+DECORATION: ${params.decorationLevel || 8}/10
+COLORS: [4-6 color names, comma separated]
+TEXT: "${params.destination || 'DESTINATION'}" - [placement], [size %]
+STYLE: ${params.style ? params.style.charAt(0).toUpperCase() + params.style.slice(1) : 'Cartoon'} illustration, bold outlines, vibrant colors
+EDGE: Organic irregular shape
+CREATE DESIGN
+
+---
+REQUEST: ${instruction}
+${params.destination ? `DESTINATION: ${params.destination}` : ''}
+${params.theme ? `THEME: ${params.theme}` : ''}
+---
+
+RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+
+    console.log(`\n⚡ TURBO MODE - Ultra-fast generation (no docs reading)`);
+
+    let output = '';
+
+    // Run from uploads directory (minimal, no CLAUDE.md files)
+    const turboPath = path.join(__dirname, 'uploads');
+    await fs.mkdir(turboPath, { recursive: true });
+
+    // Handle images for turbo mode
+    let turboImages = [];
+    if (params.images && params.images.length > 0) {
+      for (const imagePath of params.images) {
+        const filename = path.basename(imagePath);
+        turboImages.push(filename);
+      }
+    }
+
+    let finalPrompt = turboPrompt;
+    if (turboImages.length > 0) {
+      finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}\nTHEN: ${turboPrompt}`;
+    }
+
+    const command = `echo ${JSON.stringify(finalPrompt)} | claude`;
+
+    const claude = spawn(command, [], {
+      cwd: turboPath,
+      shell: true,
+      env: { ...process.env }
+    });
+
+    // Short timeout for turbo mode (30 seconds max)
+    const timeoutTimer = setTimeout(() => {
+      claude.kill();
+      if (output && output.length > 50) {
+        resolve(output);
+      } else {
+        reject(new Error('Turbo timeout - try again'));
+      }
+    }, 30000);
+
+    claude.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    claude.stderr.on('data', (data) => {
+      console.error('stderr:', data.toString());
+    });
+
+    claude.on('close', (code) => {
+      clearTimeout(timeoutTimer);
+      console.log(`⚡ Turbo completed (exit: ${code})`);
+
+      if (output && output.length > 50) {
+        // Clean output - remove any greeting text
+        let cleanOutput = output;
+        const formatIndex = cleanOutput.indexOf('FORMAT:');
+        if (formatIndex > 0) {
+          cleanOutput = cleanOutput.substring(formatIndex);
+        }
+        resolve(cleanOutput.trim());
+      } else {
+        reject(new Error('Turbo failed to generate output'));
+      }
+    });
+
+    claude.on('error', (error) => {
+      clearTimeout(timeoutTimer);
+      reject(new Error(`Turbo error: ${error.message}`));
+    });
+  });
+}
+
 // Function to invoke Claude Code in the project directory
 async function invokeClaude(projectType, instruction, params) {
   return new Promise(async (resolve, reject) => {
@@ -361,8 +469,15 @@ async function generateVariations(params, count, onVariationComplete) {
 
       console.log(`\n[${'='.repeat(10)} VARIATION ${i + 1}/${count} ${'='.repeat(10)}]\n`);
 
-      // Invoke Claude Code - this will read all the project documentation
-      const output = await invokeClaude(projectType, modifiedInstruction, params);
+      // Use TURBO mode for ultra-fast generation, or standard mode for full documentation
+      let output;
+      if (params.turboMode) {
+        console.log(`⚡ Using TURBO mode - skipping documentation for maximum speed`);
+        output = await invokeClaudeTurbo(modifiedInstruction, params);
+      } else {
+        // Invoke Claude Code - this will read all the project documentation
+        output = await invokeClaude(projectType, modifiedInstruction, params);
+      }
 
       const variation = {
         title: `Variation ${i + 1}`,
@@ -407,7 +522,7 @@ async function generateVariations(params, count, onVariationComplete) {
 // Server-Sent Events endpoint for streaming variations as they complete
 app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, ratio, productType, includeShapeConstraints, photoStyle } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, ratio, productType, includeShapeConstraints, photoStyle, turboMode } = req.body;
     const images = req.files || [];
     const count = parseInt(variationCount) || 1;
 
@@ -446,6 +561,7 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       productType: productType || 'bottle-opener',
       includeShapeConstraints: includeShapeConstraints === 'true',
       photoStyle: photoStyle || null,
+      turboMode: turboMode === 'true',
       images: allImages
     };
 
@@ -456,7 +572,8 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
       imageFiles: images.map(img => img.filename),
       level: params.level,
       decorationLevel: params.decorationLevel,
-      crazymeter: params.crazymeter
+      crazymeter: params.crazymeter,
+      turboMode: params.turboMode
     });
 
     // Send initial message
@@ -501,6 +618,191 @@ app.get('/api/projects', (req, res) => {
     };
   }
   res.json(projectsInfo);
+});
+
+// AI Instructions Analyzer endpoint
+app.post('/api/analyze-instructions', upload.array('images'), async (req, res) => {
+  try {
+    const images = req.files || [];
+
+    if (images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No images provided'
+      });
+    }
+
+    console.log(`\n🤖 AI INSTRUCTIONS ANALYZER`);
+    console.log(`Analyzing ${images.length} instruction image(s)...`);
+
+    // Build the analysis prompt
+    const analyzePrompt = `You are analyzing client instruction images (WhatsApp screenshots, emails, notes, etc.) to extract design requirements for souvenir products.
+
+ANALYZE THE IMAGE(S) AND EXTRACT ALL OF THESE FIELDS:
+
+1. **instructions** - The main design request/instructions from the client. Combine all relevant text into clear design instructions. Be specific and detailed.
+
+2. **destination** - The location/place name if mentioned (e.g., "Trilobit Museo Restaurante", "Cancún", "Hermosillo", etc.)
+
+3. **theme** - Any theme mentioned (e.g., "fossils", "beach", "desert", "tropical", "Christmas", "marine", etc.)
+
+4. **style** - Art style. CHOOSE based on context clues:
+   - "cartoon" - for playful, colorful, fun designs (most common for souvenirs)
+   - "realistic" - for detailed, naturalistic designs
+   - "collage" - for mixed media, layered, artistic designs
+   - "photography" - if they mention photos, real images, or photographic elements
+   If not specified, VARY your choice based on what fits the theme best.
+
+5. **ratio** - Image format. CHOOSE based on product or context:
+   - "1:1" - square format (good for magnets, most products)
+   - "2:1" - horizontal/landscape (good for panoramic views, landscapes)
+   If not specified, choose "1:1" for 60% of requests, "2:1" for 40%.
+
+6. **productType** - Product type. CHOOSE one of: "magnet", "keychain", "bottle-opener"
+   Infer from context if mentioned. If not specified, vary your choice.
+
+7. **decorationLevel** - Decoration level (1-10). Infer from tone:
+   - "mucha decoración/elaborado/detallado" = 8-10
+   - "poca decoración/simple/limpio/minimalista" = 2-5
+   - If not specified, choose a random value between 5-9
+
+8. **transformeterLevel** - Transformation level (1-10). Infer from requests:
+   - "cambios pequeños/similar/parecido" = 2-4
+   - "cambios moderados" = 5-6
+   - "cambios grandes/diferente/nuevo" = 7-10
+   - If not specified, choose a random value between 4-7
+
+9. **crazymeter** - Creativity level (1-10). Infer from tone:
+   - "tradicional/clásico/normal" = 2-4
+   - "creativo/único/original" = 5-7
+   - "muy creativo/loco/diferente/atrevido" = 8-10
+   - If not specified, choose a random value between 4-8
+
+10. **variationCount** - Number of designs they want. Look for:
+   - "X modelos", "X diseños", "X opciones" = that number
+   - If not specified, default to 1
+
+11. **photoStyle** - ONLY if style is "photography":
+   - "clipping-mask" - photo fills a shape silhouette
+   - "decorative-frame" - photo in an ornamental frame
+   If photography style, pick one randomly if not specified.
+
+IMPORTANT: DO NOT always use the same default values! Vary your choices based on context and when not specified, make intelligent varied selections.
+
+RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
+{
+  "instructions": "Complete design instructions extracted from the images...",
+  "destination": "Place name or null",
+  "theme": "Theme or null",
+  "style": "cartoon",
+  "ratio": "1:1",
+  "productType": "magnet",
+  "decorationLevel": 7,
+  "transformeterLevel": 5,
+  "crazymeter": 6,
+  "variationCount": 1,
+  "photoStyle": null
+}
+
+BE THOROUGH - read ALL text in the images including WhatsApp messages, handwriting, logos, signs, etc.`;
+
+    // Copy images to uploads folder for Claude to read
+    const imageFilenames = images.map(img => path.basename(img.path));
+    const uploadPath = path.join(__dirname, 'uploads');
+
+    // Build command with image reading
+    const fullPrompt = `FIRST: Read these image files in the current directory:
+${imageFilenames.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+
+THEN: ${analyzePrompt}`;
+
+    const command = `echo ${JSON.stringify(fullPrompt)} | claude`;
+
+    let output = '';
+
+    const claude = spawn(command, [], {
+      cwd: uploadPath,
+      shell: true,
+      env: { ...process.env }
+    });
+
+    // Timeout after 60 seconds
+    const timeoutTimer = setTimeout(() => {
+      claude.kill();
+      res.json({
+        success: false,
+        error: 'Analysis timed out. Please try again.'
+      });
+    }, 60000);
+
+    claude.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    claude.stderr.on('data', (data) => {
+      console.error('stderr:', data.toString());
+    });
+
+    claude.on('close', async (code) => {
+      clearTimeout(timeoutTimer);
+      console.log(`🤖 Analysis completed (exit: ${code})`);
+
+      // Clean up uploaded images
+      for (const img of images) {
+        try {
+          await fs.unlink(img.path);
+        } catch (e) {}
+      }
+
+      try {
+        // Extract JSON from output
+        const jsonMatch = output.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[0]);
+          console.log('📋 Extracted data:', data);
+          res.json({
+            success: true,
+            data: data
+          });
+        } else {
+          // Fallback: try to extract instructions from the raw output
+          res.json({
+            success: true,
+            data: {
+              instructions: output.trim().substring(0, 1000),
+              destination: null,
+              theme: null,
+              style: null,
+              decorationLevel: 8,
+              variationCount: 1
+            }
+          });
+        }
+      } catch (parseError) {
+        console.error('Parse error:', parseError);
+        res.json({
+          success: false,
+          error: 'Could not parse analysis results'
+        });
+      }
+    });
+
+    claude.on('error', (error) => {
+      clearTimeout(timeoutTimer);
+      console.error('Claude error:', error);
+      res.json({
+        success: false,
+        error: 'Analysis failed: ' + error.message
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Error in analyze endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Function to open Chrome browser

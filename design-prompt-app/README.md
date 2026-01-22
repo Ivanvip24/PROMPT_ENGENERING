@@ -45,7 +45,7 @@ If you don't have Node.js installed:
 Open Terminal (or Command Prompt on Windows) and run:
 
 ```bash
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
 npm install
 ```
 
@@ -133,7 +133,7 @@ You can create a shortcut:
 1. Create a text file called `start.command` (Mac) or `start.bat` (Windows)
 2. Add these lines:
    ```bash
-   cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
+   cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
    npm start
    ```
 3. Double-click the file to start the app instantly!

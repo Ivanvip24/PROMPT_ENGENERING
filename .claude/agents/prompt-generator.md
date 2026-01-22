@@ -266,7 +266,7 @@ When generating prompts, provide:
 - [ ] No placeholder brackets `[ ]` remain unfilled
 
 **PUEBLOS MÁGICOS AUTO-DETECTION**:
-Consult `/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/pueblos_magicos_list.md` for the complete official list of 177 Pueblos Mágicos. If the destination matches ANY town on that list, you MUST automatically add the Pueblos Mágicos logo requirement to the prompt using the description from `common_design_elements.md`.
+Consult `/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/pueblos_magicos_list.md` for the complete official list of 177 Pueblos Mágicos. If the destination matches ANY town on that list, you MUST automatically add the Pueblos Mágicos logo requirement to the prompt using the description from `common_design_elements.md`.
 
 **Batch Generation**:
 When user requests multiple prompts:

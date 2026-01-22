@@ -1160,6 +1160,295 @@
             box-shadow: 0 20px 40px rgba(233, 30, 99, 0.4);
         }
 
+        /* History Floating Button */
+        .history-fab {
+            position: fixed;
+            bottom: 32px;
+            right: 108px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            box-shadow: var(--shadow-xl);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .history-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 20px 40px rgba(0, 188, 212, 0.4);
+        }
+
+        .history-fab .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--axkan-red);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            min-width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+        }
+
+        /* History Sidebar */
+        .history-sidebar {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-sidebar.visible {
+            right: 0;
+        }
+
+        .history-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .history-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .history-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #E0F7FA, #F1F8E9);
+        }
+
+        .history-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-close {
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            transition: color 0.2s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .history-close:hover {
+            color: var(--axkan-red);
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .history-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-tertiary);
+        }
+
+        .history-empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .history-empty-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .history-item {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-light);
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            border-color: var(--axkan-turquoise);
+            box-shadow: var(--shadow-md);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .history-item-project {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+        }
+
+        .history-item-date {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .history-item-preview {
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            max-height: 80px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .history-item-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(transparent, var(--bg-tertiary));
+        }
+
+        .history-item-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .history-meta-tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .history-action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .history-action-btn.copy {
+            background: var(--axkan-turquoise);
+            color: white;
+        }
+
+        .history-action-btn.copy:hover {
+            background: #00ACC1;
+        }
+
+        .history-action-btn.reuse {
+            background: var(--axkan-green);
+            color: white;
+        }
+
+        .history-action-btn.reuse:hover {
+            background: #689F38;
+        }
+
+        .history-action-btn.delete {
+            background: transparent;
+            color: var(--text-tertiary);
+            border: 1px solid var(--border-light);
+            flex: 0;
+            padding: 8px 10px;
+        }
+
+        .history-action-btn.delete:hover {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--axkan-red);
+            border-color: var(--axkan-red);
+        }
+
+        .history-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-light);
+            background: var(--bg-tertiary);
+        }
+
+        .history-clear-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--axkan-red);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-light);
+        }
+
+        .history-clear-btn:hover {
+            background: rgba(244, 67, 54, 0.1);
+            border-color: var(--axkan-red);
+        }
+
         /* Responsive */
         @media (max-width: 1200px) {
             .instructions-layout {
@@ -1268,6 +1557,317 @@
             grid-template-columns: 1fr 1fr;
             gap: 24px;
         }
+
+        /* Turbo Mode Toggle */
+        .turbo-toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .turbo-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .turbo-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 32px;
+        }
+
+        .turbo-slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .turbo-toggle input:checked + .turbo-slider {
+            background: linear-gradient(135deg, #FFC107, #FF9800);
+        }
+
+        .turbo-toggle input:checked + .turbo-slider:before {
+            transform: translateX(28px);
+        }
+
+        #turboCard.turbo-active {
+            border: 2px solid #FFC107;
+            background: linear-gradient(135deg, #FFFDE7, #FFF8E1);
+        }
+
+        .btn-turbo {
+            background: linear-gradient(135deg, #FFC107, #FF9800) !important;
+            animation: turbo-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes turbo-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+        }
+
+        /* Side-by-side Layout for Instructions + AI Analyzer */
+        .instructions-row {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1100px) {
+            .instructions-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* AI Instructions Analyzer Styles - Compact version */
+        #aiAnalyzerCard {
+            border: 2px dashed var(--axkan-turquoise);
+            background: linear-gradient(135deg, #E3F6FC, #D4F1F9);
+            margin-bottom: 0;
+        }
+
+        #aiAnalyzerCard .card-header {
+            margin-bottom: 16px;
+        }
+
+        #aiAnalyzerCard .card-title {
+            font-size: 22px;
+            color: var(--axkan-turquoise);
+            justify-content: center;
+        }
+
+        #aiAnalyzerCard .card-description {
+            display: none;
+        }
+
+        .ai-analyzer-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-upload-zone {
+            border: 2px dashed var(--border-medium);
+            border-radius: var(--radius-md);
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .ai-upload-zone:hover {
+            border-color: var(--axkan-pink);
+            background: #FFF5F8;
+            transform: translateY(-2px);
+        }
+
+        .ai-upload-zone.drag-over {
+            border-color: var(--axkan-green);
+            background: #F0FFF4;
+        }
+
+        .ai-upload-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .ai-upload-text {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .ai-upload-hint {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Paste Button - Pink prominent style */
+        .btn-paste-image {
+            background: linear-gradient(135deg, var(--axkan-pink), #C2185B);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-paste-image:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .ai-image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .ai-preview-item {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .ai-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .ai-preview-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--axkan-red);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-analyze-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-ai-analyze {
+            background: linear-gradient(135deg, var(--axkan-turquoise), #0097A7);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-ai-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-ai-analyze.analyzing {
+            background: linear-gradient(135deg, #9E9E9E, #757575);
+            pointer-events: none;
+        }
+
+        .ai-btn-icon {
+            font-size: 24px;
+        }
+
+        .btn-clear-ai {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-medium);
+            padding: 16px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-clear-ai:hover {
+            background: var(--axkan-red);
+            color: white;
+            border-color: var(--axkan-red);
+        }
+
+        .ai-analyze-status {
+            padding: 16px;
+            border-radius: var(--radius-md);
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .ai-analyze-status.loading {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+            color: #1565C0;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .ai-analyze-status.success {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            color: #2E7D32;
+        }
+
+        .ai-analyze-status.error {
+            background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+            color: #C62828;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .btn-paste-image {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-paste-image:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, #AB47BC, #8E24AA);
+        }
+
+        .btn-paste-image span:first-child {
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
@@ -1310,16 +1910,17 @@
             </div>
         </div>
 
-        <!-- Instructions Card -->
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <span>✍️</span>
-                    <span data-translate="instructionsCard.title">What Would You Like to Create?</span>
-                </h2>
-                <p class="card-description" data-translate="instructionsCard.description">Describe your design idea in detail</p>
-            </div>
-            <div class="instructions-layout">
+        <!-- Side-by-side: Instructions + AI Analyzer -->
+        <div class="instructions-row">
+            <!-- Instructions Card (LEFT) -->
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>✍️</span>
+                        <span data-translate="instructionsCard.title">What Would You Like to Create?</span>
+                    </h2>
+                    <p class="card-description" data-translate="instructionsCard.description">Describe your design idea in detail</p>
+                </div>
                 <div>
                     <textarea
                         id="instructions"
@@ -1332,18 +1933,39 @@
                         <span data-translate="instructionsCard.help">Be as specific as possible about what you want to change or create</span>
                     </div>
                 </div>
-                <div class="template-window" id="templateWindow">
-                    <div class="template-header">
-                        <div class="template-title" data-translate="template.title">📋 Quick Template</div>
-                        <button class="template-copy-btn" onclick="copyTemplate()" data-translate="template.copyBtn">Copy</button>
-                    </div>
-                    <div class="template-text" id="templateText">Crea un diseño con [___] como elemento principal.
+            </div>
 
-Incluir:
-- Decora con elementos y cosas locales típicas de la región
-- Letras coloridas
-- Recorte a figura, sigue el contorno de los elementos
-- Para el nuevo estilo del diseño y la organización de los elementos toma como referencia el diseño de:</div>
+            <!-- AI Instructions Analyzer Card (RIGHT) -->
+            <div class="card" id="aiAnalyzerCard">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>🤖</span>
+                        <span data-translate="aiAnalyzer.title">AI Instructions Analyzer</span>
+                    </h2>
+                    <p class="card-description" data-translate="aiAnalyzer.description">Upload client screenshots or instructions - AI will fill all fields automatically</p>
+                </div>
+                <div class="ai-analyzer-content">
+                    <div class="ai-upload-zone" id="aiUploadZone" onclick="document.getElementById('aiInstructionImages').click()">
+                        <input type="file" id="aiInstructionImages" multiple accept="image/*" style="display: none;" onchange="handleAiImages(this.files)">
+                        <div class="ai-upload-icon">📸</div>
+                        <div class="ai-upload-text" data-translate="aiAnalyzer.uploadText">Drop or click to upload client instructions</div>
+                        <div class="ai-upload-hint" data-translate="aiAnalyzer.uploadHint">WhatsApp screenshots, emails, handwritten notes, etc.</div>
+                    </div>
+                    <button class="btn btn-paste-image" onclick="pasteAiImage(event)">
+                        <span>📋</span>
+                        <span data-translate="aiAnalyzer.pasteBtn">Paste from clipboard</span>
+                    </button>
+                    <div id="aiImagePreview" class="ai-image-preview"></div>
+                    <div id="aiAnalyzeSection" class="ai-analyze-section" style="display: none;">
+                        <button class="btn btn-ai-analyze" id="aiAnalyzeBtn" onclick="analyzeInstructions()">
+                            <span class="ai-btn-icon">🤖</span>
+                            <span data-translate="aiAnalyzer.analyzeBtn">Analyze & Auto-Fill All Fields</span>
+                        </button>
+                        <button class="btn btn-clear-ai" onclick="clearAiImages()">
+                            <span data-translate="aiAnalyzer.clearBtn">Clear</span>
+                        </button>
+                    </div>
+                    <div id="aiAnalyzeStatus" class="ai-analyze-status" style="display: none;"></div>
                 </div>
             </div>
         </div>
@@ -1410,11 +2032,35 @@ Incluir:
             <div class="image-preview-grid" id="imagePreview"></div>
         </div>
 
+        <!-- Turbo Mode Toggle -->
+        <div class="card" id="turboCard">
+            <div class="card-header" style="padding-bottom: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 28px;">⚡</span>
+                        <div>
+                            <h3 class="card-title" style="margin: 0;" data-translate="turboCard.title">Turbo Mode</h3>
+                            <p class="card-description" style="margin: 4px 0 0 0;" data-translate="turboCard.description">Generate ultra-fast short prompts (max 250 words)</p>
+                        </div>
+                    </div>
+                    <label class="turbo-toggle">
+                        <input type="checkbox" id="turboToggle" onchange="toggleTurboMode(this.checked)">
+                        <span class="turbo-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div id="turboInfo" class="turbo-info" style="display: none;">
+                <div style="background: linear-gradient(135deg, #FFF8E1, #FFECB3); padding: 12px 16px; border-radius: 8px; margin-top: 12px; border-left: 4px solid #FFC107;">
+                    <span style="font-weight: 600; color: #F57C00;" data-translate="turboCard.activeMessage">⚡ Turbo active: Prompts will be hyper-optimized for speed (~250 words)</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Generate Button -->
         <div class="card">
             <button class="btn btn-primary" id="generateBtn" style="width: 100%; padding: 20px; font-size: 17px;">
-                <span style="font-size: 24px;">✨</span>
-                <span data-translate="generateBtn.text">Generate Design Prompts</span>
+                <span style="font-size: 24px;" id="generateBtnIcon">✨</span>
+                <span data-translate="generateBtn.text" id="generateBtnText">Generate Design Prompts</span>
             </button>
         </div>
 
@@ -1464,6 +2110,37 @@ Incluir:
     <!-- Settings Floating Action Button -->
     <div class="settings-fab" onclick="openSettings()">⚙️</div>
 
+    <!-- History Floating Action Button -->
+    <div class="history-fab" onclick="toggleHistory()">
+        📜
+        <span class="badge" id="historyBadge" style="display: none;">0</span>
+    </div>
+
+    <!-- History Overlay -->
+    <div class="history-overlay" id="historyOverlay" onclick="toggleHistory()"></div>
+
+    <!-- History Sidebar -->
+    <div class="history-sidebar" id="historySidebar">
+        <div class="history-header">
+            <div class="history-title">
+                <span>📜</span>
+                <span data-translate="history.title">Generation History</span>
+            </div>
+            <span class="history-close" onclick="toggleHistory()">&times;</span>
+        </div>
+        <div class="history-content" id="historyContent">
+            <div class="history-empty" id="historyEmpty">
+                <div class="history-empty-icon">📭</div>
+                <div class="history-empty-text" data-translate="history.empty">No history yet. Generate some prompts!</div>
+            </div>
+        </div>
+        <div class="history-footer">
+            <button class="history-clear-btn" onclick="clearHistory()" data-translate="history.clearAll">
+                🗑️ Clear All History
+            </button>
+        </div>
+    </div>
+
     <script>
         let currentProject = null;
         let selectedImages = [];
@@ -1472,6 +2149,281 @@ Incluir:
         let selectedProduct = '';
         let selectedShapes = [];
         let selectedPhotoStyle = null;
+        let turboMode = false;
+
+        // Turbo Mode Toggle Function
+        function toggleTurboMode(enabled) {
+            turboMode = enabled;
+            const turboCard = document.getElementById('turboCard');
+            const turboInfo = document.getElementById('turboInfo');
+            const generateBtn = document.getElementById('generateBtn');
+            const generateBtnIcon = document.getElementById('generateBtnIcon');
+            const generateBtnText = document.getElementById('generateBtnText');
+
+            if (enabled) {
+                turboCard.classList.add('turbo-active');
+                turboInfo.style.display = 'block';
+                generateBtn.classList.add('btn-turbo');
+                generateBtnIcon.textContent = '⚡';
+                generateBtnText.textContent = translations[currentLanguage].generateBtn.turboText || 'Generate TURBO Prompts';
+            } else {
+                turboCard.classList.remove('turbo-active');
+                turboInfo.style.display = 'none';
+                generateBtn.classList.remove('btn-turbo');
+                generateBtnIcon.textContent = '✨';
+                generateBtnText.textContent = translations[currentLanguage].generateBtn.text;
+            }
+        }
+
+        // AI Instructions Analyzer
+        let aiInstructionImages = [];
+
+        function handleAiImages(files) {
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        aiInstructionImages.push({
+                            dataUrl: e.target.result,
+                            file: file
+                        });
+                        updateAiPreview();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        function updateAiPreview() {
+            const preview = document.getElementById('aiImagePreview');
+            const analyzeSection = document.getElementById('aiAnalyzeSection');
+
+            preview.innerHTML = aiInstructionImages.map((img, index) => `
+                <div class="ai-preview-item">
+                    <img src="${img.dataUrl}" alt="Instruction ${index + 1}">
+                    <button class="ai-preview-remove" onclick="removeAiImage(${index})">×</button>
+                </div>
+            `).join('');
+
+            analyzeSection.style.display = aiInstructionImages.length > 0 ? 'flex' : 'none';
+        }
+
+        function removeAiImage(index) {
+            aiInstructionImages.splice(index, 1);
+            updateAiPreview();
+        }
+
+        function clearAiImages() {
+            aiInstructionImages = [];
+            updateAiPreview();
+            document.getElementById('aiAnalyzeStatus').style.display = 'none';
+        }
+
+        async function pasteAiImage(event) {
+            event.stopPropagation();
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                aiInstructionImages.push({
+                                    dataUrl: e.target.result,
+                                    file: new File([blob], `pasted-${Date.now()}.png`, { type: type })
+                                });
+                                updateAiPreview();
+                            };
+                            reader.readAsDataURL(blob);
+                            return;
+                        }
+                    }
+                }
+                alert(translations[currentLanguage].aiAnalyzer?.noImageInClipboard || 'No image found in clipboard. Copy an image first!');
+            } catch (err) {
+                console.error('Paste error:', err);
+                alert(translations[currentLanguage].aiAnalyzer?.pasteError || 'Could not paste. Make sure you have an image copied.');
+            }
+        }
+
+        async function analyzeInstructions() {
+            if (aiInstructionImages.length === 0) return;
+
+            const btn = document.getElementById('aiAnalyzeBtn');
+            const status = document.getElementById('aiAnalyzeStatus');
+
+            btn.classList.add('analyzing');
+            btn.innerHTML = '<span class="ai-btn-icon">⏳</span> <span>' + (translations[currentLanguage].aiAnalyzer?.analyzing || 'Analyzing...') + '</span>';
+
+            status.style.display = 'block';
+            status.className = 'ai-analyze-status loading';
+            status.textContent = translations[currentLanguage].aiAnalyzer?.analyzing || '🤖 Analyzing instructions... Please wait';
+
+            try {
+                const formData = new FormData();
+                aiInstructionImages.forEach((img, index) => {
+                    const blob = dataURLtoBlob(img.dataUrl);
+                    formData.append('images', blob, `instruction-${index}.png`);
+                });
+
+                const response = await fetch('/api/analyze-instructions', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Auto-fill the form fields
+                    autoFillFields(result.data);
+
+                    status.className = 'ai-analyze-status success';
+                    status.textContent = translations[currentLanguage].aiAnalyzer?.success || '✅ Fields auto-filled! Review and adjust if needed';
+                } else {
+                    throw new Error(result.error || 'Analysis failed');
+                }
+            } catch (error) {
+                console.error('Analysis error:', error);
+                status.className = 'ai-analyze-status error';
+                status.textContent = translations[currentLanguage].aiAnalyzer?.error || '❌ Could not analyze. Please try again or fill manually';
+            }
+
+            btn.classList.remove('analyzing');
+            btn.innerHTML = '<span class="ai-btn-icon">🤖</span> <span>' + (translations[currentLanguage].aiAnalyzer?.analyzeBtn || 'Analyze & Auto-Fill All Fields') + '</span>';
+        }
+
+        function autoFillFields(data) {
+            console.log('🤖 Auto-filling fields with data:', data);
+
+            // Fill instructions textarea
+            if (data.instructions) {
+                document.getElementById('instructions').value = data.instructions;
+            }
+
+            // Fill destination if field exists
+            if (data.destination) {
+                const destField = document.getElementById('destination');
+                if (destField) destField.value = data.destination;
+            }
+
+            // Fill theme if field exists
+            if (data.theme) {
+                const themeField = document.getElementById('theme');
+                if (themeField) themeField.value = data.theme;
+            }
+
+            // Select style using the selectStyle function
+            if (data.style && typeof selectStyle === 'function') {
+                try {
+                    selectStyle(data.style);
+                    console.log('✅ Style set to:', data.style);
+                } catch (e) {
+                    console.log('Style button not found:', data.style);
+                }
+            }
+
+            // Select ratio using the selectRatio function
+            if (data.ratio && typeof selectRatio === 'function') {
+                try {
+                    selectRatio(data.ratio);
+                    console.log('✅ Ratio set to:', data.ratio);
+                } catch (e) {
+                    console.log('Ratio button not found:', data.ratio);
+                }
+            }
+
+            // Select product type using the selectProduct function
+            if (data.productType && typeof selectProduct === 'function') {
+                try {
+                    selectProduct(data.productType);
+                    console.log('✅ Product set to:', data.productType);
+                } catch (e) {
+                    console.log('Product button not found:', data.productType);
+                }
+            }
+
+            // Set decoration level if detected
+            if (data.decorationLevel) {
+                const decorSlider = document.getElementById('decorationLevel');
+                if (decorSlider) {
+                    decorSlider.value = data.decorationLevel;
+                    decorSlider.dispatchEvent(new Event('input'));
+                    console.log('✅ Decoration level set to:', data.decorationLevel);
+                }
+            }
+
+            // Set transformeter level if detected (for variations project)
+            if (data.transformeterLevel) {
+                const transSlider = document.getElementById('levelSlider');
+                if (transSlider) {
+                    transSlider.value = data.transformeterLevel;
+                    transSlider.dispatchEvent(new Event('input'));
+                    console.log('✅ Transformeter level set to:', data.transformeterLevel);
+                }
+            }
+
+            // Set crazymeter if detected (for from-scratch and previous-element projects)
+            if (data.crazymeter) {
+                const crazySlider = document.getElementById('crazymeter');
+                if (crazySlider) {
+                    crazySlider.value = data.crazymeter;
+                    crazySlider.dispatchEvent(new Event('input'));
+                    console.log('✅ Crazymeter set to:', data.crazymeter);
+                }
+            }
+
+            // Set variation count if detected
+            if (data.variationCount) {
+                const varInput = document.getElementById('variationCount');
+                if (varInput) {
+                    varInput.value = data.variationCount;
+                    varInput.dispatchEvent(new Event('input'));
+                    console.log('✅ Variation count set to:', data.variationCount);
+                }
+            }
+
+            // Select photo style using the selectPhotoStyle function
+            if (data.photoStyle && typeof selectPhotoStyle === 'function') {
+                try {
+                    selectPhotoStyle(data.photoStyle);
+                    console.log('✅ Photo style set to:', data.photoStyle);
+                } catch (e) {
+                    console.log('Photo style not found:', data.photoStyle);
+                }
+            }
+
+            // Scroll to instructions to show the filled content
+            document.getElementById('instructions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Highlight the instructions field briefly
+            const instructionsField = document.getElementById('instructions');
+            instructionsField.style.transition = 'box-shadow 0.3s ease';
+            instructionsField.style.boxShadow = '0 0 0 4px rgba(0, 188, 212, 0.4)';
+            setTimeout(() => {
+                instructionsField.style.boxShadow = '';
+            }, 2000);
+        }
+
+        // Drag and drop for AI analyzer
+        document.addEventListener('DOMContentLoaded', () => {
+            const aiUploadZone = document.getElementById('aiUploadZone');
+            if (aiUploadZone) {
+                aiUploadZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    aiUploadZone.classList.add('drag-over');
+                });
+                aiUploadZone.addEventListener('dragleave', () => {
+                    aiUploadZone.classList.remove('drag-over');
+                });
+                aiUploadZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    aiUploadZone.classList.remove('drag-over');
+                    handleAiImages(e.dataTransfer.files);
+                });
+            }
+        });
+
         let currentLanguage = 'en';
 
         // Translations object
@@ -1511,7 +2463,27 @@ Incluir:
                     persistNote: 'Images will be used for all generations until you remove them'
                 },
                 generateBtn: {
-                    text: 'Generate Design Prompts'
+                    text: 'Generate Design Prompts',
+                    turboText: 'Generate TURBO Prompts ⚡'
+                },
+                turboCard: {
+                    title: 'Turbo Mode',
+                    description: 'Generate ultra-fast short prompts (max 250 words)',
+                    activeMessage: '⚡ Turbo active: Prompts will be hyper-optimized for speed (~250 words)'
+                },
+                aiAnalyzer: {
+                    title: 'AI Instructions Analyzer',
+                    description: 'Upload client screenshots or instructions - AI will fill all fields automatically',
+                    uploadText: 'Drop or click to upload client instructions',
+                    uploadHint: 'WhatsApp screenshots, emails, handwritten notes, etc.',
+                    pasteBtn: 'Paste Image from Clipboard',
+                    noImageInClipboard: 'No image found in clipboard. Copy an image first!',
+                    pasteError: 'Could not paste. Make sure you have an image copied.',
+                    analyzeBtn: 'Analyze & Auto-Fill All Fields',
+                    clearBtn: 'Clear',
+                    analyzing: '🤖 Analyzing instructions... Please wait',
+                    success: '✅ Fields auto-filled! Review and adjust if needed',
+                    error: '❌ Could not analyze. Please try again or fill manually'
                 },
                 outputCard: {
                     title: 'Generated Prompts',
@@ -1597,7 +2569,19 @@ Incluir:
                 },
                 variationTitle: 'Variation',
                 copyToClipboard: 'Copy to Clipboard',
-                copied: '✓ Copied!'
+                copied: '✓ Copied!',
+                history: {
+                    title: 'Generation History',
+                    empty: 'No history yet. Generate some prompts!',
+                    clearAll: '🗑️ Clear All History',
+                    copy: 'Copy',
+                    reuse: 'Reuse',
+                    delete: 'Delete',
+                    confirmClear: 'Are you sure you want to clear all history? This cannot be undone.',
+                    confirmDelete: 'Delete this item from history?',
+                    copiedFromHistory: '✓ Copied from history!',
+                    settingsLoaded: '✓ Settings loaded! Review the form and click Generate.'
+                }
             },
             es: {
                 header: {
@@ -1634,7 +2618,27 @@ Incluir:
                     persistNote: 'Las imágenes se usarán para todas las generaciones hasta que las elimines'
                 },
                 generateBtn: {
-                    text: 'Generar Prompts de Diseño'
+                    text: 'Generar Prompts de Diseño',
+                    turboText: 'Generar Prompts TURBO ⚡'
+                },
+                turboCard: {
+                    title: 'Modo Turbo',
+                    description: 'Genera prompts ultra-rápidos y cortos (máx 250 palabras)',
+                    activeMessage: '⚡ Turbo activo: Los prompts serán hiper-optimizados para velocidad (~250 palabras)'
+                },
+                aiAnalyzer: {
+                    title: 'Analizador de Instrucciones IA',
+                    description: 'Sube capturas de pantalla o instrucciones del cliente - la IA llenará todos los campos automáticamente',
+                    uploadText: 'Arrastra o haz clic para subir instrucciones del cliente',
+                    uploadHint: 'Capturas de WhatsApp, emails, notas escritas a mano, etc.',
+                    pasteBtn: 'Pegar Imagen del Portapapeles',
+                    noImageInClipboard: '¡No se encontró imagen en el portapapeles. Copia una imagen primero!',
+                    pasteError: 'No se pudo pegar. Asegúrate de tener una imagen copiada.',
+                    analyzeBtn: 'Analizar y Auto-Llenar Todos los Campos',
+                    clearBtn: 'Limpiar',
+                    analyzing: '🤖 Analizando instrucciones... Por favor espera',
+                    success: '✅ ¡Campos auto-llenados! Revisa y ajusta si es necesario',
+                    error: '❌ No se pudo analizar. Intenta de nuevo o llena manualmente'
                 },
                 outputCard: {
                     title: 'Prompts Generados',
@@ -1720,7 +2724,19 @@ Incluir:
                 },
                 variationTitle: 'Variación',
                 copyToClipboard: 'Copiar al Portapapeles',
-                copied: '✓ ¡Copiado!'
+                copied: '✓ ¡Copiado!',
+                history: {
+                    title: 'Historial de Generaciones',
+                    empty: 'Sin historial aún. ¡Genera algunos prompts!',
+                    clearAll: '🗑️ Borrar Todo el Historial',
+                    copy: 'Copiar',
+                    reuse: 'Reusar',
+                    delete: 'Eliminar',
+                    confirmClear: '¿Estás seguro de que quieres borrar todo el historial? Esto no se puede deshacer.',
+                    confirmDelete: '¿Eliminar este elemento del historial?',
+                    copiedFromHistory: '✓ ¡Copiado del historial!',
+                    settingsLoaded: '✓ ¡Configuración cargada! Revisa el formulario y haz clic en Generar.'
+                }
             }
         };
 
@@ -2504,6 +3520,11 @@ Incluir:
                 formData.append('photoStyle', selectedPhotoStyle);
             }
 
+            // Add turbo mode parameter
+            if (turboMode) {
+                formData.append('turboMode', 'true');
+            }
+
             const fields = ['destination', 'theme', 'level', 'format', 'elementDescription', 'modificationType'];
             fields.forEach(field => {
                 const element = document.getElementById(field);
@@ -2549,6 +3570,23 @@ Incluir:
                 </div>
             `;
 
+            // Collect data for history
+            const historyData = {
+                projectType: currentProject,
+                instructions: instructions,
+                variationCount: variationCount,
+                productType: selectedProduct,
+                style: selectedStyle,
+                ratio: selectedRatio,
+                turboMode: turboMode,
+                destination: document.getElementById('destination')?.value || '',
+                theme: document.getElementById('theme')?.value || '',
+                level: document.getElementById('level')?.value || '',
+                decorationLevel: document.getElementById('decoration')?.value || '',
+                crazymeter: document.getElementById('crazymeter')?.value || '',
+                prompts: []
+            };
+
             try {
                 const response = await fetch('/api/generate-prompt-stream', {
                     method: 'POST',
@@ -2592,6 +3630,11 @@ Incluir:
                             } else if (data.type === 'variation') {
                                 receivedCount++;
 
+                                // Collect prompt for history
+                                if (data.variation && data.variation.prompt) {
+                                    historyData.prompts.push(data.variation.prompt);
+                                }
+
                                 const statusDiv = document.getElementById('streamingStatus');
                                 if (statusDiv) {
                                     statusDiv.querySelector('.loading-text').textContent =
@@ -2610,6 +3653,10 @@ Incluir:
                                 const statusDiv = document.getElementById('streamingStatus');
                                 if (statusDiv) {
                                     statusDiv.remove();
+                                }
+                                // Save to history when generation completes
+                                if (historyData.prompts.length > 0) {
+                                    saveToHistory(historyData);
                                 }
                             } else if (data.type === 'error') {
                                 variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--axkan-red);">Error: ${data.error}</div></div>`;
@@ -2680,6 +3727,302 @@ Incluir:
             closeSettings();
         }
 
+        // History Management
+        const HISTORY_KEY = 'designPromptHistory';
+        const MAX_HISTORY_ITEMS = 50;
+
+        function getHistory() {
+            try {
+                const history = localStorage.getItem(HISTORY_KEY);
+                return history ? JSON.parse(history) : [];
+            } catch (e) {
+                console.error('Error loading history:', e);
+                return [];
+            }
+        }
+
+        function saveToHistory(item) {
+            try {
+                let history = getHistory();
+                // Add new item at the beginning
+                history.unshift({
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    ...item
+                });
+                // Limit history size
+                if (history.length > MAX_HISTORY_ITEMS) {
+                    history = history.slice(0, MAX_HISTORY_ITEMS);
+                }
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                updateHistoryBadge();
+                renderHistory();
+            } catch (e) {
+                console.error('Error saving to history:', e);
+            }
+        }
+
+        function deleteFromHistory(id) {
+            if (!confirm(translations[currentLanguage].history.confirmDelete)) return;
+            try {
+                let history = getHistory();
+                history = history.filter(item => item.id !== id);
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                updateHistoryBadge();
+                renderHistory();
+            } catch (e) {
+                console.error('Error deleting from history:', e);
+            }
+        }
+
+        function clearHistory() {
+            if (!confirm(translations[currentLanguage].history.confirmClear)) return;
+            try {
+                localStorage.removeItem(HISTORY_KEY);
+                updateHistoryBadge();
+                renderHistory();
+            } catch (e) {
+                console.error('Error clearing history:', e);
+            }
+        }
+
+        function updateHistoryBadge() {
+            const history = getHistory();
+            const badge = document.getElementById('historyBadge');
+            if (history.length > 0) {
+                badge.textContent = history.length > 99 ? '99+' : history.length;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function toggleHistory() {
+            const sidebar = document.getElementById('historySidebar');
+            const overlay = document.getElementById('historyOverlay');
+            const isVisible = sidebar.classList.contains('visible');
+
+            if (isVisible) {
+                sidebar.classList.remove('visible');
+                overlay.classList.remove('visible');
+            } else {
+                sidebar.classList.add('visible');
+                overlay.classList.add('visible');
+                renderHistory();
+            }
+        }
+
+        function renderHistory() {
+            const history = getHistory();
+            const content = document.getElementById('historyContent');
+            const emptyState = document.getElementById('historyEmpty');
+
+            if (history.length === 0) {
+                content.innerHTML = '';
+                content.appendChild(emptyState);
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            const projectNames = {
+                'variations': { icon: '🔄', name: 'Variations' },
+                'from-scratch': { icon: '✨', name: 'From Scratch' },
+                'previous-element': { icon: '🧩', name: 'Previous Element' },
+                'modify': { icon: '🔧', name: 'Modify' }
+            };
+
+            content.innerHTML = history.map(item => {
+                const project = projectNames[item.projectType] || { icon: '📄', name: item.projectType };
+                const date = new Date(item.timestamp);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const preview = item.prompts && item.prompts[0] ? item.prompts[0].substring(0, 150) + '...' : item.instructions?.substring(0, 150) + '...';
+
+                const metaTags = [];
+                if (item.destination) metaTags.push(`📍 ${item.destination}`);
+                if (item.style) metaTags.push(`🎨 ${item.style}`);
+                if (item.ratio) metaTags.push(`📐 ${item.ratio}`);
+                if (item.productType) metaTags.push(`📦 ${item.productType}`);
+                if (item.variationCount) metaTags.push(`#${item.variationCount} variations`);
+
+                return `
+                    <div class="history-item" data-id="${item.id}">
+                        <div class="history-item-header">
+                            <div class="history-item-project">
+                                <span>${project.icon}</span>
+                                <span>${project.name}</span>
+                            </div>
+                            <div class="history-item-date">${formattedDate}</div>
+                        </div>
+                        <div class="history-item-preview">${preview}</div>
+                        ${metaTags.length > 0 ? `
+                            <div class="history-item-meta">
+                                ${metaTags.map(tag => `<span class="history-meta-tag">${tag}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="history-item-actions">
+                            <button class="history-action-btn copy" onclick="copyFromHistory(${item.id})">
+                                📋 ${translations[currentLanguage].history.copy}
+                            </button>
+                            <button class="history-action-btn reuse" onclick="reuseFromHistory(${item.id})">
+                                🔄 ${translations[currentLanguage].history.reuse}
+                            </button>
+                            <button class="history-action-btn delete" onclick="deleteFromHistory(${item.id})">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function copyFromHistory(id) {
+            const history = getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item || !item.prompts || !item.prompts[0]) return;
+
+            try {
+                await navigator.clipboard.writeText(item.prompts.join('\n\n---\n\n'));
+
+                // Show feedback
+                const btn = document.querySelector(`[data-id="${id}"] .history-action-btn.copy`);
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = `✓ ${translations[currentLanguage].history.copiedFromHistory}`;
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }
+            } catch (e) {
+                console.error('Error copying from history:', e);
+            }
+        }
+
+        function reuseFromHistory(id) {
+            const history = getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item) return;
+
+            // Close history sidebar
+            toggleHistory();
+
+            // Select the project type
+            const projectCards = document.querySelectorAll('.project-card');
+            projectCards.forEach(card => {
+                const projectKey = Object.keys({
+                    'variations': 'Generate Variations',
+                    'from-scratch': 'Create New Design',
+                    'previous-element': 'Previous Element',
+                    'modify': 'Modify Design'
+                }).find(key => card.querySelector('.project-card-title')?.textContent.toLowerCase().includes(key.replace('-', ' ')));
+
+                if (card.querySelector('.project-card-title')?.closest('.project-card')) {
+                    // Click the matching project card
+                    const projectButtons = document.querySelectorAll('.project-card');
+                    projectButtons.forEach((btn, index) => {
+                        const keys = ['variations', 'from-scratch', 'previous-element', 'modify'];
+                        if (keys[index] === item.projectType) {
+                            btn.click();
+                        }
+                    });
+                }
+            });
+
+            // Wait for dynamic fields to load, then populate
+            setTimeout(() => {
+                // Set instructions
+                const instructionsField = document.getElementById('instructions');
+                if (instructionsField && item.instructions) {
+                    instructionsField.value = item.instructions;
+                }
+
+                // Set destination
+                const destinationField = document.getElementById('destination');
+                if (destinationField && item.destination) {
+                    destinationField.value = item.destination;
+                }
+
+                // Set theme
+                const themeField = document.getElementById('theme');
+                if (themeField && item.theme) {
+                    themeField.value = item.theme;
+                }
+
+                // Set variation count
+                const variationCountField = document.getElementById('variationCount');
+                if (variationCountField && item.variationCount) {
+                    variationCountField.value = item.variationCount;
+                }
+
+                // Set style if available
+                if (item.style) {
+                    const styleButtons = document.querySelectorAll('.style-preset-btn');
+                    styleButtons.forEach(btn => {
+                        if (btn.dataset.style === item.style) {
+                            btn.click();
+                        }
+                    });
+                }
+
+                // Set ratio if available
+                if (item.ratio) {
+                    const ratioButtons = document.querySelectorAll('.ratio-btn');
+                    ratioButtons.forEach(btn => {
+                        if (btn.dataset.ratio === item.ratio) {
+                            btn.click();
+                        }
+                    });
+                }
+
+                // Set product type if available
+                if (item.productType) {
+                    const productButtons = document.querySelectorAll('.product-btn');
+                    productButtons.forEach(btn => {
+                        if (btn.dataset.product === item.productType) {
+                            btn.click();
+                        }
+                    });
+                }
+
+                // Set sliders
+                if (item.level) {
+                    const levelSlider = document.getElementById('level');
+                    if (levelSlider) {
+                        levelSlider.value = item.level;
+                        updateSlider('level', 'levelValue');
+                    }
+                }
+
+                if (item.decorationLevel) {
+                    const decorationSlider = document.getElementById('decoration');
+                    if (decorationSlider) {
+                        decorationSlider.value = item.decorationLevel;
+                        updateSlider('decoration', 'decorationValue');
+                    }
+                }
+
+                if (item.crazymeter) {
+                    const crazymeterSlider = document.getElementById('crazymeter');
+                    if (crazymeterSlider) {
+                        crazymeterSlider.value = item.crazymeter;
+                        updateSlider('crazymeter', 'crazymeterValue');
+                    }
+                }
+
+                // Set turbo mode
+                if (item.turboMode) {
+                    const turboToggle = document.getElementById('turboToggle');
+                    if (turboToggle && !turboToggle.checked) {
+                        turboToggle.click();
+                    }
+                }
+
+                // Show notification
+                alert(translations[currentLanguage].history.settingsLoaded);
+            }, 300);
+        }
+
         // Initialize
         document.getElementById('generateBtn').onclick = generatePrompts;
         loadProjects();
@@ -2689,6 +4032,8 @@ Incluir:
             if (savedLang) {
                 setLanguage(savedLang);
             }
+            // Initialize history badge
+            updateHistoryBadge();
         });
     </script>
 </body>

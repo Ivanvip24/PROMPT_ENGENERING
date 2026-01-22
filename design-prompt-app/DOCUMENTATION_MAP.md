@@ -14,7 +14,7 @@ When you select a project and click "Generate", the app:
 
 ### Working Directory:
 ```
-/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Generate Variations from an Existing Design
+/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Generate Variations from an Existing Design
 ```
 
 ### ✅ HAS CLAUDE.md: YES (17,710 bytes)
@@ -50,7 +50,7 @@ Claude Code WILL read this automatically and know what to do!
 
 ### Working Directory:
 ```
-/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Design from Scratch
+/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Design from Scratch
 ```
 
 ### ✅ HAS CLAUDE.md: YES (4,098 bytes)
@@ -85,7 +85,7 @@ Claude Code WILL read this automatically!
 
 ### Working Directory:
 ```
-/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Design Based on a Previous Element
+/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Design Based on a Previous Element
 ```
 
 ### ❌ HAS CLAUDE.md: NO
@@ -119,7 +119,7 @@ Claude Code WILL read this automatically!
 
 ### Working Directory:
 ```
-/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/MODIFY_DESIGN
+/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/MODIFY_DESIGN
 ```
 
 ### ❌ HAS CLAUDE.md: NO
@@ -195,19 +195,19 @@ Run this in terminal to test each project manually:
 
 ```bash
 # Test Project 1
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Generate Variations from an Existing Design"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Generate Variations from an Existing Design"
 echo "Create a tiger variation" | claude
 
 # Test Project 2
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Design from Scratch"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Design from Scratch"
 echo "Create design for Hermosillo" | claude
 
 # Test Project 3 (will show generic greeting)
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/Design Based on a Previous Element"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/Design Based on a Previous Element"
 echo "Create design" | claude
 
 # Test Project 4 (will show generic greeting)
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/MODIFY_DESIGN"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/MODIFY_DESIGN"
 echo "Modify design" | claude
 ```
 

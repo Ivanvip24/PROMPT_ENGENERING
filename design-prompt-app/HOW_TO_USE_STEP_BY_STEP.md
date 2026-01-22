@@ -5,7 +5,7 @@
 ### Step 1: Start the App
 1. Navigate to folder:
    ```
-   /Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/design-prompt-app
+   /Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/design-prompt-app
    ```
 
 2. Find the file: **`START_APP.command`**
@@ -49,7 +49,7 @@ See "How to Use the Interface" section below
 
 ### Step 2: Navigate to App Directory
 ```bash
-cd "/Users/ivanvalenciaperez/Downloads/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
+cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/design-prompt-app"
 ```
 
 ### Step 3: Start the Server
