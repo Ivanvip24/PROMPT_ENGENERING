@@ -76,7 +76,8 @@ DECORATION: ${params.decorationLevel || 8}/10
 COLORS: [4-6 color names, comma separated]
 TEXT: "${params.destination || 'DESTINATION'}" - [placement], [size %]
 STYLE: ${params.style ? params.style.charAt(0).toUpperCase() + params.style.slice(1) : 'Cartoon'} illustration, bold outlines, vibrant colors
-EDGE: Organic irregular shape
+EDGE: Organic irregular sticker-like silhouette — NEVER a square, rectangle, or hard-edged frame. Flowing scalloped/wavy edges that follow the natural contours of the design elements. The outer shape must be interesting and unique, like a die-cut sticker.
+BACKGROUND: Clean white/transparent — the design floats as an irregular shape, NOT inside any frame or border
 CREATE DESIGN
 
 ---
@@ -478,6 +479,10 @@ async function generateVariations(params, count, onVariationComplete) {
         // Invoke Claude Code - this will read all the project documentation
         output = await invokeClaude(projectType, modifiedInstruction, params);
       }
+
+      // Append mandatory design rules to every prompt (Gemini must see these)
+      const designRules = `\n\n⚠️ CRITICAL DESIGN RULES — MANDATORY:\n- OUTER SHAPE: The design MUST have an IRREGULAR, ORGANIC, STICKER-LIKE silhouette. NEVER a square, rectangle, or any hard-edged geometric frame.\n- EDGES: Flowing, scalloped, wavy, or die-cut edges that follow the natural contours of the design elements.\n- BACKGROUND: Clean white or transparent background. The design floats freely as an irregular shape — NO borders, NO frames, NO rectangular containers.\n- If the design looks like it's inside a square or rectangular frame, it is WRONG. Redesign with organic flowing edges.`;
+      output += designRules;
 
       const variation = {
         title: `Variation ${i + 1}`,
