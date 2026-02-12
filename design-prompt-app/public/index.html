@@ -6,8 +6,15 @@
     <title>Design Prompt Generator - AXKAN</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        @font-face {
+            font-family: 'RL Aqva';
+            src: url('/fonts/rl-aqva-black.otf') format('opentype');
+            font-weight: 900;
+            font-display: swap;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -15,52 +22,113 @@
         }
 
         :root {
-            --axkan-pink: #E91E63;
-            --axkan-green: #7CB342;
-            --axkan-orange: #FF9800;
-            --axkan-turquoise: #00BCD4;
-            --axkan-red: #F44336;
+            --rosa: #e72a88;
+            --rosa-light: #fce4ef;
+            --rosa-dark: #c91e73;
+            --verde: #8ab73b;
+            --verde-light: #eef6e0;
+            --naranja: #f39223;
+            --turquesa: #09adc2;
+            --rojo: #ef4444;
 
-            --bg-primary: #F8F9FC;
-            --bg-secondary: #FFFFFF;
-            --bg-tertiary: #F1F3F9;
+            /* Aliases for backward compat with JS references */
+            --axkan-pink: #e72a88;
+            --axkan-green: #8ab73b;
+            --axkan-orange: #f39223;
+            --axkan-turquoise: #09adc2;
+            --axkan-red: #ef4444;
 
-            --text-primary: #1A202C;
-            --text-secondary: #4A5568;
-            --text-tertiary: #718096;
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f5f5f5;
 
-            --border-light: #E2E8F0;
-            --border-medium: #CBD5E0;
+            --text-primary: #212121;
+            --text-secondary: #616161;
+            --text-tertiary: #9e9e9e;
 
-            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-light: #eeeeee;
+            --border-medium: #e0e0e0;
 
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 20px;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+            --shadow-xl: 0 16px 48px rgba(0,0,0,0.14);
+
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 24px;
+            --radius-full: 100px;
+
+            --font-display: 'RL Aqva', 'Fredoka', sans-serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: var(--font-body);
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        /* Background Decoration */
+        .bg-decoration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.06;
+        }
+
+        .bg-circle-1 {
+            width: 500px;
+            height: 500px;
+            background: var(--rosa);
+            top: -120px;
+            right: -120px;
+        }
+
+        .bg-circle-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--turquesa);
+            bottom: 10%;
+            left: -100px;
+        }
+
+        .bg-circle-3 {
+            width: 300px;
+            height: 300px;
+            background: var(--naranja);
+            bottom: -80px;
+            right: 20%;
         }
 
         /* Header */
         .header {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-light);
-            padding: 20px 40px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            padding: 16px 40px;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 2px 16px rgba(0,0,0,0.04);
         }
 
         .header-container {
@@ -89,10 +157,11 @@
         }
 
         .brand-name {
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -113,7 +182,7 @@
         .current-project-badge {
             background: var(--bg-tertiary);
             padding: 10px 20px;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -158,7 +227,7 @@
         }
 
         .lang-btn.active {
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             color: white;
             box-shadow: var(--shadow-sm);
         }
@@ -174,29 +243,32 @@
         .card {
             background: var(--bg-secondary);
             border-radius: var(--radius-lg);
-            padding: 32px;
+            padding: 28px 24px;
             box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-light);
-            margin-bottom: 24px;
+            border: 1px solid rgba(0,0,0,0.04);
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         .card-header {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .card-title {
-            font-size: 20px;
-            font-weight: 700;
+            font-family: var(--font-display);
+            font-size: 1.35rem;
+            font-weight: 900;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .card-description {
-            font-size: 14px;
-            color: var(--text-secondary);
+            font-size: 0.88rem;
+            color: var(--text-tertiary);
             line-height: 1.5;
         }
 
@@ -211,9 +283,9 @@
             background: var(--bg-secondary);
             border: 2px solid var(--border-light);
             border-radius: var(--radius-lg);
-            padding: 28px;
+            padding: 24px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all var(--transition);
             display: flex;
             align-items: center;
             gap: 16px;
@@ -227,16 +299,16 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--axkan-pink), var(--axkan-green), var(--axkan-orange), var(--axkan-turquoise));
+            height: 3px;
+            background: linear-gradient(90deg, var(--rosa), var(--naranja));
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity var(--transition);
         }
 
         .project-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
-            border-color: var(--axkan-pink);
+            border-color: var(--rosa);
         }
 
         .project-card:hover::before {
@@ -244,10 +316,10 @@
         }
 
         .project-card.active {
-            border-color: var(--axkan-pink);
+            border-color: var(--rosa);
             border-width: 3px;
-            background: linear-gradient(135deg, rgba(233, 30, 99, 0.05), rgba(255, 152, 0, 0.05));
-            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, rgba(231, 42, 136, 0.05), rgba(243, 146, 35, 0.05));
+            box-shadow: 0 0 0 4px var(--rosa-light);
         }
 
         .project-card.active::before {
@@ -276,11 +348,15 @@
         }
 
         .form-label {
-            display: block;
-            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 10px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .form-input,
@@ -290,19 +366,21 @@
             padding: 14px 16px;
             border: 2px solid var(--border-light);
             border-radius: var(--radius-md);
-            font-size: 15px;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.2s ease;
+            font-size: 1rem;
+            font-family: var(--font-body);
+            transition: all var(--transition);
             background: var(--bg-secondary);
             color: var(--text-primary);
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         .form-input:focus,
         .form-textarea:focus,
         .form-select:focus {
             outline: none;
-            border-color: var(--axkan-pink);
-            box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+            border-color: var(--rosa);
+            box-shadow: 0 0 0 4px var(--rosa-light);
         }
 
         .form-textarea {
@@ -322,34 +400,34 @@
 
         /* Buttons */
         .btn {
-            padding: 14px 28px;
+            padding: 16px 28px;
             border: none;
-            border-radius: var(--radius-md);
-            font-size: 15px;
+            border-radius: var(--radius-full);
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            font-family: 'Inter', sans-serif;
-            letter-spacing: -0.2px;
+            gap: 8px;
+            font-family: var(--font-display);
+            letter-spacing: 0.3px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--axkan-pink) 0%, var(--axkan-orange) 100%);
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             color: white;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 16px rgba(231, 42, 136, 0.3);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 6px 24px rgba(231, 42, 136, 0.4);
         }
 
         .btn-primary:active {
-            transform: translateY(0);
+            transform: translateY(0) scale(0.98);
         }
 
         .btn-primary:disabled {
@@ -361,7 +439,7 @@
 
         .btn-secondary {
             background: var(--bg-tertiary);
-            color: var(--text-primary);
+            color: var(--text-secondary);
             border: 2px solid var(--border-light);
         }
 
@@ -372,12 +450,12 @@
 
         .btn-icon {
             padding: 10px 18px;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-full);
             background: var(--bg-tertiary);
             color: var(--text-secondary);
             border: 2px solid var(--border-light);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -388,7 +466,7 @@
         .btn-icon:hover {
             background: var(--bg-secondary);
             color: var(--text-primary);
-            border-color: var(--axkan-pink);
+            border-color: var(--rosa);
         }
 
         /* Number Input */
@@ -399,23 +477,23 @@
         }
 
         .number-input {
-            width: 160px;
-            padding: 24px 32px;
-            border: 3px solid var(--border-light);
-            border-radius: var(--radius-xl);
-            font-size: 72px;
+            width: 140px;
+            padding: 20px 28px;
+            border: 3px solid transparent;
+            border-radius: var(--radius-lg);
+            font-size: 64px;
             font-weight: 900;
             text-align: center;
-            background: linear-gradient(135deg, var(--axkan-pink) 0%, var(--axkan-orange) 100%);
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             color: white;
-            box-shadow: var(--shadow-xl);
+            box-shadow: 0 4px 16px rgba(231, 42, 136, 0.3);
             line-height: 1;
-            transition: all 0.3s ease;
+            transition: all var(--transition);
         }
 
         .number-input:focus {
             outline: none;
-            box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.2), var(--shadow-xl);
+            box-shadow: 0 0 0 4px var(--rosa-light), 0 4px 16px rgba(231, 42, 136, 0.3);
         }
 
         .number-input:hover {
@@ -443,16 +521,16 @@
         }
 
         .product-btn:hover:not(.disabled) {
-            border-color: var(--axkan-green);
+            border-color: var(--verde);
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
 
         .product-btn.active {
-            border-color: var(--axkan-green);
+            border-color: var(--verde);
             border-width: 3px;
-            background: linear-gradient(135deg, rgba(124, 179, 66, 0.1), rgba(0, 188, 212, 0.1));
-            box-shadow: var(--shadow-md);
+            background: var(--verde-light);
+            box-shadow: 0 0 0 4px rgba(138, 183, 59, 0.15);
         }
 
         .product-btn.disabled {
@@ -484,10 +562,10 @@
         .style-pill {
             padding: 12px 24px;
             border: 2px solid var(--border-light);
-            border-radius: 999px;
+            border-radius: var(--radius-full);
             background: var(--bg-secondary);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             font-size: 14px;
             font-weight: 600;
             color: var(--text-secondary);
@@ -503,10 +581,10 @@
         }
 
         .style-pill.active {
-            border-color: var(--axkan-turquoise);
-            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            border-color: var(--turquesa);
+            background: linear-gradient(135deg, var(--turquesa), var(--verde));
             color: white;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 4px 12px rgba(9, 173, 194, 0.3);
         }
 
         .style-pill.no-style {
@@ -541,15 +619,16 @@
         }
 
         .ratio-btn:hover {
-            border-color: var(--axkan-orange);
+            border-color: var(--naranja);
             color: var(--text-primary);
         }
 
         .ratio-btn.active {
-            border-color: var(--axkan-orange);
+            border-color: var(--naranja);
             border-width: 3px;
-            background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(244, 67, 54, 0.1));
+            background: rgba(243, 146, 35, 0.08);
             color: var(--text-primary);
+            box-shadow: 0 0 0 4px rgba(243, 146, 35, 0.12);
         }
 
         .ratio-icon {
@@ -752,18 +831,19 @@
 
         /* Image Upload */
         .image-upload-zone {
-            border: 3px dashed var(--border-medium);
+            border: 2px dashed var(--border-medium);
             border-radius: var(--radius-lg);
             padding: 40px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all var(--transition);
             background: var(--bg-tertiary);
         }
 
         .image-upload-zone:hover {
-            border-color: var(--axkan-turquoise);
+            border-color: var(--turquesa);
             background: var(--bg-secondary);
+            transform: translateY(-2px);
         }
 
         .image-upload-zone input {
@@ -838,14 +918,14 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            background: linear-gradient(135deg, var(--turquesa), var(--verde));
             color: white;
             padding: 10px 20px;
-            border-radius: 999px;
+            border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 14px;
             margin-top: 16px;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 4px 12px rgba(9, 173, 194, 0.3);
         }
 
         .paste-hint {
@@ -961,13 +1041,13 @@
         .variation-card {
             background: var(--bg-secondary);
             border-radius: var(--radius-lg);
-            border: 2px solid var(--border-light);
+            border: 1px solid rgba(0,0,0,0.04);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             height: 420px;
             box-shadow: var(--shadow-md);
-            transition: all 0.3s ease;
+            transition: all var(--transition);
         }
 
         .variation-card:hover {
@@ -978,38 +1058,92 @@
         .variation-header {
             padding: 16px 20px;
             background: var(--bg-tertiary);
-            border-bottom: 2px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
         .variation-title {
+            font-family: var(--font-display);
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 900;
             color: var(--text-primary);
             text-align: center;
         }
 
+        .variation-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         .copy-btn {
             padding: 8px 16px;
-            background: var(--axkan-turquoise);
+            background: var(--turquesa);
             color: white;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
+            flex: 1;
         }
 
         .copy-btn:hover {
-            background: #00ACC1;
+            background: #0097a7;
             transform: translateY(-1px);
         }
 
         .copy-btn.copied {
-            background: var(--axkan-green);
+            background: var(--verde);
+        }
+
+        .gemini-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4285f4, #1a73e8);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .gemini-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+
+        .gemini-btn.sent {
+            background: var(--verde);
+        }
+
+        .send-all-gemini-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #4285f4, #1a73e8);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(66, 133, 244, 0.3);
+            margin-bottom: 16px;
+        }
+
+        .send-all-gemini-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(66, 133, 244, 0.4);
         }
 
         .prompt-output {
@@ -1119,8 +1253,9 @@
         }
 
         .modal-title {
+            font-family: var(--font-display);
             font-size: 24px;
-            font-weight: 700;
+            font-weight: 900;
             color: var(--text-primary);
         }
 
@@ -1140,49 +1275,49 @@
             position: fixed;
             bottom: 32px;
             right: 32px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 22px;
             color: white;
             cursor: pointer;
-            box-shadow: var(--shadow-xl);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(231, 42, 136, 0.35);
+            transition: all var(--transition);
             z-index: 99;
         }
 
         .settings-fab:hover {
             transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 20px 40px rgba(233, 30, 99, 0.4);
+            box-shadow: 0 8px 32px rgba(231, 42, 136, 0.45);
         }
 
         /* History Floating Button */
         .history-fab {
             position: fixed;
             bottom: 32px;
-            right: 108px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--axkan-turquoise), var(--axkan-green));
+            right: 104px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--turquesa), var(--verde));
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 22px;
             color: white;
             cursor: pointer;
-            box-shadow: var(--shadow-xl);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(9, 173, 194, 0.35);
+            transition: all var(--transition);
             z-index: 999;
         }
 
         .history-fab:hover {
             transform: scale(1.1);
-            box-shadow: 0 20px 40px rgba(0, 188, 212, 0.4);
+            box-shadow: 0 8px 32px rgba(9, 173, 194, 0.45);
         }
 
         .history-fab .badge {
@@ -1246,12 +1381,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, #E0F7FA, #F1F8E9);
+            background: linear-gradient(135deg, rgba(9, 173, 194, 0.08), rgba(138, 183, 59, 0.08));
         }
 
         .history-title {
+            font-family: var(--font-display);
             font-size: 20px;
-            font-weight: 700;
+            font-weight: 900;
             color: var(--text-primary);
             display: flex;
             align-items: center;
@@ -1300,51 +1436,110 @@
         }
 
         .history-item {
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             border-radius: var(--radius-md);
-            padding: 16px;
-            margin-bottom: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
             border: 1px solid var(--border-light);
-            transition: all 0.2s ease;
+            transition: all var(--transition);
+            cursor: default;
         }
 
         .history-item:hover {
-            border-color: var(--axkan-turquoise);
-            box-shadow: var(--shadow-md);
+            border-color: var(--turquesa);
+            box-shadow: var(--shadow-sm);
         }
 
         .history-item-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
+            align-items: center;
+            margin-bottom: 8px;
         }
 
         .history-item-project {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            background: var(--bg-secondary);
-            padding: 4px 10px;
-            border-radius: var(--radius-sm);
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
+
+        .history-item-project.scratch { background: linear-gradient(135deg, var(--turquesa), #0097a7); }
+        .history-item-project.modify { background: linear-gradient(135deg, var(--naranja), #e68600); }
+        .history-item-project.previous { background: linear-gradient(135deg, var(--verde), #6d9e2e); }
 
         .history-item-date {
             font-size: 11px;
             color: var(--text-tertiary);
         }
 
-        .history-item-preview {
+        .history-item-summary {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 8px;
             font-size: 13px;
+            font-weight: 600;
             color: var(--text-primary);
-            line-height: 1.5;
-            margin-bottom: 12px;
-            max-height: 80px;
+            line-height: 1.4;
+        }
+
+        .history-item-summary .dest-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--rosa-light);
+            color: var(--rosa);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .history-item-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .history-chip {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+            font-weight: 500;
+            border: 1px solid var(--border-light);
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-item-preview {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+            margin-bottom: 10px;
+            max-height: 38px;
             overflow: hidden;
             position: relative;
+            display: none;
+        }
+
+        .history-item.expanded .history-item-preview {
+            display: block;
+            max-height: none;
         }
 
         .history-item-preview::after {
@@ -1353,61 +1548,63 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 30px;
-            background: linear-gradient(transparent, var(--bg-tertiary));
+            height: 20px;
+            background: linear-gradient(transparent, var(--bg-secondary));
+        }
+
+        .history-item.expanded .history-item-preview::after {
+            display: none;
         }
 
         .history-item-meta {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-
-        .history-meta-tag {
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
+            display: none;
         }
 
         .history-item-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .history-action-btn {
             flex: 1;
-            padding: 8px 12px;
+            padding: 7px 10px;
             border: none;
-            border-radius: var(--radius-sm);
-            font-size: 12px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 4px;
         }
 
         .history-action-btn.copy {
-            background: var(--axkan-turquoise);
+            background: var(--turquesa);
             color: white;
         }
 
         .history-action-btn.copy:hover {
-            background: #00ACC1;
+            background: #0097a7;
+        }
+
+        .history-action-btn.gemini-hist {
+            background: linear-gradient(135deg, #4285f4, #1a73e8);
+            color: white;
+        }
+
+        .history-action-btn.gemini-hist:hover {
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
         }
 
         .history-action-btn.reuse {
-            background: var(--axkan-green);
+            background: var(--verde);
             color: white;
         }
 
         .history-action-btn.reuse:hover {
-            background: #689F38;
+            background: #6d9e2e;
         }
 
         .history-action-btn.delete {
@@ -1415,38 +1612,38 @@
             color: var(--text-tertiary);
             border: 1px solid var(--border-light);
             flex: 0;
-            padding: 8px 10px;
+            padding: 7px 9px;
         }
 
         .history-action-btn.delete:hover {
-            background: rgba(244, 67, 54, 0.1);
-            color: var(--axkan-red);
-            border-color: var(--axkan-red);
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--rojo);
+            border-color: var(--rojo);
         }
 
         .history-footer {
-            padding: 16px 24px;
+            padding: 12px 20px;
             border-top: 1px solid var(--border-light);
             background: var(--bg-tertiary);
         }
 
         .history-clear-btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-full);
             background: transparent;
-            color: var(--axkan-red);
-            font-size: 13px;
+            color: var(--rojo);
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             border: 1px solid var(--border-light);
         }
 
         .history-clear-btn:hover {
-            background: rgba(244, 67, 54, 0.1);
-            border-color: var(--axkan-red);
+            background: rgba(239, 68, 68, 0.08);
+            border-color: var(--rojo);
         }
 
         /* Responsive */
@@ -1525,31 +1722,31 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             cursor: pointer;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 2px 8px rgba(231, 42, 136, 0.3);
         }
 
         .slider::-moz-range-thumb {
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             cursor: pointer;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 2px 8px rgba(231, 42, 136, 0.3);
             border: none;
         }
 
         .slider-value {
             display: inline-block;
             padding: 6px 14px;
-            background: linear-gradient(135deg, var(--axkan-pink), var(--axkan-orange));
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
             color: white;
-            border-radius: 999px;
+            border-radius: var(--radius-full);
             font-weight: 700;
             font-size: 14px;
             margin-left: 12px;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 2px 8px rgba(231, 42, 136, 0.2);
         }
 
         .two-col {
@@ -1637,8 +1834,8 @@
 
         /* AI Instructions Analyzer Styles - Compact version */
         #aiAnalyzerCard {
-            border: 2px dashed var(--axkan-turquoise);
-            background: linear-gradient(135deg, #E3F6FC, #D4F1F9);
+            border: 2px dashed var(--turquesa);
+            background: linear-gradient(135deg, rgba(9, 173, 194, 0.06), rgba(9, 173, 194, 0.03));
             margin-bottom: 0;
         }
 
@@ -1647,8 +1844,8 @@
         }
 
         #aiAnalyzerCard .card-title {
-            font-size: 22px;
-            color: var(--axkan-turquoise);
+            font-size: 1.2rem;
+            color: var(--turquesa);
             justify-content: center;
         }
 
@@ -1700,13 +1897,13 @@
             color: var(--text-tertiary);
         }
 
-        /* Paste Button - Pink prominent style */
+        /* Paste Button - Rosa prominent style */
         .btn-paste-image {
-            background: linear-gradient(135deg, var(--axkan-pink), #C2185B);
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
             color: white;
             border: none;
             padding: 14px 24px;
-            border-radius: 999px;
+            border-radius: var(--radius-full);
             font-weight: 700;
             font-size: 15px;
             cursor: pointer;
@@ -1714,13 +1911,13 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow-md);
+            transition: all var(--transition);
+            box-shadow: 0 4px 16px rgba(156, 39, 176, 0.3);
         }
 
         .btn-paste-image:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 6px 24px rgba(156, 39, 176, 0.4);
         }
 
         .ai-image-preview {
@@ -1847,7 +2044,7 @@
             color: white;
             border: none;
             padding: 14px 24px;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-full);
             font-weight: 600;
             font-size: 15px;
             cursor: pointer;
@@ -1855,13 +2052,13 @@
             align-items: center;
             gap: 10px;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: all var(--transition);
             width: 100%;
         }
 
         .btn-paste-image:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 6px 24px rgba(156, 39, 176, 0.4);
             background: linear-gradient(135deg, #AB47BC, #8E24AA);
         }
 
@@ -1871,6 +2068,13 @@
     </style>
 </head>
 <body>
+    <!-- Background Decoration -->
+    <div class="bg-decoration">
+        <div class="bg-circle bg-circle-1"></div>
+        <div class="bg-circle bg-circle-2"></div>
+        <div class="bg-circle bg-circle-3"></div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-container">
@@ -2067,12 +2271,18 @@
         <!-- Output Section -->
         <div class="output-section" id="outputSection">
             <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <span>🎨</span>
-                        <span data-translate="outputCard.title">Generated Prompts</span>
-                    </h2>
-                    <p class="card-description" data-translate="outputCard.description">Copy and use these prompts in your design tool</p>
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h2 class="card-title">
+                            <span>🎨</span>
+                            <span data-translate="outputCard.title">Generated Prompts</span>
+                        </h2>
+                        <p class="card-description" data-translate="outputCard.description">Copy and use these prompts in your design tool</p>
+                    </div>
+                    <button class="send-all-gemini-btn" id="sendAllGeminiBtn" onclick="sendAllToGemini()" style="display: none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                        Send All to Gemini
+                    </button>
                 </div>
                 <div class="variations-grid" id="variationsContainer">
                     <!-- Variation cards will be inserted here -->
@@ -3672,6 +3882,10 @@
         function displayVariation(variation, index) {
             const container = document.getElementById('variationsContainer');
 
+            // Show the Send All button
+            const sendAllBtn = document.getElementById('sendAllGeminiBtn');
+            if (sendAllBtn) sendAllBtn.style.display = 'inline-flex';
+
             const card = document.createElement('div');
             card.className = 'variation-card';
             card.id = `variation-card-${index}`;
@@ -3679,7 +3893,13 @@
             card.innerHTML = `
                 <div class="variation-header">
                     <div class="variation-title">${variation.title || `${translations[currentLanguage].variationTitle} ${index + 1}`}</div>
-                    <button class="copy-btn" onclick="copyToClipboard(${index})">${translations[currentLanguage].copyToClipboard}</button>
+                    <div class="variation-actions">
+                        <button class="copy-btn" onclick="copyToClipboard(${index})">${translations[currentLanguage].copyToClipboard}</button>
+                        <button class="gemini-btn" onclick="sendToGemini(${index})" id="gemini-btn-${index}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            Gemini
+                        </button>
+                    </div>
                 </div>
                 <div class="prompt-output" id="prompt-${index}">${variation.prompt}</div>
             `;
@@ -3700,6 +3920,136 @@
                 btn.textContent = originalText;
                 btn.classList.remove('copied');
             }, 2000);
+        }
+
+        // Collect current reference images as base64 data URLs for Gemini
+        function getImageDataForGemini() {
+            const images = [];
+            // Collect file-based images
+            selectedImages.forEach(file => {
+                // These are File objects - we need to read them
+                // We'll handle this async in the send function
+            });
+            // Collect pasted images (already base64)
+            imageDataUrls.forEach((dataUrl, i) => {
+                images.push({ dataUrl: dataUrl, name: `reference-${i}.png` });
+            });
+            // Collect shape references
+            selectedShapes.forEach((shape, i) => {
+                // Shape files need to be read too
+            });
+            return images;
+        }
+
+        // Read a File object as base64 data URL
+        function fileToDataUrl(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Collect ALL reference images as base64 data URLs
+        async function collectAllImageData() {
+            const images = [];
+            // File-based uploads
+            for (let i = 0; i < selectedImages.length; i++) {
+                const dataUrl = await fileToDataUrl(selectedImages[i]);
+                images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.png` });
+            }
+            // Pasted images (already base64)
+            imageDataUrls.forEach((dataUrl, i) => {
+                images.push({ dataUrl, name: `pasted-${i}.png` });
+            });
+            // Shape references
+            for (let i = 0; i < selectedShapes.length; i++) {
+                const dataUrl = await fileToDataUrl(selectedShapes[i].file);
+                images.push({ dataUrl, name: `shape-${selectedShapes[i].id}.png` });
+            }
+            return images;
+        }
+
+        // Send prompt + images to Gemini via server automation
+        async function postToGemini(prompt, images = []) {
+            try {
+                const response = await fetch('/api/send-to-gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, images })
+                });
+                const result = await response.json();
+                return result;
+            } catch (err) {
+                console.error('Send to Gemini failed:', err);
+                // Fallback: clipboard + open tab
+                await navigator.clipboard.writeText(prompt);
+                window.open('https://gemini.google.com/app', '_blank');
+                return { success: false, fallback: true };
+            }
+        }
+
+        // Send to Gemini - automates opening Gemini, pasting prompt + uploading images
+        async function sendToGemini(index) {
+            const text = document.getElementById(`prompt-${index}`).textContent;
+
+            const btn = document.getElementById(`gemini-btn-${index}`);
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending...';
+            btn.classList.add('sent');
+
+            // Collect reference images
+            const images = await collectAllImageData();
+
+            const result = await postToGemini(text, images);
+
+            if (result.success) {
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent to Gemini!';
+            } else if (result.fallback) {
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied! Paste in Gemini';
+            }
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('sent');
+            }, 4000);
+        }
+
+        // Send all variations to Gemini sequentially
+        async function sendAllToGemini() {
+            const promptElements = document.querySelectorAll('.prompt-output');
+            const sendAllBtn = document.getElementById('sendAllGeminiBtn');
+            const originalHTML = sendAllBtn.innerHTML;
+
+            // Collect images once (same for all variations)
+            const images = await collectAllImageData();
+
+            for (let i = 0; i < promptElements.length; i++) {
+                const text = promptElements[i].textContent;
+                sendAllBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending ${i + 1}/${promptElements.length}...`;
+
+                await postToGemini(text, images);
+
+                // Highlight the corresponding gemini button
+                const geminiBtn = document.getElementById(`gemini-btn-${i}`);
+                if (geminiBtn) {
+                    geminiBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent!';
+                    geminiBtn.classList.add('sent');
+                }
+
+                // Wait between sends to let each Gemini tab load
+                if (i < promptElements.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 8000));
+                }
+            }
+
+            sendAllBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> All sent to Gemini!';
+            setTimeout(() => {
+                sendAllBtn.innerHTML = originalHTML;
+                document.querySelectorAll('.gemini-btn').forEach(btn => {
+                    btn.classList.remove('sent');
+                });
+            }, 4000);
         }
 
         // Settings
@@ -3824,50 +4174,79 @@
                 return;
             }
 
-            const projectNames = {
-                'variations': { icon: '🔄', name: 'Variations' },
-                'from-scratch': { icon: '✨', name: 'From Scratch' },
-                'previous-element': { icon: '🧩', name: 'Previous Element' },
-                'modify': { icon: '🔧', name: 'Modify' }
+            const projectStyles = {
+                'variations': { icon: '🔄', name: 'Variations', cls: '' },
+                'from-scratch': { icon: '✨', name: 'Scratch', cls: 'scratch' },
+                'previous-element': { icon: '🧩', name: 'Previous', cls: 'previous' },
+                'modify': { icon: '🔧', name: 'Modify', cls: 'modify' }
             };
 
             content.innerHTML = history.map(item => {
-                const project = projectNames[item.projectType] || { icon: '📄', name: item.projectType };
+                const project = projectStyles[item.projectType] || { icon: '📄', name: item.projectType, cls: '' };
                 const date = new Date(item.timestamp);
-                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const preview = item.prompts && item.prompts[0] ? item.prompts[0].substring(0, 150) + '...' : item.instructions?.substring(0, 150) + '...';
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
 
-                const metaTags = [];
-                if (item.destination) metaTags.push(`📍 ${item.destination}`);
-                if (item.style) metaTags.push(`🎨 ${item.style}`);
-                if (item.ratio) metaTags.push(`📐 ${item.ratio}`);
-                if (item.productType) metaTags.push(`📦 ${item.productType}`);
-                if (item.variationCount) metaTags.push(`#${item.variationCount} variations`);
+                let timeAgo;
+                if (diffMins < 1) timeAgo = 'Just now';
+                else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+                else if (diffHours < 24) timeAgo = `${diffHours}h ago`;
+                else if (diffDays < 7) timeAgo = `${diffDays}d ago`;
+                else timeAgo = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                // Build a clean 1-line summary from instructions (not the raw prompt)
+                let summary = item.instructions || '';
+                if (summary.length > 60) summary = summary.substring(0, 60) + '...';
+                if (!summary && item.prompts && item.prompts[0]) {
+                    // Extract just the SUBJECT line from the prompt if no instructions
+                    const subjectMatch = item.prompts[0].match(/SUBJECT[:\s]*(.+)/i);
+                    summary = subjectMatch ? subjectMatch[1].substring(0, 60) : 'Generated prompt';
+                }
+
+                // Compact chips: only show the most important info
+                const chips = [];
+                if (item.ratio) chips.push(item.ratio);
+                if (item.productType) chips.push(item.productType);
+                if (item.style) {
+                    // Truncate long style descriptions to first few words
+                    const shortStyle = item.style.split(/[\s\-,]+/).slice(0, 3).join(' ');
+                    chips.push(shortStyle.length > 20 ? shortStyle.substring(0, 20) + '…' : shortStyle);
+                }
+                if (item.variationCount && item.variationCount > 1) chips.push(`${item.variationCount}x`);
 
                 return `
                     <div class="history-item" data-id="${item.id}">
                         <div class="history-item-header">
-                            <div class="history-item-project">
+                            <div class="history-item-project ${project.cls}">
                                 <span>${project.icon}</span>
                                 <span>${project.name}</span>
                             </div>
-                            <div class="history-item-date">${formattedDate}</div>
+                            <div class="history-item-date">${timeAgo}</div>
                         </div>
-                        <div class="history-item-preview">${preview}</div>
-                        ${metaTags.length > 0 ? `
-                            <div class="history-item-meta">
-                                ${metaTags.map(tag => `<span class="history-meta-tag">${tag}</span>`).join('')}
+                        <div class="history-item-summary">
+                            ${item.destination ? `<span class="dest-tag">📍 ${item.destination}</span>` : ''}
+                            <span>${summary || 'Design prompt'}</span>
+                        </div>
+                        ${chips.length > 0 ? `
+                            <div class="history-item-chips">
+                                ${chips.map(c => `<span class="history-chip">${c}</span>`).join('')}
                             </div>
                         ` : ''}
                         <div class="history-item-actions">
                             <button class="history-action-btn copy" onclick="copyFromHistory(${item.id})">
-                                📋 ${translations[currentLanguage].history.copy}
+                                ${translations[currentLanguage].history.copy}
+                            </button>
+                            <button class="history-action-btn gemini-hist" onclick="geminiFromHistory(${item.id})">
+                                Gemini
                             </button>
                             <button class="history-action-btn reuse" onclick="reuseFromHistory(${item.id})">
-                                🔄 ${translations[currentLanguage].history.reuse}
+                                ${translations[currentLanguage].history.reuse}
                             </button>
                             <button class="history-action-btn delete" onclick="deleteFromHistory(${item.id})">
-                                🗑️
+                                ✕
                             </button>
                         </div>
                     </div>
@@ -3883,19 +4262,39 @@
             try {
                 await navigator.clipboard.writeText(item.prompts.join('\n\n---\n\n'));
 
-                // Show feedback
                 const btn = document.querySelector(`[data-id="${id}"] .history-action-btn.copy`);
                 if (btn) {
                     const originalText = btn.innerHTML;
-                    btn.innerHTML = `✓ ${translations[currentLanguage].history.copiedFromHistory}`;
-                    btn.classList.add('copied');
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.classList.remove('copied');
-                    }, 2000);
+                    btn.innerHTML = '✓ Copied';
+                    setTimeout(() => { btn.innerHTML = originalText; }, 1500);
                 }
             } catch (e) {
                 console.error('Error copying from history:', e);
+            }
+        }
+
+        async function geminiFromHistory(id) {
+            const history = getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item || !item.prompts || !item.prompts[0]) return;
+
+            const btn = document.querySelector(`[data-id="${id}"] .history-action-btn.gemini-hist`);
+            const originalText = btn ? btn.innerHTML : '';
+            if (btn) btn.innerHTML = 'Sending...';
+
+            try {
+                // History items don't have images, send prompt only
+                const result = await postToGemini(item.prompts[0], []);
+
+                if (btn) {
+                    btn.innerHTML = result.success ? '✓ Sent!' : '✓ Copied!';
+                    setTimeout(() => { btn.innerHTML = originalText; }, 3000);
+                }
+            } catch (e) {
+                console.error('Error sending to Gemini from history:', e);
+                if (btn) {
+                    btn.innerHTML = originalText;
+                }
             }
         }
 

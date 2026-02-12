@@ -187,7 +187,7 @@ Structure your findings as:
 - Validate that scenario progression makes sense (1→2→3→4→5)
 
 **PUEBLOS MÁGICOS VALIDATION**:
-Always check if the destination being validated is on the official Pueblos Mágicos list (consult `/Users/ivanvalenciaperez/Desktop/CLAUDE/PROMPT_ENGENERING/pueblos_magicos_list.md` - 177 towns total). If it is a Pueblo Mágico and the prompt does NOT include the Pueblos Mágicos logo/letters requirement, flag this as a CRITICAL ERROR.
+Always check if the destination being validated is on the official Pueblos Mágicos list (consult `/Users/ivanvalenciaperez/Desktop/CLAUDE/READY/PROMPT_ENGENERING/pueblos_magicos_list.md` - 177 towns total). If it is a Pueblo Mágico and the prompt does NOT include the Pueblos Mágicos logo/letters requirement, flag this as a CRITICAL ERROR.
 
 **STYLE GUIDELINES VALIDATION** (consult design_style_guidelines.md):
 CRITICAL - Flag as ERROR if prompt contains:

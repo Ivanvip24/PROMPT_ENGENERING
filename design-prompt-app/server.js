@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
@@ -802,6 +802,162 @@ THEN: ${analyzePrompt}`;
       success: false,
       error: error.message
     });
+  }
+});
+
+// ============================================
+// SEND TO GEMINI - Automated browser automation
+// ============================================
+const os = require('os');
+
+app.post('/api/send-to-gemini', async (req, res) => {
+  try {
+    const { prompt, images } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'No prompt provided' });
+    }
+
+    console.log(`\n🚀 Send to Gemini: prompt length=${prompt.length}, images=${images ? images.length : 0}`);
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `gemini-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Save images as temp files
+    const imagePaths = [];
+    if (images && images.length > 0) {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (img.dataUrl) {
+          const matches = img.dataUrl.match(/^data:image\/(\w+);base64,(.+)$/s);
+          if (matches) {
+            const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+            const buffer = Buffer.from(matches[2], 'base64');
+            const filePath = path.join(tempDir, `ref-${i}.${ext}`);
+            await fs.writeFile(filePath, buffer);
+            imagePaths.push(filePath);
+            console.log(`  📷 Image ${i}: ${filePath}`);
+          }
+        }
+      }
+    }
+
+    // Write prompt to temp file (avoids shell escaping issues with pbcopy)
+    const promptFile = path.join(tempDir, 'prompt.txt');
+    await fs.writeFile(promptFile, prompt, 'utf8');
+
+    // Write a Python helper script to copy image to clipboard (reliable macOS approach)
+    const clipboardHelperPath = path.join(tempDir, 'clipboard_image.py');
+    const clipboardHelper = `#!/usr/bin/env python3
+import sys
+from AppKit import NSImage, NSPasteboard
+
+image_path = sys.argv[1]
+image = NSImage.alloc().initWithContentsOfFile_(image_path)
+if not image:
+    print(f"Failed to load image: {image_path}", file=sys.stderr)
+    sys.exit(1)
+
+pb = NSPasteboard.generalPasteboard()
+pb.clearContents()
+pb.writeObjects_([image])
+print("OK")
+`;
+    await fs.writeFile(clipboardHelperPath, clipboardHelper, 'utf8');
+
+    // Build image paste steps - each image: focus editor via JS, copy image to clipboard, Cmd+V
+    let imageSteps = '';
+    for (let i = 0; i < imagePaths.length; i++) {
+      const imgPath = imagePaths[i];
+      imageSteps += `
+-- Paste image ${i + 1}
+tell application "Google Chrome"
+  execute active tab of front window javascript "var el = document.querySelector('div[contenteditable=true][role=textbox]'); if(el){el.focus(); el.click();} 'ok'"
+end tell
+do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}"
+delay 0.3
+tell application "System Events"
+  keystroke "v" using command down
+end tell
+delay 1.5
+`;
+    }
+
+    // AppleScript: clipboard paste approach (works with Gemini's React framework)
+    // IMPORTANT: Paste images FIRST, then text LAST — Gemini's image paste can clear text
+    // Use JS execute to focus the contenteditable before each paste
+    const appleScript = `
+-- Open new Gemini tab
+tell application "Google Chrome"
+  activate
+  tell front window
+    make new tab with properties {URL:"https://gemini.google.com/app"}
+  end tell
+  -- Smart wait: poll until the editor exists (instead of fixed delays)
+  delay 1.5
+  repeat 30 times
+    if not (loading of active tab of front window) then exit repeat
+    delay 0.3
+  end repeat
+  -- Wait for Gemini's editor to be ready
+  repeat 20 times
+    set editorReady to execute active tab of front window javascript "document.querySelector('div[contenteditable=true][role=textbox]') ? 'ready' : 'waiting'"
+    if editorReady is "ready" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5
+  -- Focus the contenteditable input
+  execute active tab of front window javascript "var el = document.querySelector('div[contenteditable=true][role=textbox]'); if(el){el.focus(); el.click();} 'ok'"
+end tell
+
+-- STEP 1: Paste images first (if any)
+${imageSteps}
+
+-- STEP 2: Focus the text input again via JS (image paste may have moved focus)
+tell application "Google Chrome"
+  execute active tab of front window javascript "var el = document.querySelector('div[contenteditable=true][role=textbox]'); if(el){el.focus(); el.click();} 'ok'"
+end tell
+delay 0.2
+
+-- STEP 3: Paste prompt text last
+do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
+delay 0.2
+tell application "System Events"
+  tell process "Google Chrome"
+    set frontmost to true
+  end tell
+  delay 0.3
+  keystroke "v" using command down
+end tell
+delay 0.5
+
+return "done"
+`;
+
+    const scriptFile = path.join(tempDir, 'automate.scpt');
+    await fs.writeFile(scriptFile, appleScript, 'utf8');
+
+    console.log('  📝 Executing Gemini automation (clipboard + paste)...');
+
+    exec(`osascript "${scriptFile}"`, { timeout: 60000 }, (error, stdout, stderr) => {
+      // Cleanup after delay to let images finish
+      setTimeout(() => {
+        fs.rm(tempDir, { recursive: true }).catch(() => {});
+      }, 60000);
+
+      if (error) {
+        console.error('  ❌ AppleScript error:', stderr || error.message);
+      } else {
+        console.log('  ✅ Gemini automation completed');
+      }
+    });
+
+    res.json({ success: true, message: 'Sending to Gemini...', hasImages: imagePaths.length > 0 });
+
+  } catch (error) {
+    console.error('❌ Send to Gemini error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
