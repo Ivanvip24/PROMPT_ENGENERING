@@ -2474,7 +2474,8 @@
                 const formData = new FormData();
                 aiInstructionImages.forEach((img, index) => {
                     const blob = dataURLtoBlob(img.dataUrl);
-                    formData.append('images', blob, `instruction-${index}.png`);
+                    const ext = getExtFromDataUrl(img.dataUrl);
+                    formData.append('images', blob, `instruction-${index}.${ext}`);
                 });
 
                 const response = await fetch('/api/analyze-instructions', {
@@ -3546,6 +3547,15 @@
             return new Blob([u8arr], {type: mime});
         }
 
+        // Helper: get correct file extension from a data URL's MIME type
+        function getExtFromDataUrl(dataUrl) {
+            const match = dataUrl.match(/^data:image\/(\w+)/);
+            if (!match) return 'png';
+            const type = match[1].toLowerCase();
+            if (type === 'jpeg') return 'jpg';
+            return type; // png, gif, webp, etc.
+        }
+
         // Image upload handling
         let imageDataUrls = [];
 
@@ -3761,7 +3771,8 @@
 
             imageDataUrls.forEach((dataUrl, index) => {
                 const blob = dataURLtoBlob(dataUrl);
-                formData.append('images', blob, `pasted-image-${index}.png`);
+                const ext = getExtFromDataUrl(dataUrl);
+                formData.append('images', blob, `pasted-image-${index}.${ext}`);
             });
 
             selectedShapes.forEach(shape => {
@@ -3932,7 +3943,7 @@
             });
             // Collect pasted images (already base64)
             imageDataUrls.forEach((dataUrl, i) => {
-                images.push({ dataUrl: dataUrl, name: `reference-${i}.png` });
+                images.push({ dataUrl: dataUrl, name: `reference-${i}.${getExtFromDataUrl(dataUrl)}` });
             });
             // Collect shape references
             selectedShapes.forEach((shape, i) => {
@@ -3956,16 +3967,16 @@
             // File-based uploads
             for (let i = 0; i < selectedImages.length; i++) {
                 const dataUrl = await fileToDataUrl(selectedImages[i]);
-                images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.png` });
+                images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.${getExtFromDataUrl(dataUrl)}` });
             }
             // Pasted images (already base64)
             imageDataUrls.forEach((dataUrl, i) => {
-                images.push({ dataUrl, name: `pasted-${i}.png` });
+                images.push({ dataUrl, name: `pasted-${i}.${getExtFromDataUrl(dataUrl)}` });
             });
             // Shape references
             for (let i = 0; i < selectedShapes.length; i++) {
                 const dataUrl = await fileToDataUrl(selectedShapes[i].file);
-                images.push({ dataUrl, name: `shape-${selectedShapes[i].id}.png` });
+                images.push({ dataUrl, name: `shape-${selectedShapes[i].id}.${getExtFromDataUrl(dataUrl)}` });
             }
             return images;
         }

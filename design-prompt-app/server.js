@@ -23,6 +23,63 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
+// Detect actual image format from file magic bytes and fix/convert if needed
+// Claude API only supports: JPEG, PNG, GIF, WebP
+async function fixImageExtension(filePath) {
+  try {
+    const buf = Buffer.alloc(12);
+    const fd = await fs.open(filePath, 'r');
+    await fd.read(buf, 0, 12, 0);
+    await fd.close();
+
+    let detectedFormat = null;
+    if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) {
+      detectedFormat = { ext: '.jpg', supported: true };
+    } else if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+      detectedFormat = { ext: '.png', supported: true };
+    } else if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
+      detectedFormat = { ext: '.gif', supported: true };
+    } else if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+               buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) {
+      detectedFormat = { ext: '.webp', supported: true };
+    } else if ((buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2A && buf[3] === 0x00) ||
+               (buf[0] === 0x4D && buf[1] === 0x4D && buf[2] === 0x00 && buf[3] === 0x2A)) {
+      detectedFormat = { ext: '.tiff', supported: false };
+    } else if (buf[0] === 0x42 && buf[1] === 0x4D) {
+      detectedFormat = { ext: '.bmp', supported: false };
+    }
+
+    if (!detectedFormat) return filePath;
+
+    // If format is unsupported by Claude API, convert to PNG using macOS sips
+    if (!detectedFormat.supported) {
+      const pngPath = filePath.replace(/\.[^.]+$/, '.png');
+      console.log(`🔄 Converting ${detectedFormat.ext} → .png (unsupported format): ${path.basename(filePath)}`);
+      await new Promise((resolve, reject) => {
+        exec(`sips -s format png "${filePath}" --out "${pngPath}"`, { timeout: 10000 }, (err) => {
+          if (err) reject(err); else resolve();
+        });
+      });
+      // Remove original file
+      await fs.unlink(filePath).catch(() => {});
+      return pngPath;
+    }
+
+    // If supported but extension is wrong, rename
+    const currentExt = path.extname(filePath).toLowerCase();
+    const normalize = ext => ext === '.jpeg' ? '.jpg' : ext;
+    if (normalize(currentExt) === normalize(detectedFormat.ext)) return filePath;
+
+    const newPath = filePath.replace(/\.[^.]+$/, detectedFormat.ext);
+    await fs.rename(filePath, newPath);
+    console.log(`🔧 Fixed image extension: ${path.basename(filePath)} → ${path.basename(newPath)}`);
+    return newPath;
+  } catch (e) {
+    console.error(`⚠️ fixImageExtension error: ${e.message}`);
+    return filePath;
+  }
+}
+
 // Project configurations with folder mappings
 const PROJECTS = {
   'variations': {
@@ -550,8 +607,12 @@ app.post('/api/generate-prompt-stream', upload.array('images'), async (req, res)
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Map uploaded images (now includes user-selected shape references)
-    const allImages = images.map(img => path.join(__dirname, 'uploads', path.basename(img.path)));
+    // Map uploaded images and fix extensions if MIME type doesn't match content
+    const allImages = [];
+    for (const img of images) {
+      const fixedPath = await fixImageExtension(img.path);
+      allImages.push(fixedPath);
+    }
 
     const params = {
       projectType,
@@ -711,8 +772,12 @@ RESPOND IN THIS EXACT JSON FORMAT ONLY (no other text):
 
 BE THOROUGH - read ALL text in the images including WhatsApp messages, handwriting, logos, signs, etc.`;
 
-    // Copy images to uploads folder for Claude to read
-    const imageFilenames = images.map(img => path.basename(img.path));
+    // Fix image extensions and collect filenames for Claude to read
+    const fixedImages = [];
+    for (const img of images) {
+      fixedImages.push(await fixImageExtension(img.path));
+    }
+    const imageFilenames = fixedImages.map(p => path.basename(p));
     const uploadPath = path.join(__dirname, 'uploads');
 
     // Build command with image reading
@@ -752,10 +817,10 @@ THEN: ${analyzePrompt}`;
       clearTimeout(timeoutTimer);
       console.log(`🤖 Analysis completed (exit: ${code})`);
 
-      // Clean up uploaded images
-      for (const img of images) {
+      // Clean up uploaded images (use fixed paths since they may have been renamed)
+      for (const imgPath of fixedImages) {
         try {
-          await fs.unlink(img.path);
+          await fs.unlink(imgPath);
         } catch (e) {}
       }
 
