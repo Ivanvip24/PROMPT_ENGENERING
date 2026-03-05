@@ -6,6 +6,43 @@ const { spawn, exec } = require('child_process');
 const app = express();
 const PORT = 3001;
 
+// ═══ SANITIZE PROMPTS: Strip non-ASCII characters that garble in clipboard/Gemini ═══
+function sanitizePrompt(text) {
+  if (!text) return text;
+  return text
+    // Replace common Unicode punctuation with ASCII equivalents
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '-')   // bullets -> -
+    .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes -> -
+    .replace(/[\u2018\u2019\u201A]/g, "'")                 // smart single quotes -> '
+    .replace(/[\u201C\u201D\u201E]/g, '"')                 // smart double quotes -> "
+    .replace(/\u2026/g, '...')                             // ellipsis -> ...
+    .replace(/\u00A0/g, ' ')                               // non-breaking space -> space
+    .replace(/\u00D7/g, 'x')                               // multiplication sign -> x
+    // Replace accented characters with ASCII equivalents
+    .replace(/[\u00E1\u00E0\u00E2\u00E4\u00E3]/g, 'a')    // a variants
+    .replace(/[\u00C1\u00C0\u00C2\u00C4\u00C3]/g, 'A')    // A variants
+    .replace(/[\u00E9\u00E8\u00EA\u00EB]/g, 'e')           // e variants
+    .replace(/[\u00C9\u00C8\u00CA\u00CB]/g, 'E')           // E variants
+    .replace(/[\u00ED\u00EC\u00EE\u00EF]/g, 'i')           // i variants
+    .replace(/[\u00CD\u00CC\u00CE\u00CF]/g, 'I')           // I variants
+    .replace(/[\u00F3\u00F2\u00F4\u00F6\u00F5]/g, 'o')    // o variants
+    .replace(/[\u00D3\u00D2\u00D4\u00D6\u00D5]/g, 'O')    // O variants
+    .replace(/[\u00FA\u00F9\u00FB\u00FC]/g, 'u')           // u variants
+    .replace(/[\u00DA\u00D9\u00DB\u00DC]/g, 'U')           // U variants
+    .replace(/\u00F1/g, 'n')                               // n tilde -> n
+    .replace(/\u00D1/g, 'N')                               // N tilde -> N
+    .replace(/\u00E7/g, 'c')                               // c cedilla -> c
+    .replace(/\u00C7/g, 'C')                               // C cedilla -> C
+    // Replace common emoji/symbols with text
+    .replace(/\u26A0\uFE0F?/g, '[!]')                      // warning sign
+    .replace(/\u26A1\uFE0F?/g, '>')                        // lightning bolt
+    .replace(/[\u2705\u2714\uFE0F?]/g, '[OK]')             // checkmarks
+    .replace(/\u274C/g, '[X]')                              // cross mark
+    .replace(/[\u2122\u00AE\u00A9]/g, '')                   // TM, R, C symbols
+    // Strip any remaining non-ASCII characters
+    .replace(/[^\x00-\x7F]/g, '');
+}
+
 // Ensure PATH includes common tool locations (needed when launched via Automator/hotkey)
 const extraPaths = [
   `${process.env.HOME}/.local/bin`,
@@ -63,7 +100,7 @@ async function fixImageExtension(filePath) {
     // If format is unsupported by Claude API, convert to PNG using macOS sips
     if (!detectedFormat.supported) {
       const pngPath = filePath.replace(/\.[^.]+$/, '.png');
-      console.log(`🔄 Converting ${detectedFormat.ext} → .png (unsupported format): ${path.basename(filePath)}`);
+      console.log(`[~] Converting ${detectedFormat.ext} -> .png (unsupported format): ${path.basename(filePath)}`);
       await new Promise((resolve, reject) => {
         exec(`sips -s format png "${filePath}" --out "${pngPath}"`, { timeout: 10000 }, (err) => {
           if (err) reject(err); else resolve();
@@ -81,10 +118,10 @@ async function fixImageExtension(filePath) {
 
     const newPath = filePath.replace(/\.[^.]+$/, detectedFormat.ext);
     await fs.rename(filePath, newPath);
-    console.log(`🔧 Fixed image extension: ${path.basename(filePath)} → ${path.basename(newPath)}`);
+    console.log(`🔧 Fixed image extension: ${path.basename(filePath)} -> ${path.basename(newPath)}`);
     return newPath;
   } catch (e) {
-    console.error(`⚠️ fixImageExtension error: ${e.message}`);
+    console.error(`[!] fixImageExtension error: ${e.message}`);
     return filePath;
   }
 }
@@ -106,7 +143,7 @@ const PROJECTS = {
   'previous-element': {
     name: 'Design Based on a Previous Element',
     color: '#50C878',
-    icon: '🔄',
+    icon: '[~]',
     folder: '../Design Based on a Previous Element'
   },
   'modify': {
@@ -132,19 +169,19 @@ async function invokeClaudeTurbo(instruction, params) {
       const letters = destination.toUpperCase().split('');
       const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1}]`).join('\n');
 
-      turboPrompt = `⚡ TURBO LETTER-FILL MAGNET GENERATOR ⚡
+      turboPrompt = `> TURBO LETTER-FILL MAGNET GENERATOR >
 
 OUTPUT EXACTLY THIS FORMAT (80-150 words MAX):
 
 FORMAT: ${params.ratio || '2:1'}
-PRODUCT: Letter-fill souvenir magnet — "${destination}"
+PRODUCT: Letter-fill souvenir magnet  - "${destination}"
 LETTER STYLE: Bold chunky 3D letters with natural wood material, slightly uneven heights for handcrafted feel
 LETTER ARRANGEMENT: "${destination}" spelled horizontally, each letter is a photo window
-PHOTO FILLS — Each letter shows a DIFFERENT ${destination} scene:
+PHOTO FILLS  - Each letter shows a DIFFERENT ${destination} scene:
 ${letterList}
 MATERIAL: Natural wood border with subtly burned edges, vivid photos fill each letter edge-to-edge
 BACKGROUND: Clean white or transparent, no frames or borders
-STYLE: Photorealistic product shot of a physical souvenir magnet — looks like a real product from a gift shop
+STYLE: Photorealistic product shot of a physical souvenir magnet  - looks like a real product from a gift shop
 
 CREATE DESIGN
 
@@ -158,45 +195,45 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. START DIRECTLY WITH "FORMA
 
     } else {
       // STANDARD TURBO TEMPLATE (visually rich version)
-      turboPrompt = `⚡ TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT ⚡
+      turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
 
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
 FORMAT: ${params.ratio || '1:1'}
-SUBJECT: [Describe main element + destination in ONE vivid sentence — make it EXCITING]
+SUBJECT: [Describe main element + destination in ONE vivid sentence  - make it EXCITING]
 STYLE: ${(() => {
         const turboStyleMap = {
-          'cartoon': 'Bold cartoon illustration with thick black outlines, highly saturated vibrant colors, dynamic shading, layered composition with depth — like a premium die-cut sticker product',
-          'realistic': 'Detailed realistic illustration with rich textures, dramatic lighting, natural colors with punchy saturation, layered depth — like a premium art print',
-          'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth — like a handcrafted art piece',
+          'cartoon': 'Bold cartoon illustration with thick black outlines, highly saturated vibrant colors, dynamic shading, layered composition with depth  - like a premium die-cut sticker product',
+          'realistic': 'Detailed realistic illustration with rich textures, dramatic lighting, natural colors with punchy saturation, layered depth  - like a premium art print',
+          'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece',
           'photography': 'Photography-based design with real photo elements integrated into richly illustrated decorative frames, cultural motifs, and layered compositions',
-          'hybrid': 'Hybrid Real+Cartoon — real photographic elements (landmarks, objects, textures) seamlessly blended with bold cartoon illustrations, both styles interact naturally with overlapping layers and shared lighting'
+          'hybrid': 'Hybrid Real+Cartoon  - real photographic elements (landmarks, objects, textures) seamlessly blended with bold cartoon illustrations, both styles interact naturally with overlapping layers and shared lighting'
         };
-        return turboStyleMap[params.style] || (params.style ? params.style.charAt(0).toUpperCase() + params.style.slice(1) + ' style with rich details and layered depth' : 'Bold cartoon illustration with thick outlines, vibrant saturated colors, layered depth — premium die-cut sticker quality');
+        return turboStyleMap[params.style] || (params.style ? params.style.charAt(0).toUpperCase() + params.style.slice(1) + ' style with rich details and layered depth' : 'Bold cartoon illustration with thick outlines, vibrant saturated colors, layered depth  - premium die-cut sticker quality');
       })()}
 COMPOSITION:
-• [Hero element position, size %, and POSE/ACTION described vividly]
-• [Supporting elements arrangement — describe LAYERING and OVERLAP]
-• [Visual flow: where the eye enters, travels, and rests]
-• [Depth: foreground details, midground subject, background atmosphere]
-PROTAGONIST: [Main character/element — 40 words: specific details about appearance, expression, clothing/texture, pose, distinctive features]
-ELEMENTS (10-15 items — be SPECIFIC, not generic):
-• [Element 1 — specific species/type, color, position, how it interacts with other elements]
-• [Element 2]
-• [Element 3]
-• [Element 4]
-• [Element 5]
-• [Element 6]
-• [Element 7]
-• [Element 8]
-• [Element 9]
-• [Element 10]
-• [Add more if needed — FILL THE DESIGN with rich cultural details]
-DECORATION: ${params.decorationLevel || 9}/10 — Fill ALL negative space with decorative details: scattered petals, cultural patterns, sparkles, micro-illustrations, confetti. NO large empty areas.
-COLORS: [6-8 BOLD saturated color names — describe specific shades that create visual IMPACT and contrast]
-TEXT: "${params.destination || 'DESTINATION'}" - [placement: must be BOLD and PROMINENT], [size: 18-25% height], [style: described vividly — dimensional, shadowed, decorated, integrated into design]
-EDGE: MANDATORY — The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). Think premium die-cut vinyl sticker with a COMPLEX, UNIQUE outline.
-BACKGROUND: Clean white/transparent — the design floats as an irregular shape, NOT inside any frame, border, or circular badge
+- [Hero element position, size %, and POSE/ACTION described vividly]
+- [Supporting elements arrangement  - describe LAYERING and OVERLAP]
+- [Visual flow: where the eye enters, travels, and rests]
+- [Depth: foreground details, midground subject, background atmosphere]
+PROTAGONIST: [Main character/element  - 40 words: specific details about appearance, expression, clothing/texture, pose, distinctive features]
+ELEMENTS (10-15 items  - be SPECIFIC, not generic):
+- [Element 1  - specific species/type, color, position, how it interacts with other elements]
+- [Element 2]
+- [Element 3]
+- [Element 4]
+- [Element 5]
+- [Element 6]
+- [Element 7]
+- [Element 8]
+- [Element 9]
+- [Element 10]
+- [Add more if needed  - FILL THE DESIGN with rich cultural details]
+DECORATION: ${params.decorationLevel || 9}/10  - Fill ALL negative space with decorative details: scattered petals, cultural patterns, sparkles, micro-illustrations, confetti. NO large empty areas.
+COLORS: [6-8 BOLD saturated color names  - describe specific shades that create visual IMPACT and contrast]
+TEXT: "${params.destination || 'DESTINATION'}" - [placement: must be BOLD and PROMINENT], [size: 18-25% height], [style: described vividly  - dimensional, shadowed, decorated, integrated into design]
+EDGE: MANDATORY  - The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). Think premium die-cut vinyl sticker with a COMPLEX, UNIQUE outline.
+BACKGROUND: Clean white/transparent  - the design floats as an irregular shape, NOT inside any frame, border, or circular badge
 CREATE DESIGN
 
 ---
@@ -205,11 +242,11 @@ ${params.destination ? `DESTINATION: ${params.destination}` : ''}
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-CRITICAL: The design must look like the BEST-SELLING souvenir product in a tourist shop — visually RICH, PACKED with details, LAYERED with depth, using BOLD saturated colors. NOT a sparse sketch.
+CRITICAL: The design must look like the BEST-SELLING souvenir product in a tourist shop  - visually RICH, PACKED with details, LAYERED with depth, using BOLD saturated colors. NOT a sparse sketch.
 RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
     }
 
-    console.log(`\n⚡ TURBO MODE - Ultra-fast generation (no docs reading)`);
+    console.log(`\n> TURBO MODE - Ultra-fast generation (no docs reading)`);
 
     let output = '';
 
@@ -221,7 +258,7 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
     await fs.mkdir(turboTempDir, { recursive: true });
     const turboPath = turboTempDir;
 
-    // Handle images for turbo mode — copy ONLY current images to isolated temp dir
+    // Handle images for turbo mode  - copy ONLY current images to isolated temp dir
     let turboImages = [];
     if (params.images && params.images.length > 0) {
       for (const imagePath of params.images) {
@@ -247,7 +284,7 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
     if (turboStyleRef) {
       finalPrompt = `FIRST: Read the STYLE REFERENCE image: ${turboStyleRef}
 After reading, extract the EXACT art style (line work, shading, rendering, proportions), color palette (saturation, temperature), composition approach (density, layering), and decoration level.
-⚠️ Use the style reference as INSPIRATION for the visual language — do NOT copy its quality. If the reference is low-res or blurry, IGNORE that. Only extract the STYLE.
+[!] Use the style reference as INSPIRATION for the visual language  - do NOT copy its quality. If the reference is low-res or blurry, IGNORE that. Only extract the STYLE.
 Your generated prompt MUST begin with a 2-3 sentence STYLE BLOCK that precisely describes this visual style so the image AI can replicate it. This overrides any style selection.
 ALSO include: "Crisp sharp ultra-detailed illustration, clean precise edges, no blur, no artifacts, high-resolution professional quality."
 ${turboImages.length > 1 ? `\nALSO read these reference images: ${turboImages.filter(f => f !== turboStyleRef).join(', ')}` : ''}
@@ -258,11 +295,11 @@ THEN: ${turboPrompt}`;
         // Turbo + variations + reference image: structured analysis
         finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}
 
-IMPORTANT — REFERENCE IMAGE VARIATION:
+IMPORTANT  - REFERENCE IMAGE VARIATION:
 After reading the image, identify: the PROTAGONIST (character/animal/element), their POSE, CLOTHING, SUPPORTING ELEMENTS, COLORS, and STYLE.
 Your generated prompt MUST describe the SAME protagonist and elements in a DIFFERENT pose/composition/context.
 Do NOT create a completely unrelated design. Keep the same character, same destination, same style.
-⚠️ If the reference image is low-quality/blurry — IGNORE the quality, only extract the STYLE and CONCEPT. Your prompt must produce a CRISP, SHARP result.
+[!] If the reference image is low-quality/blurry  - IGNORE the quality, only extract the STYLE and CONCEPT. Your prompt must produce a CRISP, SHARP result.
 Include in your prompt: "Crisp sharp ultra-detailed illustration, clean precise edges, no blur, no artifacts, high-resolution professional quality, vivid saturated colors."
 
 THEN: ${turboPrompt}`;
@@ -270,19 +307,19 @@ THEN: ${turboPrompt}`;
         // ALL project types with reference images in turbo mode: analyze style
         finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}
 
-IMPORTANT — REFERENCE IMAGE ANALYSIS (INSPIRATION ONLY):
-After reading the image(s), analyze them as INSPIRATION — do NOT copy them literally. Extract:
-• ART STYLE: line weight, shading approach, proportions, rendering technique
-• COLOR PALETTE: dominant colors, saturation level, temperature
-• COMPOSITION APPROACH: layout pattern, element density, depth layering
-• KEY ELEMENTS: types of characters, flora, fauna, cultural objects
+IMPORTANT  - REFERENCE IMAGE ANALYSIS (INSPIRATION ONLY):
+After reading the image(s), analyze them as INSPIRATION  - do NOT copy them literally. Extract:
+- ART STYLE: line weight, shading approach, proportions, rendering technique
+- COLOR PALETTE: dominant colors, saturation level, temperature
+- COMPOSITION APPROACH: layout pattern, element density, depth layering
+- KEY ELEMENTS: types of characters, flora, fauna, cultural objects
 
-⚠️ CRITICAL QUALITY RULES:
-• Treat reference images as MOOD/STYLE INSPIRATION — create something COMPLETELY NEW but inspired by their aesthetic
-• NEVER describe the reference image literally — instead, create an ORIGINAL composition in the same visual spirit
-• Your prompt MUST include these quality keywords: "crisp sharp vector illustration", "clean precise edges", "high-resolution detailed artwork", "professional product-quality rendering"
-• If the reference image looks low-resolution or blurry, IGNORE the quality — only extract the STYLE and CONCEPT, then describe a PRISTINE high-quality version
-• Add to your prompt: "ultra-detailed, sharp clean lines, vibrant saturated colors, no blur, no artifacts, no soft edges, professional illustration quality"
+[!] CRITICAL QUALITY RULES:
+- Treat reference images as MOOD/STYLE INSPIRATION  - create something COMPLETELY NEW but inspired by their aesthetic
+- NEVER describe the reference image literally  - instead, create an ORIGINAL composition in the same visual spirit
+- Your prompt MUST include these quality keywords: "crisp sharp vector illustration", "clean precise edges", "high-resolution detailed artwork", "professional product-quality rendering"
+- If the reference image looks low-resolution or blurry, IGNORE the quality  - only extract the STYLE and CONCEPT, then describe a PRISTINE high-quality version
+- Add to your prompt: "ultra-detailed, sharp clean lines, vibrant saturated colors, no blur, no artifacts, no soft edges, professional illustration quality"
 
 THEN: ${turboPrompt}`;
       }
@@ -325,7 +362,7 @@ THEN: ${turboPrompt}`;
 
     claude.on('close', async (code) => {
       clearTimeout(timeoutTimer);
-      console.log(`⚡ Turbo completed (exit: ${code})`);
+      console.log(`> Turbo completed (exit: ${code})`);
       await cleanupTurbo();
 
       if (output && output.length > 50) {
@@ -415,7 +452,7 @@ async function invokeClaude(projectType, instruction, params) {
           console.log(`🎨 Copied style reference to temp dir: ${styleRefFilename}`);
         }
       } catch (error) {
-        console.error('❌ Error setting up temp directory:', error);
+        console.error('[X] Error setting up temp directory:', error);
         reject(new Error(`Failed to set up isolated directory: ${error.message}`));
         return;
       }
@@ -429,28 +466,28 @@ async function invokeClaude(projectType, instruction, params) {
     // for visual density, layered details, and attention-grabbing richness.
     if (projectType === 'from-scratch' || projectType === 'previous-element') {
       fullInstruction += `\n\n${'='.repeat(50)}
-⚡ MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
+> MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
 ${'='.repeat(50)}
 
-Your output prompt MUST produce a design that is VISUALLY RICH, DENSE, and ATTENTION-GRABBING. Think: the best-selling souvenir sticker/magnet in a tourist shop — the one that catches your eye from 10 feet away.
+Your output prompt MUST produce a design that is VISUALLY RICH, DENSE, and ATTENTION-GRABBING. Think: the best-selling souvenir sticker/magnet in a tourist shop  - the one that catches your eye from 10 feet away.
 
 RICHNESS REQUIREMENTS:
-1. **PACKED WITH DETAILS** — Every area of the design should have something interesting. No large empty zones. Fill negative space with decorative elements: flowers, patterns, butterflies, sparkles, cultural motifs, micro-details.
-2. **LAYERED DEPTH** — Create at least 3 visual layers: foreground elements (close, detailed), midground (main subject), background (atmospheric, softer). Elements should OVERLAP and interact, not float in isolation.
-3. **VIVID SATURATED COLORS** — Use BOLD, PUNCHY, highly saturated colors. No washed-out pastels or muted tones unless specifically requested. Colors should POP and be eye-catching.
-4. **10+ SUPPORTING ELEMENTS** — Don't stop at 5 elements. Include 10-15 specific cultural/regional details: local flowers (by species name), animals, architectural details, food, patterns, textiles, landmarks. Each one described specifically, not generically.
-5. **RICH TEXTURES** — Describe specific textures: embroidered fabric patterns, carved wood grain, glossy ceramics, hand-painted tile patterns, woven textile motifs, metallic accents.
-6. **DECORATION DENSITY 8-10/10** — Default to HIGH decoration density. Every corner, edge, and gap should have decorative fills: scattered petals, tiny stars, confetti, cultural patterns, micro-illustrations.
-7. **DYNAMIC COMPOSITION** — The design should have MOVEMENT and energy: flowing curves, diagonal elements, overlapping layers, elements that break out of boundaries.
-8. **PREMIUM PRODUCT LOOK** — This should look like a HIGH-END professionally designed product, not a quick sketch or simple illustration. Think: award-winning travel poster meets premium die-cut sticker.
+1. **PACKED WITH DETAILS**  - Every area of the design should have something interesting. No large empty zones. Fill negative space with decorative elements: flowers, patterns, butterflies, sparkles, cultural motifs, micro-details.
+2. **LAYERED DEPTH**  - Create at least 3 visual layers: foreground elements (close, detailed), midground (main subject), background (atmospheric, softer). Elements should OVERLAP and interact, not float in isolation.
+3. **VIVID SATURATED COLORS**  - Use BOLD, PUNCHY, highly saturated colors. No washed-out pastels or muted tones unless specifically requested. Colors should POP and be eye-catching.
+4. **10+ SUPPORTING ELEMENTS**  - Don't stop at 5 elements. Include 10-15 specific cultural/regional details: local flowers (by species name), animals, architectural details, food, patterns, textiles, landmarks. Each one described specifically, not generically.
+5. **RICH TEXTURES**  - Describe specific textures: embroidered fabric patterns, carved wood grain, glossy ceramics, hand-painted tile patterns, woven textile motifs, metallic accents.
+6. **DECORATION DENSITY 8-10/10**  - Default to HIGH decoration density. Every corner, edge, and gap should have decorative fills: scattered petals, tiny stars, confetti, cultural patterns, micro-illustrations.
+7. **DYNAMIC COMPOSITION**  - The design should have MOVEMENT and energy: flowing curves, diagonal elements, overlapping layers, elements that break out of boundaries.
+8. **PREMIUM PRODUCT LOOK**  - This should look like a HIGH-END professionally designed product, not a quick sketch or simple illustration. Think: award-winning travel poster meets premium die-cut sticker.
 
-❌ NEVER produce a sparse design with 3-4 floating elements on a white background
-❌ NEVER produce a flat, single-layer composition with no depth
-❌ NEVER use generic descriptions like "local flowers" — name SPECIFIC species
-❌ NEVER leave large empty areas unfilled
-✅ ALWAYS aim for the WOW factor — the design someone would instantly want to buy
-✅ ALWAYS make text integration bold and visually striking (not just floating text)
-✅ ALWAYS describe specific color combinations that create visual IMPACT
+[X] NEVER produce a sparse design with 3-4 floating elements on a white background
+[X] NEVER produce a flat, single-layer composition with no depth
+[X] NEVER use generic descriptions like "local flowers"  - name SPECIFIC species
+[X] NEVER leave large empty areas unfilled
+[OK] ALWAYS aim for the WOW factor  - the design someone would instantly want to buy
+[OK] ALWAYS make text integration bold and visually striking (not just floating text)
+[OK] ALWAYS describe specific color combinations that create visual IMPACT
 ${'='.repeat(50)}`;
     }
 
@@ -458,7 +495,7 @@ ${'='.repeat(50)}`;
     if (styleRefProjectPath) {
       const styleRefFilename = path.basename(styleRefProjectPath);
       fullInstruction += `\n\n${'='.repeat(50)}
-⚠️ MANDATORY STYLE REFERENCE IMAGE (NON-NEGOTIABLE)
+[!] MANDATORY STYLE REFERENCE IMAGE (NON-NEGOTIABLE)
 ${'='.repeat(50)}
 
 BEFORE generating any prompt, you MUST read and deeply analyze this STYLE REFERENCE IMAGE:
@@ -467,30 +504,30 @@ File: ${styleRefFilename}
 Use the Read tool to read this image file. Then extract and REPLICATE in your output prompt ALL of the following:
 
 A) ART STYLE (copy EXACTLY from reference):
-• Line style: thick/thin/no outlines? Black outlines? Line weight?
-• Shading approach: flat colors? gradients? cell-shading? watercolor? soft shadows?
-• Rendering: clean vector? hand-drawn? textured? digital painting? realistic?
-• Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art? premium?
+- Line style: thick/thin/no outlines? Black outlines? Line weight?
+- Shading approach: flat colors? gradients? cell-shading? watercolor? soft shadows?
+- Rendering: clean vector? hand-drawn? textured? digital painting? realistic?
+- Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art? premium?
 
 B) COLOR PALETTE (match EXACTLY from reference):
-• Identify the 6-8 dominant colors and their exact saturation/temperature
-• Note color relationships (complementary, analogous, triadic, etc.)
-• Your output prompt MUST use the SAME color family and saturation level as the reference
+- Identify the 6-8 dominant colors and their exact saturation/temperature
+- Note color relationships (complementary, analogous, triadic, etc.)
+- Your output prompt MUST use the SAME color family and saturation level as the reference
 
 C) COMPOSITION APPROACH (replicate from reference):
-• Layout pattern: centered? layered? radial? diagonal? scattered?
-• Element density: how packed/sparse is the reference?
-• Depth layering: how many visual layers? How do they overlap?
-• Negative space usage: minimal? balanced? generous?
+- Layout pattern: centered? layered? radial? diagonal? scattered?
+- Element density: how packed/sparse is the reference?
+- Depth layering: how many visual layers? How do they overlap?
+- Negative space usage: minimal? balanced? generous?
 
 D) TEXTURE & DETAIL LEVEL (match from reference):
-• Surface textures: smooth? rough? embroidered? glossy? matte?
-• Detail density: minimal? moderate? intricate? maximal?
-• Decorative fills: what fills the gaps? patterns? petals? sparkles?
+- Surface textures: smooth? rough? embroidered? glossy? matte?
+- Detail density: minimal? moderate? intricate? maximal?
+- Decorative fills: what fills the gaps? patterns? petals? sparkles?
 
 E) MOOD & ENERGY (capture from reference):
-• Overall feeling: playful? sophisticated? festive? dramatic? warm?
-• Visual energy: calm? dynamic? explosive? whimsical?
+- Overall feeling: playful? sophisticated? festive? dramatic? warm?
+- Visual energy: calm? dynamic? explosive? whimsical?
 
 YOUR OUTPUT PROMPT MUST:
 1. Begin with a 3-4 sentence STYLE BLOCK that describes this EXACT visual style so the image AI can replicate it
@@ -499,7 +536,7 @@ YOUR OUTPUT PROMPT MUST:
 4. Replicate the SAME art style and rendering approach
 5. Include these MANDATORY quality keywords: "Crisp, sharp, ultra-detailed illustration. Clean precise edges, no blur, no artifacts, no soft unfocused areas. High-resolution professional product-quality rendering. Vivid saturated colors with strong contrast."
 
-⚠️ IMPORTANT: If the style reference image is low-resolution, blurry, or has compression artifacts — COMPLETELY IGNORE the image quality. Extract ONLY the artistic style, color palette, and composition approach. Your prompt must produce a PRISTINE, SHARP, DETAILED result regardless of the reference's quality.
+[!] IMPORTANT: If the style reference image is low-resolution, blurry, or has compression artifacts  - COMPLETELY IGNORE the image quality. Extract ONLY the artistic style, color palette, and composition approach. Your prompt must produce a PRISTINE, SHARP, DETAILED result regardless of the reference's quality.
 
 This style reference OVERRIDES the style dropdown selection. The reference image IS the style.
 DO NOT deviate from this style. DO NOT use a different art style, color palette, or composition approach.
@@ -533,9 +570,9 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
       const styleNames = {
         'cartoon': 'Cartoon - Playful cartoon style with bold outlines and vibrant colors',
         'realistic': 'Realistic - Detailed realistic illustration with natural colors and textures',
-        'collage': 'Collage - CRITICAL: Create a true mixed media COLLAGE design with these specific requirements:\n  • Use layered cutout style with visible edges and overlapping elements\n  • Include varied textures (paper, fabric, photo fragments, patterns)\n  • Mix different art styles and media types (photos, illustrations, patterns, text)\n  • Create depth through overlapping layers with shadows/highlights\n  • Use irregular torn/cut edges on elements (NOT perfect vector shapes)\n  • Include decorative elements like tape, borders, stamps, or stitching effects\n  • Intentional composition that looks hand-assembled from multiple sources\n  • This should look like physical collage art, NOT a regular illustration',
+        'collage': 'Collage - CRITICAL: Create a true mixed media COLLAGE design with these specific requirements:\n  - Use layered cutout style with visible edges and overlapping elements\n  - Include varied textures (paper, fabric, photo fragments, patterns)\n  - Mix different art styles and media types (photos, illustrations, patterns, text)\n  - Create depth through overlapping layers with shadows/highlights\n  - Use irregular torn/cut edges on elements (NOT perfect vector shapes)\n  - Include decorative elements like tape, borders, stamps, or stitching effects\n  - Intentional composition that looks hand-assembled from multiple sources\n  - This should look like physical collage art, NOT a regular illustration',
         'photography': 'Photography - Photography-based design with real photo elements integrated into the composition. Combine real photography with illustrated elements, decorative frames, or use photos as texture fills for regional shapes.',
-        'hybrid': 'Hybrid Real+Cartoon - CRITICAL: Create a design that seamlessly BLENDS real photographic elements with cartoon/illustrated elements so they complement each other:\n  • Use REAL photographic imagery for key elements (landmarks, animals, objects, food, nature, textures) — these should look like actual photographs\n  • Use CARTOON/ILLUSTRATED style for characters, decorative elements, borders, typography, and supporting graphics — bold outlines, vibrant flat colors\n  • The real and cartoon elements must INTERACT and OVERLAP naturally (e.g., a cartoon character sitting on a real photographed rock, illustrated flowers growing around a real building photo, cartoon birds flying over a real landscape)\n  • Create a cohesive composition where neither style dominates — they work together harmoniously\n  • Use shadows, lighting, and scale to make the blend feel intentional and polished, not like a lazy paste job\n  • Think: Who Framed Roger Rabbit meets travel poster — the real world and the illustrated world coexist beautifully'
+        'hybrid': 'Hybrid Real+Cartoon - CRITICAL: Create a design that seamlessly BLENDS real photographic elements with cartoon/illustrated elements so they complement each other:\n  - Use REAL photographic imagery for key elements (landmarks, animals, objects, food, nature, textures)  - these should look like actual photographs\n  - Use CARTOON/ILLUSTRATED style for characters, decorative elements, borders, typography, and supporting graphics  - bold outlines, vibrant flat colors\n  - The real and cartoon elements must INTERACT and OVERLAP naturally (e.g., a cartoon character sitting on a real photographed rock, illustrated flowers growing around a real building photo, cartoon birds flying over a real landscape)\n  - Create a cohesive composition where neither style dominates  - they work together harmoniously\n  - Use shadows, lighting, and scale to make the blend feel intentional and polished, not like a lazy paste job\n  - Think: Who Framed Roger Rabbit meets travel poster  - the real world and the illustrated world coexist beautifully'
       };
       fullInstruction += `\nStyle: ${styleNames[params.style] || params.style}`;
     }
@@ -555,12 +592,12 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
         fullInstruction += `\n\nMANDATORY BOTTLE OPENER SHAPE (CRITICAL - NON-NEGOTIABLE):
 
 EXACT SHAPE REQUIREMENTS - Study the reference images carefully:
-• TOP SECTION: Large rounded opening (upside-down U or rounded rectangle) where bottle cap fits - this opening is ESSENTIAL and must be clearly visible
-• OVERALL PROPORTIONS: Tall vertical format, approximately 6" height x 3" width ratio
-• MIDDLE SECTION: Narrower "neck" area (2-2.5" wide) with gentle organic curves on sides
-• BOTTOM SECTION: Wider rounded base (3.5-4" wide, occupying 35-40% of height) for stability
-• ALL EDGES: Organic flowing curves following design elements - NO straight lines or hard corners
-• STRUCTURAL INTEGRITY: All decorative elements connect to main composition, no floating parts
+- TOP SECTION: Large rounded opening (upside-down U or rounded rectangle) where bottle cap fits - this opening is ESSENTIAL and must be clearly visible
+- OVERALL PROPORTIONS: Tall vertical format, approximately 6" height x 3" width ratio
+- MIDDLE SECTION: Narrower "neck" area (2-2.5" wide) with gentle organic curves on sides
+- BOTTOM SECTION: Wider rounded base (3.5-4" wide, occupying 35-40% of height) for stability
+- ALL EDGES: Organic flowing curves following design elements - NO straight lines or hard corners
+- STRUCTURAL INTEGRITY: All decorative elements connect to main composition, no floating parts
 
 The reference images show EXACTLY how this should look. Your design MUST match this silhouette - it's a functional product, not a decorative rectangle or circle. The top opening and bottom base widening are the defining features that make this recognizable as a bottle opener.
 
@@ -592,86 +629,86 @@ VISUAL CHECK: If someone saw just the outline/silhouette, would they recognize i
 
       // For VARIATIONS with reference images: structured two-phase analysis
       if (projectType === 'variations') {
-        fullInstruction = `⚠️ OVERRIDE: When reference images are provided, the "fresh unique creation" and "NO cross-referencing" rules DO NOT APPLY. Your job is to create variations OF THE REFERENCE IMAGE, not ignore it.
+        fullInstruction = `[!] OVERRIDE: When reference images are provided, the "fresh unique creation" and "NO cross-referencing" rules DO NOT APPLY. Your job is to create variations OF THE REFERENCE IMAGE, not ignore it.
 
-PHASE 1 — DEEPLY ANALYZE THE REFERENCE IMAGE(S):
+PHASE 1  - DEEPLY ANALYZE THE REFERENCE IMAGE(S):
 Use the Read tool to read these image file(s) in the current directory:
 ${imageFilenames.map((f, i) => `${i + 1}. ${f}`).join('\n')}
 
 After reading, you MUST extract ALL of the following in detail:
 
 A) PROTAGONIST IDENTITY:
-• Exact character type (e.g., "chibi-style Lele doll with oversized head, tiny body")
-• Exact clothing details (colors, patterns, embroidery, ribbons)
-• Hair style, accessories, facial expression
-• Body proportions (chibi? realistic? kawaii?)
+- Exact character type (e.g., "chibi-style Lele doll with oversized head, tiny body")
+- Exact clothing details (colors, patterns, embroidery, ribbons)
+- Hair style, accessories, facial expression
+- Body proportions (chibi? realistic? kawaii?)
 
-B) SPECIFIC ART STYLE (THIS IS CRITICAL — describe precisely):
-• Line style: thick/thin outlines? black outlines? no outlines? line weight?
-• Shading: flat colors? gradients? cell-shading? watercolor? soft shadows?
-• Proportions: chibi/kawaii? realistic? exaggerated?
-• Color approach: saturated? pastel? muted? neon? specific color temperature?
-• Rendering: clean vector? hand-drawn? textured? digital painting?
-• Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art?
+B) SPECIFIC ART STYLE (THIS IS CRITICAL  - describe precisely):
+- Line style: thick/thin outlines? black outlines? no outlines? line weight?
+- Shading: flat colors? gradients? cell-shading? watercolor? soft shadows?
+- Proportions: chibi/kawaii? realistic? exaggerated?
+- Color approach: saturated? pastel? muted? neon? specific color temperature?
+- Rendering: clean vector? hand-drawn? textured? digital painting?
+- Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art?
 
 C) ELEMENTS & COMPOSITION:
-• Supporting elements: exact flowers, animals, objects (species, colors)
-• Layout: centered? diagonal? layered? symmetrical?
-• Background treatment: white? colored? gradient? scene?
-• Decorative details: borders, sparkles, confetti, patterns?
-• Text placement and style if any
+- Supporting elements: exact flowers, animals, objects (species, colors)
+- Layout: centered? diagonal? layered? symmetrical?
+- Background treatment: white? colored? gradient? scene?
+- Decorative details: borders, sparkles, confetti, patterns?
+- Text placement and style if any
 
-PHASE 2 — GENERATE A VARIATION PROMPT THAT REPLICATES THE EXACT STYLE:
+PHASE 2  - GENERATE A VARIATION PROMPT THAT REPLICATES THE EXACT STYLE:
 Your output prompt MUST begin with a detailed STYLE BLOCK that describes the EXACT visual style from the reference so the image AI can replicate it. This is the most important part.
 
 YOUR PROMPT MUST INCLUDE (in this order):
-1. STYLE DESCRIPTION (2-3 sentences): Describe the exact rendering style, line work, shading, and proportions from the reference. Be hyper-specific. Use terms like: "crisp vector illustration", "sharp clean edges", "flat solid color fills", "no soft shading, no airbrush, no painterly effects", "like a professional die-cut sticker product". If the reference has a clean vector look, emphasize: "sharp vector art, NOT soft cartoon, NOT watercolor, NOT painterly — crisp clean edges like a vinyl sticker or enamel pin."
+1. STYLE DESCRIPTION (2-3 sentences): Describe the exact rendering style, line work, shading, and proportions from the reference. Be hyper-specific. Use terms like: "crisp vector illustration", "sharp clean edges", "flat solid color fills", "no soft shading, no airbrush, no painterly effects", "like a professional die-cut sticker product". If the reference has a clean vector look, emphasize: "sharp vector art, NOT soft cartoon, NOT watercolor, NOT painterly  - crisp clean edges like a vinyl sticker or enamel pin."
 2. PROTAGONIST: Describe the SAME character with SAME clothing/accessories but in a DIFFERENT pose or action.
 3. ELEMENTS: Use the SAME types of supporting elements (same flower species, same animals) but arranged differently.
 4. COMPOSITION: Different layout than the reference.
-5. PRODUCT-READY SILHOUETTE: The design MUST look like a FINISHED PRODUCT — a die-cut magnet/sticker with an IRREGULAR custom silhouette. It must NOT look like a wallpaper, poster, illustration, or image inside a rectangle. The design should float on white/transparent background with its own unique organic outline shaped by the elements themselves. If someone printed this and cut along the outer edge, it should have a complex, interesting shape.
+5. PRODUCT-READY SILHOUETTE: The design MUST look like a FINISHED PRODUCT  - a die-cut magnet/sticker with an IRREGULAR custom silhouette. It must NOT look like a wallpaper, poster, illustration, or image inside a rectangle. The design should float on white/transparent background with its own unique organic outline shaped by the elements themselves. If someone printed this and cut along the outer edge, it should have a complex, interesting shape.
 
-WHAT TO KEEP (sacred — non-negotiable):
-✅ EXACT same art style, line work, shading, and rendering approach
-✅ EXACT same protagonist character with same clothing and accessories
-✅ Same types of supporting elements (if reference has marigolds and hummingbirds, variation has marigolds and hummingbirds)
-✅ Same color palette and saturation level
-✅ Same overall aesthetic feel (if reference looks like a sticker, variation looks like a sticker too)
+WHAT TO KEEP (sacred  - non-negotiable):
+[OK] EXACT same art style, line work, shading, and rendering approach
+[OK] EXACT same protagonist character with same clothing and accessories
+[OK] Same types of supporting elements (if reference has marigolds and hummingbirds, variation has marigolds and hummingbirds)
+[OK] Same color palette and saturation level
+[OK] Same overall aesthetic feel (if reference looks like a sticker, variation looks like a sticker too)
 
 WHAT TO CHANGE (variation elements):
-🔄 Protagonist pose, gesture, or action (sitting → standing, holding flowers → waving, etc.)
-🔄 Composition layout (centered → off-center, horizontal → vertical, etc.)
-🔄 Arrangement and placement of supporting elements
-🔄 Small decorative detail differences (different flower arrangement, different butterfly positions)
+[~] Protagonist pose, gesture, or action (sitting -> standing, holding flowers -> waving, etc.)
+[~] Composition layout (centered -> off-center, horizontal -> vertical, etc.)
+[~] Arrangement and placement of supporting elements
+[~] Small decorative detail differences (different flower arrangement, different butterfly positions)
 
 WHAT TO NEVER DO:
-🚫 Do NOT change the art style (if reference is kawaii chibi, don't output realistic or painterly)
-🚫 Do NOT change the protagonist's identity or clothing
-🚫 Do NOT use different types of elements (if reference has hummingbirds, don't replace with parrots)
-🚫 Do NOT create a completely unrelated design
-🚫 Do NOT output a generic "cartoon style" description — be SPECIFIC about the exact style
-🚫 Do NOT create a design that looks like a wallpaper, poster, or rectangular image — it MUST look like a die-cut PRODUCT with a custom irregular silhouette on white/transparent background
-🚫 Do NOT use badge, emblem, medallion, circle, or frame compositions — the silhouette must be ORGANIC and IRREGULAR
-🚫 Do NOT add background gradients, sunset colors, textures, or atmospheric effects unless the reference image has them. If the reference has a WHITE/TRANSPARENT background, your prompt MUST have a white/transparent background too
-🚫 Do NOT use terms like "gouache", "watercolor", "painterly", "screen-print texture" if the reference is clean flat vector
-🚫 Do NOT write extremely long prompts. Keep the prompt between 150-350 words. Longer prompts confuse the image AI and dilute the style instructions
-🚫 Do NOT reproduce the reference image's QUALITY — if it's blurry, low-res, or has artifacts, IGNORE that. Only extract the STYLE and CONCEPT.
+[X] Do NOT change the art style (if reference is kawaii chibi, don't output realistic or painterly)
+[X] Do NOT change the protagonist's identity or clothing
+[X] Do NOT use different types of elements (if reference has hummingbirds, don't replace with parrots)
+[X] Do NOT create a completely unrelated design
+[X] Do NOT output a generic "cartoon style" description  - be SPECIFIC about the exact style
+[X] Do NOT create a design that looks like a wallpaper, poster, or rectangular image  - it MUST look like a die-cut PRODUCT with a custom irregular silhouette on white/transparent background
+[X] Do NOT use badge, emblem, medallion, circle, or frame compositions  - the silhouette must be ORGANIC and IRREGULAR
+[X] Do NOT add background gradients, sunset colors, textures, or atmospheric effects unless the reference image has them. If the reference has a WHITE/TRANSPARENT background, your prompt MUST have a white/transparent background too
+[X] Do NOT use terms like "gouache", "watercolor", "painterly", "screen-print texture" if the reference is clean flat vector
+[X] Do NOT write extremely long prompts. Keep the prompt between 150-350 words. Longer prompts confuse the image AI and dilute the style instructions
+[X] Do NOT reproduce the reference image's QUALITY  - if it's blurry, low-res, or has artifacts, IGNORE that. Only extract the STYLE and CONCEPT.
 
 MANDATORY QUALITY KEYWORDS (include in EVERY prompt you generate):
 Your output prompt MUST include these quality instructions to ensure crisp results:
-• "Crisp, sharp, ultra-detailed illustration"
-• "Clean precise edges, no blur, no artifacts, no soft unfocused areas"
-• "High-resolution professional product-quality rendering"
-• "Vivid saturated colors with strong contrast"
+- "Crisp, sharp, ultra-detailed illustration"
+- "Clean precise edges, no blur, no artifacts, no soft unfocused areas"
+- "High-resolution professional product-quality rendering"
+- "Vivid saturated colors with strong contrast"
 These override any low quality from the reference image. The AI must generate SHARP output.
 
 PROMPT FORMAT RULES:
-• The prompt must be CONCISE (150-350 words max). Short, clear prompts produce better results than long verbose ones.
-• The STYLE BLOCK must be the FIRST thing in the prompt and must be the STRONGEST instruction.
-• Do NOT include "WHAT THIS IS NOT" sections, "CRAZYMETER NOTES", "CONCEPT SUMMARIES", or other meta-commentary — just the prompt itself.
-• Do NOT include verification checklists or checkbox sections inside the prompt — those go AFTER the prompt.
-• Background must be CLEAN WHITE or TRANSPARENT unless the reference specifically shows otherwise.
-• Every instruction in the prompt must be CONSISTENT — do not say "white background" in one place and "sunset gradient" in another.
+- The prompt must be CONCISE (150-350 words max). Short, clear prompts produce better results than long verbose ones.
+- The STYLE BLOCK must be the FIRST thing in the prompt and must be the STRONGEST instruction.
+- Do NOT include "WHAT THIS IS NOT" sections, "CRAZYMETER NOTES", "CONCEPT SUMMARIES", or other meta-commentary  - just the prompt itself.
+- Do NOT include verification checklists or checkbox sections inside the prompt  - those go AFTER the prompt.
+- Background must be CLEAN WHITE or TRANSPARENT unless the reference specifically shows otherwise.
+- Every instruction in the prompt must be CONSISTENT  - do not say "white background" in one place and "sunset gradient" in another.
 
 THEN GENERATE THE PROMPT BASED ON: ${fullInstruction}`;
       } else {
@@ -680,47 +717,47 @@ THEN GENERATE THE PROMPT BASED ON: ${fullInstruction}`;
 ${imageFilenames.map((f, i) => `${i + 1}. ${f}`).join('\n')}
 
 ${'='.repeat(50)}
-⚠️ CRITICAL: INSPIRATION ONLY — DO NOT COPY LITERALLY
+[!] CRITICAL: INSPIRATION ONLY  - DO NOT COPY LITERALLY
 ${'='.repeat(50)}
 
-These reference images are for INSPIRATION and STYLE EXTRACTION only. You must create a COMPLETELY NEW, ORIGINAL design that is INSPIRED BY the reference — NOT a reproduction of it.
+These reference images are for INSPIRATION and STYLE EXTRACTION only. You must create a COMPLETELY NEW, ORIGINAL design that is INSPIRED BY the reference  - NOT a reproduction of it.
 
-STEP 1 — ANALYZE (extract these from the reference):
+STEP 1  - ANALYZE (extract these from the reference):
 
 A) ART STYLE (the visual language to replicate):
-• Line style: thick/thin outlines? black outlines? no outlines? line weight?
-• Shading: flat colors? gradients? cell-shading? watercolor? soft shadows?
-• Proportions: chibi/kawaii? realistic? exaggerated?
-• Rendering: clean vector? hand-drawn? textured? digital painting?
-• Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art?
+- Line style: thick/thin outlines? black outlines? no outlines? line weight?
+- Shading: flat colors? gradients? cell-shading? watercolor? soft shadows?
+- Proportions: chibi/kawaii? realistic? exaggerated?
+- Rendering: clean vector? hand-drawn? textured? digital painting?
+- Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art?
 
 B) COLOR PALETTE (the color family to use):
-• Dominant colors, saturation level, color temperature
-• Use the SAME color family but in your OWN original composition
+- Dominant colors, saturation level, color temperature
+- Use the SAME color family but in your OWN original composition
 
 C) MOOD & ENERGY (the feeling to capture):
-• Playful? sophisticated? festive? dramatic? whimsical?
-• Element density: packed? moderate? minimal?
+- Playful? sophisticated? festive? dramatic? whimsical?
+- Element density: packed? moderate? minimal?
 
-STEP 2 — CREATE SOMETHING NEW (do NOT copy the image):
+STEP 2  - CREATE SOMETHING NEW (do NOT copy the image):
 
-🚫 DO NOT describe what you see in the reference image literally
-🚫 DO NOT reproduce the same composition or layout
-🚫 DO NOT copy specific poses, arrangements, or element positions
-🚫 If the reference image is blurry, low-res, or has artifacts — IGNORE the quality entirely
+[X] DO NOT describe what you see in the reference image literally
+[X] DO NOT reproduce the same composition or layout
+[X] DO NOT copy specific poses, arrangements, or element positions
+[X] If the reference image is blurry, low-res, or has artifacts  - IGNORE the quality entirely
 
-✅ DO create a FRESH, ORIGINAL design using the same VISUAL STYLE
-✅ DO use the same COLOR FAMILY but in a new arrangement
-✅ DO capture the same MOOD and ENERGY level
-✅ DO imagine you are a professional illustrator who saw the reference once, then created something original from memory
+[OK] DO create a FRESH, ORIGINAL design using the same VISUAL STYLE
+[OK] DO use the same COLOR FAMILY but in a new arrangement
+[OK] DO capture the same MOOD and ENERGY level
+[OK] DO imagine you are a professional illustrator who saw the reference once, then created something original from memory
 
-STEP 3 — MANDATORY QUALITY KEYWORDS (include ALL of these in your output prompt):
+STEP 3  - MANDATORY QUALITY KEYWORDS (include ALL of these in your output prompt):
 Your generated prompt MUST include these quality instructions:
-• "Crisp, sharp, ultra-detailed illustration"
-• "Clean precise vector edges, no blur, no artifacts, no soft unfocused areas"
-• "High-resolution professional product-quality rendering"
-• "Vivid saturated colors with strong contrast"
-• "Every element rendered with precision and clarity"
+- "Crisp, sharp, ultra-detailed illustration"
+- "Clean precise vector edges, no blur, no artifacts, no soft unfocused areas"
+- "High-resolution professional product-quality rendering"
+- "Vivid saturated colors with strong contrast"
+- "Every element rendered with precision and clarity"
 
 These quality keywords ensure the image AI generates SHARP, DETAILED output regardless of the reference image quality.
 
@@ -741,38 +778,38 @@ THEN: ${fullInstruction}`;
           // This completely replaces the standard template for letter magnets
           const destination = params.destination || 'DESTINATION';
           const letters = destination.toUpperCase().split('');
-          const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1} — specific landmark, landscape, or cultural element]`).join('\n');
+          const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1}  - specific landmark, landscape, or cultural element]`).join('\n');
 
           fullInstruction += `\n\n${'='.repeat(60)}
-⚠️ LETTER-FILL MAGNET OVERRIDE (THIS REPLACES ALL OTHER TEMPLATES)
+[!] LETTER-FILL MAGNET OVERRIDE (THIS REPLACES ALL OTHER TEMPLATES)
 ${'='.repeat(60)}
 
 You are creating a LETTER-FILL souvenir magnet. This is a SPECIALIZED product type.
 
-🚫 DO NOT use the standard PROMPT_TEMPLATE.md composition framework.
-🚫 DO NOT add 5-10 supporting elements, decoration layers, or ornamental borders.
-🚫 DO NOT write a 200-350 word prompt. Keep it 80-150 words MAXIMUM.
-🚫 DO NOT add heavy text integration (15-25% height banners).
+[X] DO NOT use the standard PROMPT_TEMPLATE.md composition framework.
+[X] DO NOT add 5-10 supporting elements, decoration layers, or ornamental borders.
+[X] DO NOT write a 200-350 word prompt. Keep it 80-150 words MAXIMUM.
+[X] DO NOT add heavy text integration (15-25% height banners).
 
-✅ USE THIS SIMPLIFIED STRUCTURE INSTEAD:
+[OK] USE THIS SIMPLIFIED STRUCTURE INSTEAD:
 
 \`\`\`
 FORMAT: ${params.ratio || '2:1'}
 
-PRODUCT: Letter-fill souvenir magnet — "${destination}"
+PRODUCT: Letter-fill souvenir magnet  - "${destination}"
 
 LETTER STYLE: Bold, chunky 3D letters with [natural wood / brushed metal / glossy acrylic] material texture. Letters are [slightly uneven in height for a handcrafted feel / uniform and clean / playfully tilted].
 
 LETTER ARRANGEMENT: "${destination}" spelled out in [horizontal row / slightly staggered heights / gentle arc], each letter acting as a photo window.
 
-PHOTO FILLS — Each letter is a window/cutout showing a DIFFERENT ${destination} scene:
+PHOTO FILLS  - Each letter is a window/cutout showing a DIFFERENT ${destination} scene:
 ${letterList}
 
 MATERIAL & FINISH: [Natural wood border with subtly burned/darkened edges / Brushed metal frame / Glossy acrylic with clean edges]. Each photo is vivid, high-resolution, fills the entire letter shape edge-to-edge.
 
-BACKGROUND: Clean white or transparent. The letters sit as a group — no additional framing, badges, or borders around them.
+BACKGROUND: Clean white or transparent. The letters sit as a group  - no additional framing, badges, or borders around them.
 
-STYLE: Photorealistic product photography of a physical souvenir magnet. The letters should look like a REAL product you could buy in a gift shop — tangible, three-dimensional, with realistic shadows and material textures.
+STYLE: Photorealistic product photography of a physical souvenir magnet. The letters should look like a REAL product you could buy in a gift shop  - tangible, three-dimensional, with realistic shadows and material textures.
 
 CREATE DESIGN
 \`\`\`
@@ -782,7 +819,7 @@ CRITICAL REQUIREMENTS:
 - Choose iconic, recognizable landmarks and scenes that a tourist would associate with ${destination}
 - The photos inside letters must be vivid, sharp, and fill the ENTIRE letter shape
 - Letters should look like a real physical product with depth and materiality
-- Keep decoration MINIMAL (2-3/10 max) — the beauty is in the photos and letter shapes
+- Keep decoration MINIMAL (2-3/10 max)  - the beauty is in the photos and letter shapes
 - DO NOT add cartoon elements, decorative flowers, supporting animals, or text banners around the letters
 - The reference image shows EXACTLY the style: simple, clean, photo-filled letters as a standalone product`;
 
@@ -837,30 +874,30 @@ KEY REQUIREMENTS:
       if (isLetterDesign) {
         const destination = params.destination || 'DESTINATION';
         const letters = destination.toUpperCase().split('');
-        const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1} — specific landmark, landscape, or cultural element]`).join('\n');
+        const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1}  - specific landmark, landscape, or cultural element]`).join('\n');
 
         fullInstruction += `\n\n${'='.repeat(60)}
-⚠️ LETTER-FILL MAGNET OVERRIDE (THIS REPLACES ALL OTHER TEMPLATES)
+[!] LETTER-FILL MAGNET OVERRIDE (THIS REPLACES ALL OTHER TEMPLATES)
 ${'='.repeat(60)}
 
 You are creating a LETTER-FILL souvenir magnet. This is a SPECIALIZED product type.
 
-🚫 DO NOT use the standard PROMPT_TEMPLATE.md composition framework.
-🚫 DO NOT add 5-10 supporting elements, decoration layers, or ornamental borders.
-🚫 DO NOT write a 200-350 word prompt. Keep it 80-150 words MAXIMUM.
-🚫 DO NOT add heavy text integration (15-25% height banners).
+[X] DO NOT use the standard PROMPT_TEMPLATE.md composition framework.
+[X] DO NOT add 5-10 supporting elements, decoration layers, or ornamental borders.
+[X] DO NOT write a 200-350 word prompt. Keep it 80-150 words MAXIMUM.
+[X] DO NOT add heavy text integration (15-25% height banners).
 
-✅ USE THIS SIMPLIFIED STRUCTURE INSTEAD:
+[OK] USE THIS SIMPLIFIED STRUCTURE INSTEAD:
 
 FORMAT: ${params.ratio || '2:1'}
 
-PRODUCT: Letter-fill souvenir magnet — "${destination}"
+PRODUCT: Letter-fill souvenir magnet  - "${destination}"
 
 LETTER STYLE: Bold, chunky 3D letters with natural wood / metal / acrylic material. Letters are slightly uneven in height for a handcrafted feel.
 
 LETTER ARRANGEMENT: "${destination}" spelled horizontally, each letter acting as a photo window.
 
-PHOTO FILLS — Each letter shows a DIFFERENT ${destination} scene:
+PHOTO FILLS  - Each letter shows a DIFFERENT ${destination} scene:
 ${letterList}
 
 MATERIAL & FINISH: Natural wood border with subtly burned/darkened edges. Vivid, high-resolution photos fill each letter edge-to-edge.
@@ -906,7 +943,7 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
     // Early warning timer (20 seconds)
     const warningTimer = setTimeout(() => {
       if (!hasReceivedOutput) {
-        console.log('⚠️  Still waiting for Claude Code response (20s elapsed)... This is normal for first request or large documentation.');
+        console.log('[!]  Still waiting for Claude Code response (20s elapsed)... This is normal for first request or large documentation.');
       }
     }, 20000);
 
@@ -919,12 +956,12 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
       const timeSinceLastOutput = Date.now() - lastOutputTime;
 
       if (output && output.length > 50) {
-        console.log('⚠️  Timeout reached, returning partial output');
+        console.log('[!]  Timeout reached, returning partial output');
         resolve(output);
       } else if (hasReceivedOutput) {
         reject(new Error(`Claude Code stalled after ${Math.round(timeSinceLastOutput/1000)}s with no new output. The generation may be incomplete.`));
       } else {
-        reject(new Error('Claude Code timed out after 120 seconds with no output. Possible causes:\n• Large documentation files taking too long to read\n• Network latency to Anthropic API\n• Claude Code not properly installed\n\nTry: Simplify instruction, check internet connection, or restart the app.'));
+        reject(new Error('Claude Code timed out after 120 seconds with no output. Possible causes:\n- Large documentation files taking too long to read\n- Network latency to Anthropic API\n- Claude Code not properly installed\n\nTry: Simplify instruction, check internet connection, or restart the app.'));
       }
     }, 120000);
 
@@ -952,10 +989,10 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
           await fs.rm(tempDir, { recursive: true, force: true });
           console.log(`🗑️  Deleted temp directory: ${path.basename(tempDir)}`);
         } catch (error) {
-          console.error(`⚠️ Cleanup warning: ${error.message}`);
+          console.error(`[!] Cleanup warning: ${error.message}`);
         }
       }
-      // NOTE: Do NOT delete from uploads/ — those are the originals needed across variations
+      // NOTE: Do NOT delete from uploads/  - those are the originals needed across variations
     };
 
     // Handle completion
@@ -1028,17 +1065,17 @@ function distributeStyles(styles, count) {
   return result;
 }
 
-// Diversity seeds — each variation gets a different creative direction
+// Diversity seeds  - each variation gets a different creative direction
 // IMPORTANT: All compositions MUST produce IRREGULAR silhouettes (no circles, rectangles, badges, frames)
 const DIVERSITY_ANGLES = [
-  'Use a HERO-CENTRIC composition: one dominant central element takes 60%+ of the space, with supporting details orbiting around it. The silhouette must be IRREGULAR — shaped by the elements themselves (ribbons poking up, flowers extending at sides, etc.).',
-  'Use a PANORAMIC SCENE composition: spread elements across a wide landscape view, telling a story from left to right. The top edge should be JAGGED and VARIED (trees, buildings, character heads at different heights), the bottom edge shaped by terrain/flowers — NOT a clean rectangle.',
+  'Use a HERO-CENTRIC composition: one dominant central element takes 60%+ of the space, with supporting details orbiting around it. The silhouette must be IRREGULAR  - shaped by the elements themselves (ribbons poking up, flowers extending at sides, etc.).',
+  'Use a PANORAMIC SCENE composition: spread elements across a wide landscape view, telling a story from left to right. The top edge should be JAGGED and VARIED (trees, buildings, character heads at different heights), the bottom edge shaped by terrain/flowers  - NOT a clean rectangle.',
   'Use a DYNAMIC DIAGONAL composition: strong diagonal flow from one corner to the opposite, creating movement and energy. Elements break out of the frame at multiple points creating an IRREGULAR sticker-like silhouette.',
-  'Use a STACKED/LAYERED composition: elements piled and layered with the protagonist on top of a mound of flowers/nature, creating a PYRAMID-like organic shape. The silhouette is defined by the elements — palm trees, ribbons, flowers all poking out at different angles.',
-  'Use a SCATTERED GARDEN composition: protagonist surrounded by a lush arrangement of flowers, animals, and nature that extends outward UNEVENLY in all directions, like a hand-picked bouquet — wider on one side, taller on another.',
+  'Use a STACKED/LAYERED composition: elements piled and layered with the protagonist on top of a mound of flowers/nature, creating a PYRAMID-like organic shape. The silhouette is defined by the elements  - palm trees, ribbons, flowers all poking out at different angles.',
+  'Use a SCATTERED GARDEN composition: protagonist surrounded by a lush arrangement of flowers, animals, and nature that extends outward UNEVENLY in all directions, like a hand-picked bouquet  - wider on one side, taller on another.',
   'Use an ASYMMETRIC SPLIT composition: protagonist positioned off-center with supporting elements weighted heavily on one side, creating an organic imbalanced silhouette like a sticker that is wider on one side than the other.',
   'Use a CASCADING/WATERFALL composition: elements flowing downward from the protagonist, with flowers and nature spilling from top to bottom in an organic cascade, creating a silhouette that is wider at the bottom than the top.',
-  'Use a WRAPAROUND composition: supporting elements curve around the protagonist like a natural wreath but with IRREGULAR, BROKEN edges — NOT a perfect circle. Flowers, vines, and birds extend outward asymmetrically at different points.'
+  'Use a WRAPAROUND composition: supporting elements curve around the protagonist like a natural wreath but with IRREGULAR, BROKEN edges  - NOT a perfect circle. Flowers, vines, and birds extend outward asymmetrically at different points.'
 ];
 
 // Generate multiple variations using Claude Code with streaming callback
@@ -1052,7 +1089,7 @@ async function generateVariations(params, count, onVariationComplete) {
   console.log(`\n${'*'.repeat(60)}`);
   console.log(`GENERATING ${count} VARIATION(S) USING CLAUDE CODE`);
   if (params.styles && params.styles.length > 0) {
-    console.log(`STYLES: ${params.styles.join(', ')} → distributed as: ${styleAssignments.join(', ')}`);
+    console.log(`STYLES: ${params.styles.join(', ')} -> distributed as: ${styleAssignments.join(', ')}`);
   }
   console.log(`${'*'.repeat(60)}\n`);
 
@@ -1077,9 +1114,9 @@ async function generateVariations(params, count, onVariationComplete) {
       } else if (count > 1) {
         if (hasImages) {
           // Reference image + multiple variations: same elements AND STYLE, different arrangements
-          modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference — only the arrangement changes.`;
+          modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
         } else {
-          modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design — create a genuinely new concept.`;
+          modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
         }
       }
 
@@ -1089,7 +1126,7 @@ async function generateVariations(params, count, onVariationComplete) {
       // Use TURBO mode for ultra-fast generation, or standard mode for full documentation
       let output;
       if (params.turboMode) {
-        console.log(`⚡ Using TURBO mode - skipping documentation for maximum speed`);
+        console.log(`> Using TURBO mode - skipping documentation for maximum speed`);
         output = await invokeClaudeTurbo(modifiedInstruction, params);
       } else {
         // Invoke Claude Code - this will read all the project documentation
@@ -1102,22 +1139,22 @@ async function generateVariations(params, count, onVariationComplete) {
       const isLetterFillDesign = params.productType === 'magnet' && /\b(letter.?fill|photo.?fill|each\s+letter\s+(shows?|contains?|filled|has)|inside\s+(of\s+)?(the\s+)?letters?|uneven\s+letters?|block\s+letters?|3d\s+letters?|chunky\s+letters?|letras?\s+(rellenas?|con\s+fotos?|con\s+imagenes?))\b/i.test(instructionCheck);
 
       if (isLetterFillDesign) {
-        const letterDesignRules = `\n\n⚠️ CRITICAL LETTER-FILL DESIGN RULES — MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves — each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW — filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels — the letters ARE the text\n- BACKGROUND: Clean white or transparent — letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp — like a product photo from an e-commerce site`;
+        const letterDesignRules = `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
         output += letterDesignRules;
       } else {
-        const designRules = `\n\n⚠️ CRITICAL DESIGN RULES — MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette — like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge — a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely — NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
+        const designRules = `\n\n[!] CRITICAL DESIGN RULES  - MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette  - like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge  - a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely  - NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
         output += designRules;
       }
 
       const variation = {
-        title: variationStyle ? `Variation ${i + 1} — ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation ${i + 1}`,
-        prompt: output,
+        title: variationStyle ? `Variation ${i + 1}  - ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation ${i + 1}`,
+        prompt: sanitizePrompt(output),
         index: i,
         style: variationStyle || null
       };
 
       variations.push(variation);
-      console.log(`\n✅ Variation ${i + 1} completed successfully\n`);
+      console.log(`\n[OK] Variation ${i + 1} completed successfully\n`);
 
       // Call the callback immediately when this variation is ready
       if (onVariationComplete) {
@@ -1125,10 +1162,10 @@ async function generateVariations(params, count, onVariationComplete) {
       }
 
     } catch (error) {
-      console.error(`❌ Error generating variation ${i + 1}:`, error.message);
+      console.error(`[X] Error generating variation ${i + 1}:`, error.message);
       const errorVariation = {
         title: `Variation ${i + 1} - Error`,
-        prompt: `❌ Error generating prompt:\n\n${error.message}\n\n**Troubleshooting:**\n- Make sure Claude Code is installed (npm install -g @anthropics/claude-code)\n- Ensure the 'claude' command is available in your terminal\n- Check that you're in the correct directory\n- Verify the project documentation exists in: ${PROJECTS[projectType]?.folder}`,
+        prompt: `[X] Error generating prompt:\n\n${error.message}\n\n**Troubleshooting:**\n- Make sure Claude Code is installed (npm install -g @anthropics/claude-code)\n- Ensure the 'claude' command is available in your terminal\n- Check that you're in the correct directory\n- Verify the project documentation exists in: ${PROJECTS[projectType]?.folder}`,
         index: i
       };
 
@@ -1255,7 +1292,7 @@ app.post('/api/generate-prompt-stream', upload.fields([
     });
 
   } catch (error) {
-    console.error('❌ Error in streaming endpoint:', error);
+    console.error('[X] Error in streaming endpoint:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -1457,7 +1494,7 @@ THEN: ${analyzePrompt}`;
     });
 
   } catch (error) {
-    console.error('❌ Error in analyze endpoint:', error);
+    console.error('[X] Error in analyze endpoint:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -1504,28 +1541,49 @@ app.post('/api/send-to-gemini', async (req, res) => {
 
     // Write prompt to temp file
     const promptFile = path.join(tempDir, 'prompt.txt');
-    await fs.writeFile(promptFile, prompt, 'utf8');
+    await fs.writeFile(promptFile, sanitizePrompt(prompt), 'utf8');
 
-    // Python clipboard helper for images
+    // Python clipboard helper - puts image as a NAMED FILE on pasteboard
+    // Each image gets a unique name so Gemini doesn't reject duplicates
     const clipboardHelperPath = path.join(tempDir, 'clipboard_image.py');
     await fs.writeFile(clipboardHelperPath, `#!/usr/bin/env python3
-import sys
-from AppKit import NSImage, NSPasteboard
-image = NSImage.alloc().initWithContentsOfFile_(sys.argv[1])
-if not image: sys.exit(1)
+import sys, os, shutil, tempfile
+from AppKit import NSPasteboard, NSURL
+
+src = sys.argv[1]
+unique_name = sys.argv[2] if len(sys.argv) > 2 else os.path.basename(src)
+
+# Copy to a temp file with the unique name so Gemini sees a distinct filename
+tmp_dir = tempfile.mkdtemp()
+dest = os.path.join(tmp_dir, unique_name)
+shutil.copy2(src, dest)
+
+file_url = NSURL.fileURLWithPath_(dest)
 pb = NSPasteboard.generalPasteboard()
 pb.clearContents()
-pb.writeObjects_([image])
+pb.writeObjects_([file_url])
 `, 'utf8');
 
-    // Build fast image paste steps
+    // Build fast image paste steps - each image gets a unique filename
     let imageSteps = '';
-    for (const imgPath of imagePaths) {
+    for (let idx = 0; idx < imagePaths.length; idx++) {
+      const imgPath = imagePaths[idx];
+      const ext = path.extname(imgPath) || '.png';
+      const uniqueName = `design-ref-${timestamp}-${idx}${ext}`;
       imageSteps += `
-  do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}"
+  do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}" & " " & quoted form of "${uniqueName}"
   execute active tab of front window javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
   tell application "System Events" to keystroke "v" using command down
-  delay 0.5
+  -- Wait for Gemini to process the image (poll for image chip or attachment)
+  delay 0.3
+  repeat 15 times
+    set hasImg to (execute active tab of front window javascript "document.querySelectorAll('img[src*=blob],div[data-image-id],div.image-chip,.attachment-chip').length")
+    if hasImg is not "0" then exit repeat
+    delay 0.2
+  end repeat
+  delay 0.3
+  -- Dismiss any duplicate-name error dialog if it appeared
+  execute active tab of front window javascript "var d=document.querySelector('button[aria-label=Dismiss],button[aria-label=Close],.error-dismiss');if(d)d.click();"
 `;
     }
 
@@ -1566,14 +1624,14 @@ return "done"
 
     exec(`osascript "${scriptFile}"`, { timeout: 30000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
-      if (error) console.error('  ❌ AppleScript error:', error.message);
-      else console.log('  ✅ Gemini automation completed');
+      if (error) console.error('  [X] AppleScript error:', error.message);
+      else console.log('  [OK] Gemini automation completed');
     });
 
     res.json({ success: true, message: 'Sending to Gemini...', hasImages: imagePaths.length > 0 });
 
   } catch (error) {
-    console.error('❌ Send to Gemini error:', error);
+    console.error('[X] Send to Gemini error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1615,25 +1673,32 @@ app.post('/api/send-all-to-gemini', async (req, res) => {
     const promptFiles = [];
     for (let i = 0; i < prompts.length; i++) {
       const promptFile = path.join(tempDir, `prompt-${i}.txt`);
-      await fs.writeFile(promptFile, prompts[i], 'utf8');
+      await fs.writeFile(promptFile, sanitizePrompt(prompts[i]), 'utf8');
       promptFiles.push(promptFile);
     }
 
-    // Python clipboard helper
+    // Python clipboard helper - named file on pasteboard (unique names prevent Gemini duplicates)
     const clipboardHelperPath = path.join(tempDir, 'clipboard_image.py');
     await fs.writeFile(clipboardHelperPath, `#!/usr/bin/env python3
-import sys
-from AppKit import NSImage, NSPasteboard
-image = NSImage.alloc().initWithContentsOfFile_(sys.argv[1])
-if not image: sys.exit(1)
+import sys, os, shutil, tempfile
+from AppKit import NSPasteboard, NSURL
+
+src = sys.argv[1]
+unique_name = sys.argv[2] if len(sys.argv) > 2 else os.path.basename(src)
+
+tmp_dir = tempfile.mkdtemp()
+dest = os.path.join(tmp_dir, unique_name)
+shutil.copy2(src, dest)
+
+file_url = NSURL.fileURLWithPath_(dest)
 pb = NSPasteboard.generalPasteboard()
 pb.clearContents()
-pb.writeObjects_([image])
+pb.writeObjects_([file_url])
 `, 'utf8');
 
     const tabCount = prompts.length;
 
-    // ═══ FAST BULK SCRIPT: Open all tabs → parallel load → rapid paste ═══
+    // ═══ FAST BULK SCRIPT: Open all tabs -> parallel load -> rapid paste ═══
     let script = `
 tell application "Google Chrome"
   activate
@@ -1663,14 +1728,24 @@ end tell
     for (let i = 0; i < tabCount; i++) {
       const promptFile = promptFiles[i];
 
-      // Image paste steps for this tab
+      // Image paste steps for this tab - each image gets unique name per tab
       let imgSteps = '';
-      for (const imgPath of imagePaths) {
+      for (let imgIdx = 0; imgIdx < imagePaths.length; imgIdx++) {
+        const imgPath = imagePaths[imgIdx];
+        const ext = path.extname(imgPath) || '.png';
+        const uniqueName = `design-ref-tab${i}-${timestamp}-${imgIdx}${ext}`;
         imgSteps += `
-    do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}"
+    do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}" & " " & quoted form of "${uniqueName}"
     execute active tab of w javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
     tell application "System Events" to keystroke "v" using command down
-    delay 0.4
+    delay 0.3
+    repeat 15 times
+      set hasImg to (execute active tab of w javascript "document.querySelectorAll('img[src*=blob],div[data-image-id],div.image-chip,.attachment-chip').length")
+      if hasImg is not "0" then exit repeat
+      delay 0.2
+    end repeat
+    delay 0.2
+    execute active tab of w javascript "var d=document.querySelector('button[aria-label=Dismiss],button[aria-label=Close],.error-dismiss');if(d)d.click();"
 `;
       }
 
@@ -1709,14 +1784,14 @@ delay 0.3
 
     exec(`osascript "${scriptFile}"`, { timeout: 90000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
-      if (error) console.error('  ❌ Bulk error:', error.message);
-      else console.log(`  ✅ Bulk Gemini done (${tabCount} tabs)`);
+      if (error) console.error('  [X] Bulk error:', error.message);
+      else console.log(`  [OK] Bulk Gemini done (${tabCount} tabs)`);
     });
 
     res.json({ success: true, message: `Opening ${tabCount} Gemini tabs...`, count: tabCount });
 
   } catch (error) {
-    console.error('❌ Bulk Send to Gemini error:', error);
+    console.error('[X] Bulk Send to Gemini error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1739,7 +1814,7 @@ function openChrome(url) {
 
   exec(command, (error) => {
     if (error) {
-      console.log(`⚠️  Could not auto-open Chrome: ${error.message}`);
+      console.log(`[!]  Could not auto-open Chrome: ${error.message}`);
       console.log(`💡 Please manually open: ${url}`);
     } else {
       console.log(`🌐 Opened Chrome at ${url}`);
@@ -1759,12 +1834,12 @@ app.listen(PORT, () => {
 ║                                                            ║
 ║        👉  http://localhost:${PORT}                          ║
 ║                                                            ║
-║        ⚡ Now powered by Claude Code!                      ║
+║        > Now powered by Claude Code!                      ║
 ║        📚 Reads your project documentation automatically   ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
   `);
-  console.log('\n✅ Server ready! Waiting for requests...\n');
+  console.log('\n[OK] Server ready! Waiting for requests...\n');
 
   // Auto-open Chrome after a brief delay to ensure server is ready
   setTimeout(() => openChrome(url), 1000);
