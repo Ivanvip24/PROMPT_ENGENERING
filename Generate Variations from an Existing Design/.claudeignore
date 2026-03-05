@@ -7,8 +7,8 @@ Prompts/
 # Internal agents (not needed for generation)
 agents/
 
-# Detailed reference files (core docs are enough)
-reference/
+# Allow reference/ — it contains TRUE_VARIATION_DEFINITION.md and IMAGE_AI_PROMPT_TEMPLATE.md
+# which are CRITICAL for understanding how to create proper variations from reference images
 
 # Example files
 examples/

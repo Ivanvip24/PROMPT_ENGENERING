@@ -8,6 +8,20 @@ This is a **prompt engineering system** for generating variations of existing so
 
 **Key Point**: This repository contains markdown documentation that defines a design variation workflow system. Users interact with this system by reading the guides and using the documented agent prompts with Claude or other AI systems.
 
+## ⚠️⚠️⚠️ HIGHEST PRIORITY: REFERENCE IMAGE OVERRIDE ⚠️⚠️⚠️
+
+**When a reference image is provided by the user, these rules OVERRIDE all other instructions in this file:**
+
+1. **The "fresh unique creation" rule DOES NOT APPLY** — you are creating a variation OF the reference, not something new
+2. **The "NO cross-referencing" rule DOES NOT APPLY** — you MUST cross-reference the image to keep the same elements
+3. **You MUST preserve the protagonist** — the same character, animal, or central element from the reference image must appear in your prompt
+4. **You MUST preserve the destination context** — same cultural/geographic setting
+5. **You MUST preserve the art style** — unless the user explicitly requests a style change
+6. **What you CHANGE**: pose, gesture, action, composition layout, arrangement of supporting elements, color mood
+7. **What you KEEP**: protagonist identity, destination, style, type of supporting elements
+
+**VALIDATION**: Before outputting your prompt, check: "Would someone looking at the reference image and my prompt's result say these are from the SAME design family?" If not, you're creating something too different.
+
 ## ⚠️ CRITICAL: What "Variation" Means in This System
 
 **→ See `reference/TRUE_VARIATION_DEFINITION.md` for complete definition and validation checklist**
@@ -313,10 +327,10 @@ Each destination has its own folder in `Prompts/` containing:
 User instruction: *"Each design is for a new order and most orders are from different clients so we can't give different clients the same design"*
 
 **This means**:
-- Even for same destination, create completely DIFFERENT variations each time
-- NO cross-referencing past designs when user requests new one
-- Treat every request as fresh unique creation
 - Same protagonist element (e.g., Ángel de la Independencia) but different composition, style, decoration, edges
+- Each variation should feel unique while belonging to the same design family
+
+**⚠️ EXCEPTION — REFERENCE IMAGES**: When the user provides a reference image, you MUST base your variation on that image. The "fresh unique creation" rule means fresh COMPOSITION/POSE/ARRANGEMENT — NOT a completely unrelated design. The protagonist and core elements from the reference image MUST be preserved.
 
 ### Gemini Safety Integration
 
@@ -379,14 +393,16 @@ See `reference/universal_prompt_template.md` for the complete validated template
 
 ### Shape and Composition Rules
 
-**NO BORING RECTANGLES**: Designs must have IRREGULAR ORGANIC SHAPES unless specifically rectangular format requested.
+**NO SIMPLE GEOMETRIC SHAPES**: Designs must have COMPLEX, IRREGULAR, ASYMMETRIC silhouettes. BANNED: squares, rectangles, perfect circles, ovals, medallions, or any shape you can describe in one word.
 
-**How to create organic edges**:
-- Outer boundary follows natural elements (leaves, flowers, water splashes, graffiti drips)
-- Top edge: Flowing curves, petal shapes, paint bursts
-- Side edges: Asymmetric organic curves, foliage extending outward
-- Bottom edge: Natural flowing termination, drip effects, organic waves
-- **NO straight edges or 90° corners** unless format specifically requires it
+**How to create truly irregular edges** (the outline should be UNIQUE to each design):
+- Let design elements DEFINE the edge — a palm tree poking up creates a bump, waves flow along the bottom, a building creates a jagged section
+- Each side of the design should look DIFFERENT from the others
+- Top edge: Shaped by whatever element is tallest (trees, towers, mountains)
+- Side edges: Asymmetric — left side might follow foliage, right side follows architecture
+- Bottom edge: Waves, terrain, or organic curves — never a straight line
+- **NO straight edges, NO 90° corners, NO uniform rounded edges** (uniform rounding = disguised circle/rectangle)
+- SELF-CHECK: If you trace the outline and it looks like a circle, oval, or rectangle, it is WRONG
 
 **Protagonist must DOMINATE**:
 - Main element (e.g., Ángel de la Independencia) should occupy 70-85% of composition
@@ -433,14 +449,14 @@ Scan the user input for these patterns:
 
 ### Quick Access to Checklists
 
-Read checklists from: `../PRODUCT_TYPE/QUICK_REFERENCE_CHECKLISTS.md`
+Read checklists from: `QUICK_REFERENCE_CHECKLISTS.md`
 
 ### Implementation Steps
 
 **EVERY time you generate a prompt:**
 
 1. Check if user specified Format/Ratio (look for "2:1", "1:1", "Square", etc.)
-2. Read the appropriate section from `../PRODUCT_TYPE/QUICK_REFERENCE_CHECKLISTS.md`
+2. Read the appropriate section from `QUICK_REFERENCE_CHECKLISTS.md`
 3. Append the COMPLETE checklist to the END of your generated prompt
 4. The checklist must be the LAST thing in the prompt
 

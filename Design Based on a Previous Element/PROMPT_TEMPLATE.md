@@ -1,6 +1,6 @@
-# Speed-Optimized Prompt Template
+# Visually Rich Prompt Template
 
-## Target: 200-350 Words
+## Target: 250-400 Words (Richer = Better)
 
 Use this exact structure for every design prompt. Fill in bracketed sections.
 
@@ -17,15 +17,20 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 
 **PROTAGONIST ELEMENT:** [Hero element with key visual features, size %, position. If character: pose/action. If landmark: defining features. 30-50 words.]
 
-**SUPPORTING ELEMENTS (Regional/Cultural):**
-• [Element 1 - name, position, size/role]
-• [Element 2 - name, position, size/role]
-• [Element 3 - name, position, size/role]
-• [Element 4 - name, position, size/role]
-• [Element 5 - name, position, size/role]
-• [Element 6-10 - as needed, 5-10 total elements]
+**SUPPORTING ELEMENTS (Regional/Cultural) — 10-15 items:**
+• [Element 1 - SPECIFIC name, color, position, interaction with neighbors]
+• [Element 2 - SPECIFIC name, position, role]
+• [Element 3 - SPECIFIC name, position, role]
+• [Element 4 - SPECIFIC name, position, role]
+• [Element 5 - SPECIFIC name, position, role]
+• [Element 6]
+• [Element 7]
+• [Element 8]
+• [Element 9]
+• [Element 10]
+• [Elements 11-15 as needed — MORE details = RICHER design]
 
-**DECORATIVE LAYER:** [1-2 sentences describing how negative space is filled, decoration density level (6/10, 8/10, 10/10), pattern fills, scattered accents, etc.]
+**DECORATIVE LAYER:** [Decoration density 8-10/10. Describe SPECIFICALLY what fills every gap: scattered petals, cultural micro-patterns, sparkles, confetti, tiny cultural motifs. NO large empty areas.]
 
 **TEXT INTEGRATION:**
 • Primary: "[DESTINATION NAME]" - [placement: arcing top/bottom banner/integrated], [size: 15-25% height], [style: bold hand-lettered/vintage/modern/etc.]
@@ -33,7 +38,7 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 
 **STYLE & AESTHETIC:** [Copy-paste from STYLE_DESCRIPTORS.md with 0-2 minor customizations. 2-3 sentences maximum. Include mood/tone.]
 
-**COLOR PALETTE:** [List 4-6 simple color names: "Bright turquoise water, coral pink flowers, deep forest green, golden sunset, warm browns." NO CMYK.]
+**COLOR PALETTE:** [List 6-8 BOLD saturated color names that create visual IMPACT: "Vivid hot pink bougainvillea, deep cobalt blue sky, bright golden marigolds, rich emerald jungle green, fiery sunset orange, warm terracotta clay." NO CMYK.]
 
 **EDGE TREATMENT:** [Organic irregular shape following natural contours / Perfect circle / Specific format requirement. Default = organic irregular.]
 
@@ -357,17 +362,17 @@ Here's a filled template (342 words):
 | Section | Target Words |
 |---------|--------------|
 | Format | 5 |
-| Subject | 10-15 |
-| Composition | 40-60 |
-| Protagonist | 30-50 |
-| Supporting | 40-60 |
-| Decorative | 20-30 |
+| Subject | 15-25 |
+| Composition | 50-70 |
+| Protagonist | 40-60 |
+| Supporting | 80-120 (10-15 items!) |
+| Decorative | 25-40 |
 | Text | 20-30 |
 | Style | 30-40 |
-| Colors | 15-20 |
+| Colors | 20-30 |
 | Edge | 10-15 |
 | Production | 10-15 |
-| **TOTAL** | **200-350** |
+| **TOTAL** | **250-400** |
 
 ---
 

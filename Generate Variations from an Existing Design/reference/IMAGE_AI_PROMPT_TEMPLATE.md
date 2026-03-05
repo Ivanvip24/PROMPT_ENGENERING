@@ -45,19 +45,21 @@ REQUIRED APPROACH:
 ✓ Cloud-like, wave-like, or element-following perimeters
 
 EXAMPLES OF GOOD IRREGULAR SHAPES:
-- Circular/oval with organic variations
-- Cloud-shaped with flowing curves
-- Splash/wave-shaped following water elements
-- Silhouette-cut around main elements
-- Badge/emblem shapes with decorative edges
-- Scalloped, wavy, or custom contoured borders
-- Asymmetric organic shapes that feel natural
+- Silhouette-cut around main elements (palm tree poking up, dolphins arching out, buildings creating jagged edges)
+- Splash/wave-shaped following water elements along the bottom
+- Asymmetric organic shapes where each side is DIFFERENT
+- Element-driven edges (foliage on left, architecture on right, waves on bottom)
+- Die-cut sticker feel where the outline is UNIQUE to this specific design
 
-AVOID:
+AVOID (ALL equally bad):
 ✗ Perfect squares or rectangles
+✗ Perfect circles or ovals
+✗ Circular badge/medallion shapes
 ✗ Hard 90-degree corners
 ✗ Rigid geometric borders
 ✗ Box-like frames
+✗ Uniform rounded edges all around
+✗ Any shape describable in one word (circle, square, oval, diamond)
 
 DESIGN STYLE STANDARDS
 

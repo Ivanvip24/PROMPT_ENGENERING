@@ -187,14 +187,16 @@ All variations must maintain laser-cut MDF compatibility:
 
 #### Shape and Composition Rules
 
-**NO BORING RECTANGLES**: Designs must have IRREGULAR ORGANIC SHAPES unless specifically rectangular format requested.
+**NO SIMPLE GEOMETRIC SHAPES**: Designs must have COMPLEX, IRREGULAR, ASYMMETRIC silhouettes. BANNED: squares, rectangles, perfect circles, ovals, medallions, or any shape describable in one word.
 
-**How to create organic edges**:
-- Outer boundary follows natural elements (leaves, flowers, water splashes, graffiti drips)
-- Top edge: Flowing curves, petal shapes, paint bursts
-- Side edges: Asymmetric organic curves, foliage extending outward
-- Bottom edge: Natural flowing termination, drip effects, organic waves
-- **NO straight edges or 90° corners** unless format specifically requires it
+**How to create truly irregular edges** (outline must be UNIQUE to each design):
+- Let design elements DEFINE the edge — palm tree poking up = bump, waves along bottom = scallops, building = jagged section
+- Each side should look DIFFERENT from the others
+- Top edge: Shaped by tallest element (trees, towers, mountains)
+- Side edges: Asymmetric — left follows foliage, right follows architecture
+- Bottom edge: Waves, terrain, or organic curves — never straight
+- **NO straight edges, NO 90° corners, NO uniform rounded edges** (uniform rounding = disguised circle/rectangle)
+- SELF-CHECK: If the outline looks like a circle, oval, or rectangle — it is WRONG
 
 **Protagonist must DOMINATE**:
 - Main element (e.g., Ángel de la Independencia) should occupy 70-85% of composition
