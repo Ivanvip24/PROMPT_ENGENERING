@@ -29,7 +29,7 @@ Create print-ready souvenir illustrations that are visually striking, culturally
 - Pure white background (#FFFFFF) with no gradients or textures
 - Clean, crisp edges with no bleeding or soft borders
 - Vector-friendly design approach (even in raster format) with solid colors and defined shapes
-- Print-ready resolution and color separation suitable for laser-cut MDF board production
+- Print-ready resolution and color separation suitable for production
 - **CRITICAL: Destination name MUST appear in BIG, COLORFUL, ATTRACTIVE, VIBRANT, ATTENTION-CATCHING letters that match the overall design style**
 
 **DESIGN PRINCIPLES:**
@@ -64,7 +64,7 @@ Before generating any design, consider:
 Each illustration must be:
 - Immediately recognizable as representing the specific location
 - **Feature the destination name in BIG, COLORFUL, ATTRACTIVE, VIBRANT letters as a primary design element**
-- Suitable for laser-cut MDF board mounting and multiple souvenir formats
+- Suitable for multiple souvenir formats (magnet, keychain, bottle opener)
 - Scalable without loss of impact or legibility
 - Emotionally engaging and purchase-worthy as a keepsake
 - Production-ready with clean file structure for laser cutting

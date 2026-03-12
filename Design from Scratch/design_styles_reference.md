@@ -335,7 +335,7 @@ Reproduces the look of screen-printed art with solid colors and bold lines. Feat
 **Best for:** Bold graphic posters, vintage print aesthetics, limited color designs
 
 ### Sticker Style
-Looks like a die-cut sticker with a clean white border and glossy finish. Features white outline, irregular cutout shape, and vinyl sticker appearance.
+Looks like a die-cut sticker with an irregular cutout shape. NO external border or outline around the design - the artwork goes edge to edge.
 
 **Best for:** Modern souvenir designs, die-cut products, contemporary graphic looks
 
