@@ -40,7 +40,32 @@ function sanitizePrompt(text) {
     .replace(/\u274C/g, '[X]')                              // cross mark
     .replace(/[\u2122\u00AE\u00A9]/g, '')                   // TM, R, C symbols
     // Strip any remaining non-ASCII characters
-    .replace(/[^\x00-\x7F]/g, '');
+    .replace(/[^\x00-\x7F]/g, '')
+    // Remove banned words (case-insensitive, whole word)
+    .replace(/\bpunta\b/gi, '')
+    .replace(/\bsexo\b/gi, '')
+    .replace(/  +/g, ' ').trim();
+}
+
+// Video prompts: preserve Unicode accents, enforce AXKAN accent rules
+function sanitizeVideoPrompt(text) {
+  if (!text) return text;
+  return text
+    // Replace common Unicode punctuation with ASCII equivalents
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '-')
+    .replace(/[\u2013\u2014\u2015]/g, '-')
+    .replace(/[\u2018\u2019\u201A]/g, "'")
+    .replace(/[\u201C\u201D\u201E]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/\u00A0/g, ' ')
+    // AXKAN accent rules: iman -> imán, axkan -> axkán (case-insensitive)
+    .replace(/\biman\b/gi, (m) => m[0] === 'I' ? 'Imán' : 'imán')
+    .replace(/\bimanes\b/gi, (m) => m[0] === 'I' ? 'Imánes' : 'imánes')
+    .replace(/\baxkan\b/gi, (m) => m[0] === 'A' ? 'Axkán' : 'axkán')
+    // Remove banned words
+    .replace(/\bpunta\b/gi, '')
+    .replace(/\bsexo\b/gi, '')
+    .replace(/  +/g, ' ').trim();
 }
 
 // Ensure PATH includes common tool locations (needed when launched via Automator/hotkey)
@@ -68,6 +93,90 @@ const upload = multer({ storage });
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
+
+// CORS-enabled static route for reference images (Envato page fetches cross-origin from localhost)
+const tmpRefDir = path.join(__dirname, 'tmp-ref');
+app.use('/tmp-ref', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
+}, express.static(tmpRefDir));
+
+// Write reference images from base64 data URLs to tmp-ref directory, return filenames
+async function writeRefImages(referenceImages) {
+    await fs.mkdir(tmpRefDir, { recursive: true });
+    // Clean old files
+    const oldFiles = await fs.readdir(tmpRefDir).catch(() => []);
+    for (const f of oldFiles) await fs.unlink(path.join(tmpRefDir, f)).catch(() => {});
+    const written = [];
+    const maxImages = Math.min(referenceImages.length, 2);
+    for (let i = 0; i < maxImages; i++) {
+        const dataUrl = referenceImages[i];
+        if (!dataUrl || !dataUrl.startsWith('data:')) continue;
+        const matches = dataUrl.match(/^data:image\/([^;]+);base64,(.+)$/s);
+        if (!matches) continue;
+        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        const filename = `img-${i}.${ext}`;
+        await fs.writeFile(path.join(tmpRefDir, filename), buffer);
+        written.push(filename);
+    }
+    return written;
+}
+
+// Generate JS code for reference image upload via DragEvent on Envato page
+function generateRefUploadJS(filenames) {
+    const urls = filenames.map(f => `http://localhost:${PORT}/tmp-ref/${f}`);
+    const urlsJSON = JSON.stringify(urls);
+    return `
+window.__refUploadDone = false;
+(async function() {
+  try {
+    // Step 1: Click the "Upload image references" button (small icon-only button in bottom toolbar)
+    var ta = document.querySelector('[placeholder*="Describe"]');
+    if (!ta) { window.__refUploadDone = true; return; }
+    var toolbar = ta.parentElement;
+    while (toolbar && toolbar.getBoundingClientRect().height < 60) toolbar = toolbar.parentElement;
+    if (toolbar) {
+      var btns = toolbar.querySelectorAll('button');
+      for (var b of btns) {
+        var r = b.getBoundingClientRect();
+        if (r.width > 20 && r.width < 55 && r.height > 20 && r.height < 55) {
+          var txt = b.textContent.trim();
+          if (!txt || txt.length < 3) { b.click(); break; }
+        }
+      }
+    }
+    // Step 2: Wait for modal with file inputs
+    for (var a = 0; a < 30; a++) {
+      if (document.querySelectorAll('input[type=file]').length >= 2) break;
+      await new Promise(function(r) { setTimeout(r, 200); });
+    }
+    // Step 3: Fetch images from local server and drop into dropzones
+    var urls = ${urlsJSON};
+    var blobs = await Promise.all(urls.map(function(u) {
+      return fetch(u).then(function(r) { return r.blob(); }).catch(function() { return null; });
+    }));
+    var inputs = document.querySelectorAll('input[type=file]');
+    blobs.forEach(function(blob, idx) {
+      if (!blob || !inputs[idx]) return;
+      var file = new File([blob], 'ref' + idx + '.png', { type: 'image/png' });
+      var dz = inputs[idx].parentElement;
+      while (dz && (dz.offsetHeight < 100 || dz.offsetWidth < 100)) dz = dz.parentElement;
+      if (!dz) return;
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      ['dragenter', 'dragover', 'drop'].forEach(function(t) {
+        dz.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt }));
+      });
+    });
+    // Step 4: Wait for processing, then close modal
+    await new Promise(function(r) { setTimeout(r, 2000); });
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+  } catch(e) { console.error('ref upload error:', e); }
+  window.__refUploadDone = true;
+})();
+`;
+}
 
 // Detect actual image format from file magic bytes and fix/convert if needed
 // Claude API only supports: JPEG, PNG, GIF, WebP
@@ -127,6 +236,28 @@ async function fixImageExtension(filePath) {
 }
 
 // Project configurations with folder mappings
+// ═══════════════════════════════════════════════════════════════
+// UNIVERSAL IMAGE QUALITY ENFORCEMENT
+// Applied to EVERY generated prompt before returning to user.
+// Ensures all outputs produce crisp, sharp, high-quality images
+// regardless of reference image quality or style chosen.
+// ═══════════════════════════════════════════════════════════════
+function enforceImageQuality(promptText) {
+  if (!promptText || promptText.length < 50) return promptText;
+
+  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product photography quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
+
+  // Check if prompt already ends with CREATE DESIGN
+  const createDesignIdx = promptText.lastIndexOf('CREATE DESIGN');
+  if (createDesignIdx > 0) {
+    // Insert quality block BEFORE "CREATE DESIGN"
+    return promptText.substring(0, createDesignIdx).trimEnd() + QUALITY_BLOCK + '\n\nCREATE DESIGN';
+  }
+
+  // Otherwise append at end
+  return promptText.trimEnd() + QUALITY_BLOCK;
+}
+
 const PROJECTS = {
   'variations': {
     name: 'Generate Variations from an Existing Design',
@@ -163,6 +294,12 @@ async function invokeClaudeTurbo(instruction, params) {
 
     let turboPrompt;
 
+    // Hoist style detection so it's available for all code paths (turbo product realism, style ref injection, etc.)
+    const _instructionLowerGlobal = (instruction || '').toLowerCase();
+    const _hybridKeywordsGlobal = ['mix real', 'real elements', 'real and cartoon', 'real with cartoon', 'realistic and cartoon', 'photo and cartoon', 'photo with cartoon', 'real photos', 'actual photos', 'camera quality', 'photorealistic mix', 'blend real', 'real element', 'mezcla real', 'elementos reales'];
+    const _detectedHybridGlobal = _hybridKeywordsGlobal.some(kw => _instructionLowerGlobal.includes(kw));
+    const _effectiveStyle = _detectedHybridGlobal ? 'hybrid' : (params.style || '');
+
     if (isLetterFill) {
       // LETTER-FILL TURBO TEMPLATE
       const destination = params.destination || 'DESTINATION';
@@ -179,9 +316,9 @@ LETTER STYLE: Bold chunky 3D letters with natural wood material, slightly uneven
 LETTER ARRANGEMENT: "${destination}" spelled horizontally, each letter is a photo window
 PHOTO FILLS  - Each letter shows a DIFFERENT ${destination} scene:
 ${letterList}
-MATERIAL: Natural wood border with subtly burned edges, vivid photos fill each letter edge-to-edge
+MATERIAL: 3D letters with subtle texture. Vivid photos fill each letter edge-to-edge. NO external border or outline around the letters.
 BACKGROUND: Clean white or transparent, no frames or borders
-STYLE: Photorealistic product shot of a physical souvenir magnet  - looks like a real product from a gift shop
+STYLE: Flat front-facing view of a souvenir magnet design. NO borders, NO outlines around the design.
 
 CREATE DESIGN
 
@@ -195,22 +332,106 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. START DIRECTLY WITH "FORMA
 
     } else {
       // STANDARD TURBO TEMPLATE (visually rich version)
-      turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
+      // _effectiveStyle is hoisted above the if/else block
+      console.log(`> STYLE DEBUG: params.style="${params.style}", detected_hybrid=${_detectedHybridGlobal}, effective="${_effectiveStyle}", instruction="${instruction?.substring(0, 80)}..."`);
+
+      // Branch template based on effective style
+      if (_effectiveStyle === 'hybrid') {
+        turboPrompt = `> TURBO PROMPT GENERATOR - HYBRID REAL+CARTOON DESIGN >
+
+[!] ABSOLUTE RULE: This prompt MUST produce a design that MIXES photorealistic and cartoon elements. If your output describes everything in ONE style (all cartoon OR all realistic), you have FAILED.
+
+OUTPUT EXACTLY THIS FORMAT (250-400 words):
+
+FORMAT: ${params.ratio || '1:1'}
+SUBJECT: [Describe main element + destination in ONE vivid sentence]
+STYLE: HYBRID Real+Cartoon composition  - this design MIXES two rendering styles in ONE image. Some elements are PHOTOREALISTIC (camera-quality, real textures, real lighting, as if photographed) and other elements are BOLD CARTOON ILLUSTRATIONS (thick outlines, flat vibrant colors, stylized). The contrast and coexistence of both styles is the defining visual feature. Think "Who Framed Roger Rabbit" aesthetic  - real and cartoon in the same frame.
+PHOTOREALISTIC ELEMENTS (these MUST look like real photographs  - camera quality, real textures, real lighting):
+- [Real element 1  - describe with photographic language: "actual photograph of...", "camera-captured...", "real feather/fur/stone texture...", "natural sunlight on..."]
+- [Real element 2  - landmark, animal, plant, or nature scene described as REAL]
+- [Real element 3  - use words: photorealistic, camera-quality, real depth of field, natural lighting]
+- [Add 2-4 more real elements]
+CARTOON ELEMENTS (these MUST look illustrated  - bold outlines, flat colors, stylized):
+- [Cartoon element 1  - describe with illustration language: "bold cartoon text...", "illustrated border...", "colorful cartoon flowers..."]
+- [Cartoon element 2  - decorative patterns, stylized characters, illustrated frames]
+- [Cartoon element 3  - use words: bold outlines, vibrant flat colors, cartoon style, illustrated]
+- [Add 2-4 more cartoon elements]
+COMPOSITION:
+- [How the real and cartoon elements INTERACT  - cartoon elements framing real photos, illustrated borders around photographic subjects, etc.]
+- [Visual flow and depth]
+PROTAGONIST: [Main subject  - 40 words. If the main subject should be REAL (animal, landmark), describe it as PHOTOREALISTIC with camera-quality detail. If cartoon, describe with illustration language.]
+COLORS: [6-8 colors  - real elements have natural/photographic colors, cartoon elements have bold saturated colors]
+TEXT: "${params.destination || 'DESTINATION'}" - [placement: BOLD and PROMINENT], [size: 18-25% height], [style: CARTOON/ILLUSTRATED  - bold colorful letters with outlines, shadows, 3D effect]
+DECORATION: ${params.decorationLevel || 7}/10  - Cartoon-style decorative fills (illustrated flowers, patterns, sparkles) around and between the photorealistic elements.
+EDGE: IRREGULAR silhouette  - cartoon/illustrated elements define the outer edges while photorealistic elements sit within.
+BACKGROUND: Clean white/transparent
+CREATE DESIGN
+
+---
+REQUEST: ${instruction}
+${params.destination ? `DESTINATION: ${params.destination}` : ''}
+${params.theme ? `THEME: ${params.theme}` : ''}
+---
+
+CRITICAL QUALITY CHECK: Before outputting, verify your prompt contains BOTH "photorealistic/camera-quality/real photograph" AND "cartoon/illustrated/bold outlines" language. If ALL elements are described the same way, REWRITE to ensure the mix. The viewer must clearly see BOTH photographic and illustrated elements in the final image.
+RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+
+      } else if (_effectiveStyle === 'realistic' || _effectiveStyle === 'photography') {
+        turboPrompt = `> TURBO PROMPT GENERATOR - PHOTOREALISTIC DESIGN >
+
+[!] ABSOLUTE RULE: This is NOT an illustration or cartoon. Every element must look PHOTOREALISTIC  - like a professional photograph or high-end photo composite.
+
+OUTPUT EXACTLY THIS FORMAT (250-400 words):
+
+FORMAT: ${params.ratio || '1:1'}
+SUBJECT: [Describe main element + destination in ONE vivid sentence]
+STYLE: ${_effectiveStyle === 'photography' ? 'Photography-based design with REAL photo elements (actual photographic quality  - NOT illustrated) integrated into decorative frames and cultural compositions' : 'PHOTOREALISTIC  - real-world photographic quality with camera-lens depth of field, natural lighting, real material textures. This is NOT an illustration  - it must look like a HIGH-END PHOTOGRAPH or cinema-quality photomanipulation'}
+COMPOSITION:
+- [Composition described as a PHOTO COMPOSITE or PHOTOGRAPHIC SCENE  - not a sticker or illustration]
+- [Camera angle, lighting direction, depth of field]
+- [Real-world spatial relationships between elements]
+PROTAGONIST: [Main subject  - 40 words with PHOTOGRAPHIC language: real feather texture, natural light catching fur, actual stone grain, genuine fabric texture. NO illustration language.]
+ELEMENTS (8-12 items  - all PHOTOREALISTIC):
+- [Element 1  - described as a real photograph: "actual photo of...", "camera-captured...", "real texture of..."]
+- [Element 2  - natural colors, real lighting, genuine materials]
+- [Element 3]
+- [Element 4]
+- [Element 5]
+- [Element 6]
+- [Element 7]
+- [Element 8]
+- [Add more as needed  - all must look REAL, not illustrated]
+COLORS: [6-8 NATURAL photographic colors  - rich but realistic, not cartoon-saturated]
+TEXT: "${params.destination || 'DESTINATION'}" - [placement: BOLD], [size: 18-25% height], [style: elegant dimensional text that fits the photographic aesthetic  - metallic, embossed, or naturally integrated]
+DECORATION: ${params.decorationLevel || 6}/10  - Natural decorative elements (real flowers, real leaves, natural textures)  - NOT cartoon sparkles or illustrated confetti.
+EDGE: IRREGULAR organic outline shaped by the photographic elements  - NOT a sticker or badge look.
+BACKGROUND: Clean white/transparent
+CREATE DESIGN
+
+---
+REQUEST: ${instruction}
+${params.destination ? `DESTINATION: ${params.destination}` : ''}
+${params.theme ? `THEME: ${params.theme}` : ''}
+---
+
+CRITICAL: NO illustration language in your output. Do NOT use words like "cartoon", "illustrated", "bold outlines", "flat colors", "sticker", "vector". Use ONLY photographic language: "photorealistic", "camera-quality", "real texture", "natural lighting", "depth of field", "cinematic".
+RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+
+      } else {
+        // DEFAULT: Cartoon/Collage/Other styles  - original sticker-style template
+        turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
 
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
 FORMAT: ${params.ratio || '1:1'}
 SUBJECT: [Describe main element + destination in ONE vivid sentence  - make it EXCITING]
 STYLE: ${(() => {
-        const turboStyleMap = {
-          'cartoon': 'Bold cartoon illustration with thick black outlines, highly saturated vibrant colors, dynamic shading, layered composition with depth  - like a premium die-cut sticker product',
-          'realistic': 'Detailed realistic illustration with rich textures, dramatic lighting, natural colors with punchy saturation, layered depth  - like a premium art print',
-          'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece',
-          'photography': 'Photography-based design with real photo elements integrated into richly illustrated decorative frames, cultural motifs, and layered compositions',
-          'hybrid': 'Hybrid Real+Cartoon  - real photographic elements (landmarks, objects, textures) seamlessly blended with bold cartoon illustrations, both styles interact naturally with overlapping layers and shared lighting'
-        };
-        return turboStyleMap[params.style] || (params.style ? params.style.charAt(0).toUpperCase() + params.style.slice(1) + ' style with rich details and layered depth' : 'Bold cartoon illustration with thick outlines, vibrant saturated colors, layered depth  - premium die-cut sticker quality');
-      })()}
+          const turboStyleMap = {
+            'cartoon': 'Bold cartoon illustration with thick black outlines, highly saturated vibrant colors, dynamic shading, layered composition with depth  - like a premium die-cut sticker product',
+            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece'
+          };
+          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style with rich details and layered depth' : 'Bold cartoon illustration with thick outlines, vibrant saturated colors, layered depth  - premium die-cut sticker quality');
+        })()}
 COMPOSITION:
 - [Hero element position, size %, and POSE/ACTION described vividly]
 - [Supporting elements arrangement  - describe LAYERING and OVERLAP]
@@ -244,9 +465,10 @@ ${params.theme ? `THEME: ${params.theme}` : ''}
 
 CRITICAL: The design must look like the BEST-SELLING souvenir product in a tourist shop  - visually RICH, PACKED with details, LAYERED with depth, using BOLD saturated colors. NOT a sparse sketch.
 RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+      }
     }
 
-    console.log(`\n> TURBO MODE - Ultra-fast generation (no docs reading)`);
+    console.log(`\n> TURBO MODE - Haiku 4.5 | max-turns 1 | 15s timeout`);
 
     let output = '';
 
@@ -280,53 +502,117 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
 
     let finalPrompt = turboPrompt;
 
-    // Style reference injection (takes priority)
+    // INJECT PRODUCT PHOTOGRAPHY REALISM FOR ALL PRODUCT TYPES IN TURBO MODE
+    if (params.productType) {
+      const turboProductDescriptions = {
+        'bottle-opener': 'a flat, front-facing design for a bottle opener souvenir with a tall vertical shape and an arch opening at the top. The design has an organic irregular silhouette. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
+        'magnet': 'a flat, front-facing design for a souvenir magnet with an organic irregular silhouette shape (NOT a rectangle or circle - edges follow the design elements). NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
+        'keychain': 'a flat, front-facing design for a keychain souvenir with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.'
+      };
+      const turboProductDesc = turboProductDescriptions[params.productType] || turboProductDescriptions['magnet'];
+
+      finalPrompt = `[!!!] CRITICAL: FLAT FRONT-FACING DESIGN VIEW (NON-NEGOTIABLE) [!!!]
+
+Your output prompt MUST describe a FLAT, FRONT-FACING design on a CLEAN WHITE BACKGROUND.
+This is NOT product photography. This is NOT a 3D object. There is NO depth, NO shadow, NO angle, NO perspective.
+
+The VERY FIRST LINE of your output (before FORMAT:) MUST be:
+"${turboProductDesc} On a clean white background."
+
+[!!!] MANDATORY VIEW RULES:
+- The design is shown PERFECTLY FLAT - as if it were a sticker laid flat on a scanner
+- PURE WHITE background - no shadows, no gradients, no textures behind the design
+- NO 3D perspective, NO angled view, NO tilting, NO depth effect
+- NO product photography language (no "studio lighting", no "85mm lens", no "f/2.8", no "drop shadow")
+- NO physical object descriptions (no "glossy film", no "MDF wood", no "you could pick up")
+- NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
+- The viewer sees the design STRAIGHT ON from directly above/in front - completely flat
+- Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
+- The design MUST feature COLORFUL, BIG, BOLD title/text letters as the main visual element - vibrant multi-colored typography is essential
+- Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
+
+BANNED WORDS/PHRASES in your output: "product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo"
+
+NOW GENERATE THE PROMPT:
+
+${finalPrompt}`;
+    }
+
+    // Style reference injection (takes priority, but respects selected style)
+    const _isRealisticStyle = ['realistic', 'photography', 'hybrid'].includes(_effectiveStyle);
+    const _qualityKeywords = _isRealisticStyle
+      ? 'Crisp sharp ultra-detailed, clean precise edges, no blur, no artifacts, high-resolution professional quality'
+      : 'Ultra-detailed, high-resolution professional quality, no compression artifacts  - match the EXACT rendering style of the reference image';
+
     if (turboStyleRef) {
+      const _styleOverrideNote = _isRealisticStyle
+        ? `\n[!] STYLE CONSTRAINT: The user selected "${_effectiveStyle}" style. Do NOT extract a cartoon/illustration style from the reference image. Instead, extract ONLY the composition approach, element types, color palette, and subject matter. The RENDERING STYLE must remain ${_effectiveStyle === 'hybrid' ? 'a MIX of PHOTOREALISTIC elements and CARTOON elements (see STYLE field in the template below)' : 'PHOTOREALISTIC (see STYLE field in the template below)'}.`
+        : '';
       finalPrompt = `FIRST: Read the STYLE REFERENCE image: ${turboStyleRef}
-After reading, extract the EXACT art style (line work, shading, rendering, proportions), color palette (saturation, temperature), composition approach (density, layering), and decoration level.
-[!] Use the style reference as INSPIRATION for the visual language  - do NOT copy its quality. If the reference is low-res or blurry, IGNORE that. Only extract the STYLE.
-Your generated prompt MUST begin with a 2-3 sentence STYLE BLOCK that precisely describes this visual style so the image AI can replicate it. This overrides any style selection.
-ALSO include: "Crisp sharp ultra-detailed illustration, clean precise edges, no blur, no artifacts, high-resolution professional quality."
+After reading, extract the composition approach (density, layering, element types), color palette (saturation, temperature), and decoration level.${_styleOverrideNote}
+[!] Use the style reference as INSPIRATION for the visual language  - do NOT copy its quality. If the reference is low-res or blurry, IGNORE that. Only extract the CONCEPT and COMPOSITION.
+${_isRealisticStyle ? 'The STYLE/RENDERING must follow the STYLE field in the template below  - do NOT override it with the reference image style.' : 'Your generated prompt MUST begin with a 2-3 sentence STYLE BLOCK that precisely describes this visual style so the image AI can replicate it.'}
+ALSO include: "${_qualityKeywords}."
 ${turboImages.length > 1 ? `\nALSO read these reference images: ${turboImages.filter(f => f !== turboStyleRef).join(', ')}` : ''}
 
 THEN: ${turboPrompt}`;
     } else if (turboImages.length > 0) {
       if (params.projectType === 'variations') {
         // Turbo + variations + reference image: structured analysis
+        const _varStyleNote = _isRealisticStyle
+          ? `\n[!] STYLE CONSTRAINT: The user selected "${_effectiveStyle}" style. Extract the SUBJECT and COMPOSITION from the reference, but the rendering style must follow the STYLE field in the template below${_effectiveStyle === 'hybrid' ? ' (mix of PHOTOREALISTIC and CARTOON elements)' : ' (PHOTOREALISTIC rendering)'}.`
+          : '\nKeep the same character, same destination, same style.';
         finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}
 
 IMPORTANT  - REFERENCE IMAGE VARIATION:
-After reading the image, identify: the PROTAGONIST (character/animal/element), their POSE, CLOTHING, SUPPORTING ELEMENTS, COLORS, and STYLE.
+After reading the image, identify: the PROTAGONIST (character/animal/element), their POSE, CLOTHING, SUPPORTING ELEMENTS, COLORS, and COMPOSITION.${_varStyleNote}
 Your generated prompt MUST describe the SAME protagonist and elements in a DIFFERENT pose/composition/context.
-Do NOT create a completely unrelated design. Keep the same character, same destination, same style.
-[!] If the reference image is low-quality/blurry  - IGNORE the quality, only extract the STYLE and CONCEPT. Your prompt must produce a CRISP, SHARP result.
-Include in your prompt: "Crisp sharp ultra-detailed illustration, clean precise edges, no blur, no artifacts, high-resolution professional quality, vivid saturated colors."
+Do NOT create a completely unrelated design. Keep the same character and destination.
+[!] If the reference image is low-quality/blurry  - IGNORE the quality, only extract the CONCEPT. Your prompt must produce a CRISP, SHARP result.
+Include in your prompt: "${_qualityKeywords}, vivid saturated colors."
 
 THEN: ${turboPrompt}`;
       } else {
         // ALL project types with reference images in turbo mode: analyze style
+        const _refStyleNote = _isRealisticStyle
+          ? `\n\n[!] STYLE CONSTRAINT: The user selected "${_effectiveStyle}" style. Do NOT extract a cartoon/illustration rendering style from the reference images. Extract ONLY the subject matter, color palette, composition, and elements. The RENDERING STYLE must follow the STYLE field in the template below${_effectiveStyle === 'hybrid' ? ' (some elements PHOTOREALISTIC, others CARTOON  - see STYLE field)' : ' (PHOTOREALISTIC rendering  - see STYLE field)'}.`
+          : '';
+        const _refQualityKw = _isRealisticStyle
+          ? '"crisp sharp ultra-detailed", "clean precise edges", "high-resolution professional quality", "vivid saturated colors"'
+          : '"crisp sharp vector illustration", "clean precise edges", "high-resolution detailed artwork", "professional product-quality rendering"';
+        const _refQualityLine = _isRealisticStyle
+          ? '"ultra-detailed, sharp clean edges, vivid saturated colors, no blur, no artifacts, professional quality"'
+          : '"ultra-detailed, sharp clean lines, vibrant saturated colors, no blur, no artifacts, no soft edges, professional illustration quality"';
         finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}
 
 IMPORTANT  - REFERENCE IMAGE ANALYSIS (INSPIRATION ONLY):
 After reading the image(s), analyze them as INSPIRATION  - do NOT copy them literally. Extract:
-- ART STYLE: line weight, shading approach, proportions, rendering technique
+${_isRealisticStyle ? '- SUBJECT MATTER: characters, landmarks, animals, objects, cultural elements' : '- ART STYLE: line weight, shading approach, proportions, rendering technique'}
 - COLOR PALETTE: dominant colors, saturation level, temperature
 - COMPOSITION APPROACH: layout pattern, element density, depth layering
-- KEY ELEMENTS: types of characters, flora, fauna, cultural objects
+- KEY ELEMENTS: types of characters, flora, fauna, cultural objects${_refStyleNote}
 
 [!] CRITICAL QUALITY RULES:
-- Treat reference images as MOOD/STYLE INSPIRATION  - create something COMPLETELY NEW but inspired by their aesthetic
-- NEVER describe the reference image literally  - instead, create an ORIGINAL composition in the same visual spirit
-- Your prompt MUST include these quality keywords: "crisp sharp vector illustration", "clean precise edges", "high-resolution detailed artwork", "professional product-quality rendering"
-- If the reference image looks low-resolution or blurry, IGNORE the quality  - only extract the STYLE and CONCEPT, then describe a PRISTINE high-quality version
-- Add to your prompt: "ultra-detailed, sharp clean lines, vibrant saturated colors, no blur, no artifacts, no soft edges, professional illustration quality"
+- Treat reference images as MOOD/CONCEPT INSPIRATION  - create something COMPLETELY NEW but inspired by their elements
+- NEVER describe the reference image literally  - instead, create an ORIGINAL composition inspired by the same subject
+- Your prompt MUST include these quality keywords: ${_refQualityKw}
+- If the reference image looks low-resolution or blurry, IGNORE the quality  - only extract the CONCEPT, then describe a PRISTINE high-quality version
+- Add to your prompt: ${_refQualityLine}
 
 THEN: ${turboPrompt}`;
       }
     }
 
-    const turboFlags = turboImages.length > 0 ? '--allowedTools "Read,Glob"' : '';
-    const command = `echo ${JSON.stringify(finalPrompt)} | claude -p ${turboFlags}`;
+    // Log the final prompt for debugging style issues
+    console.log(`\n> FINAL PROMPT PREVIEW (first 500 chars):\n${finalPrompt.substring(0, 500)}\n...`);
+    console.log(`> PROMPT STYLE CHECK: contains "photorealistic"=${finalPrompt.toLowerCase().includes('photorealistic')}, "cartoon"=${finalPrompt.toLowerCase().includes('cartoon')}, "illustration"=${finalPrompt.toLowerCase().includes('illustration')}, "hybrid"=${finalPrompt.toLowerCase().includes('hybrid')}`);
+
+    const hasImagesForTurbo = turboImages.length > 0;
+    const turboFlags = hasImagesForTurbo ? '--allowedTools "Read,Glob"' : '';
+    // With images: need extra turns for reading files then responding (1 per image + 1 for response). Without: single shot.
+    const turboMaxTurns = hasImagesForTurbo ? `--max-turns ${turboImages.length + 2}` : '--max-turns 1';
+    console.log(`> Turbo command: --model haiku ${turboMaxTurns} | images=${turboImages.length} | flags=${turboFlags || 'none'}`);
+    const command = `echo ${JSON.stringify(finalPrompt)} | claude -p --model claude-haiku-4-5-20251001 ${turboMaxTurns} ${turboFlags}`;
 
     const claude = spawn(command, [], {
       cwd: turboPath,
@@ -341,16 +627,17 @@ THEN: ${turboPrompt}`;
       }
     };
 
-    // Short timeout for turbo mode (30 seconds max)
+    // Turbo timeout: 15s without images, 30s with images (reading files takes time)
+    const turboTimeout = hasImagesForTurbo ? 30000 : 15000;
     const timeoutTimer = setTimeout(async () => {
       claude.kill();
       await cleanupTurbo();
       if (output && output.length > 50) {
-        resolve(output);
+        resolve(enforceImageQuality(output));
       } else {
         reject(new Error('Turbo timeout - try again'));
       }
-    }, 30000);
+    }, turboTimeout);
 
     claude.stdout.on('data', (data) => {
       output += data.toString();
@@ -372,7 +659,7 @@ THEN: ${turboPrompt}`;
         if (formatIndex > 0) {
           cleanOutput = cleanOutput.substring(formatIndex);
         }
-        resolve(cleanOutput.trim());
+        resolve(enforceImageQuality(cleanOutput.trim()));
       } else {
         reject(new Error('Turbo failed to generate output'));
       }
@@ -445,7 +732,9 @@ async function invokeClaude(projectType, instruction, params) {
 
         // Copy style reference image to temp dir
         if (params.styleReferenceImage) {
-          const styleRefFilename = 'style-ref-' + path.basename(params.styleReferenceImage);
+          // Sanitize filename: remove non-ASCII chars that cause Claude Code to fail reading files
+          const rawStyleName = path.basename(params.styleReferenceImage);
+          const styleRefFilename = 'style-ref-' + rawStyleName.replace(/[^\x20-\x7E]/g, '-');
           styleRefProjectPath = path.join(tempDir, styleRefFilename);
           await fs.copyFile(params.styleReferenceImage, styleRefProjectPath);
           projectImages.push(styleRefProjectPath);
@@ -461,11 +750,59 @@ async function invokeClaude(projectType, instruction, params) {
     // Build the full instruction with parameters
     let fullInstruction = instruction;
 
+    // ═══ AUTO-DETECT HYBRID INTENT from user instructions (non-turbo path) ═══
+    const _ntInstructionLower = (instruction || '').toLowerCase();
+    const _ntHybridKeywords = ['mix real', 'real elements', 'real and cartoon', 'real with cartoon', 'realistic and cartoon', 'photo and cartoon', 'photo with cartoon', 'real photos', 'actual photos', 'camera quality', 'photorealistic mix', 'blend real', 'real element', 'mezcla real', 'elementos reales'];
+    const _ntDetectedHybrid = _ntHybridKeywords.some(kw => _ntInstructionLower.includes(kw));
+    if (_ntDetectedHybrid) {
+      params.style = 'hybrid'; // Force hybrid style when user mentions mixing real+cartoon
+      console.log(`> NON-TURBO: AUTO-DETECTED HYBRID STYLE from user instruction keywords. Overriding style to "hybrid".`);
+    }
+    const _ntIsRealisticStyle = ['realistic', 'photography', 'hybrid'].includes(params.style);
+
     // ═══ VISUAL RICHNESS PREAMBLE (for from-scratch and previous-element) ═══
     // These modes were producing sparse, minimal designs. This injects a mandate
     // for visual density, layered details, and attention-grabbing richness.
     if (projectType === 'from-scratch' || projectType === 'previous-element') {
-      fullInstruction += `\n\n${'='.repeat(50)}
+      if (_ntIsRealisticStyle) {
+        // HYBRID / REALISTIC / PHOTOGRAPHY preamble — no sticker/illustration language
+        fullInstruction += `\n\n${'='.repeat(50)}
+> MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
+${'='.repeat(50)}
+
+Your output prompt MUST produce a design that is VISUALLY RICH, DENSE, and ATTENTION-GRABBING.
+${params.style === 'hybrid' ? `
+[!!!] CRITICAL STYLE RULE  - HYBRID REAL+CARTOON:
+This design MUST visually MIX two distinct rendering styles in the SAME image:
+- PHOTOREALISTIC elements: Key subjects (animals, landmarks, nature, water, textures) must be described as REAL PHOTOGRAPHS  - actual camera-quality images with real lighting, real textures, real depth of field. Use language like "real photograph of...", "camera-captured...", "actual photo cutout of...", "stock photo quality..."
+- CARTOON/ILLUSTRATED elements: Text, borders, decorative elements, patterns, and some supporting graphics must be bold cartoon illustrations  - thick outlines, flat vibrant colors, stylized shapes.
+- The CONTRAST between real photos and cartoon illustrations is the KEY VISUAL FEATURE.
+- Think: a real photo of a parrot physically placed on top of a cartoon illustrated background. Like a magazine photo cutout surrounded by drawn elements.
+- If your output describes EVERYTHING in the same style (all illustration OR all photo), YOU HAVE FAILED.
+` : params.style === 'realistic' ? `
+[!!!] CRITICAL STYLE RULE  - PHOTOREALISTIC:
+This design MUST look like a professional photograph or high-end photo composite  - NOT an illustration or cartoon. Every element must have real-world photographic quality: actual camera depth of field, real material textures, natural lighting. Do NOT use words like "illustration", "cartoon", "bold outlines", "flat colors", "vector", or "sticker" in your output.
+` : `
+[!!!] CRITICAL STYLE RULE  - PHOTOGRAPHY:
+This design uses REAL photo elements  - actual photographic quality images, NOT illustrations. Photo elements must look like real camera shots integrated into the composition.
+`}
+RICHNESS REQUIREMENTS:
+1. **PACKED WITH DETAILS**  - Every area should have something interesting. No large empty zones.
+2. **LAYERED DEPTH**  - Create at least 3 visual layers with overlap and interaction.
+3. **VIVID COLORS**  - Bold, rich colors appropriate to the style (natural for photos, saturated for cartoon elements).
+4. **10+ SUPPORTING ELEMENTS**  - Include 10-15 specific cultural/regional details with SPECIFIC species names.
+5. **RICH TEXTURES**  - Real material textures for photorealistic elements, bold graphic textures for cartoon elements.
+6. **DYNAMIC COMPOSITION**  - Movement, energy, flowing curves, overlapping layers.
+
+[X] NEVER make everything the same rendering style when hybrid is requested
+[X] NEVER use the word "illustration" for elements that should be photorealistic
+[X] NEVER produce a flat, single-layer composition with no depth
+[OK] ALWAYS describe photorealistic elements with camera/photo language
+[OK] ALWAYS describe cartoon elements with illustration/outline language
+${'='.repeat(50)}`;
+      } else {
+        // CARTOON / COLLAGE / DEFAULT preamble — original sticker language
+        fullInstruction += `\n\n${'='.repeat(50)}
 > MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
 ${'='.repeat(50)}
 
@@ -489,6 +826,7 @@ RICHNESS REQUIREMENTS:
 [OK] ALWAYS make text integration bold and visually striking (not just floating text)
 [OK] ALWAYS describe specific color combinations that create visual IMPACT
 ${'='.repeat(50)}`;
+      }
     }
 
     // ═══ STYLE REFERENCE IMAGE ANALYSIS ═══
@@ -530,16 +868,24 @@ E) MOOD & ENERGY (capture from reference):
 - Visual energy: calm? dynamic? explosive? whimsical?
 
 YOUR OUTPUT PROMPT MUST:
-1. Begin with a 3-4 sentence STYLE BLOCK that describes this EXACT visual style so the image AI can replicate it
+${_ntIsRealisticStyle ? `1. Begin with a 3-4 sentence STYLE BLOCK. ${params.style === 'hybrid' ? 'CRITICAL: The style is HYBRID  - your STYLE BLOCK must describe a MIX of photorealistic photo elements (camera-quality, real textures) AND cartoon illustrated elements (bold outlines, flat colors). Extract SUBJECT MATTER and COMPOSITION from the reference, but do NOT make everything the same rendering style.' : 'CRITICAL: The style is PHOTOREALISTIC  - do NOT extract cartoon/illustration style from the reference. Extract only the subject, composition, and color palette.'}
+2. Use a color palette inspired by the reference
+3. Match the detail density and composition approach
+4. ${params.style === 'hybrid' ? 'Describe photorealistic elements as "real photograph of...", "camera-captured...", "photo cutout of..." and cartoon elements as "bold cartoon illustrated...", "colorful drawn..."' : 'Use ONLY photographic language: "photorealistic", "camera-quality", "real photograph", "natural lighting"'}
+5. Include these MANDATORY quality keywords: "Crisp, sharp, ultra-detailed. Clean precise edges, no blur, no artifacts, high-resolution professional quality."
+
+[!] IMPORTANT: The user selected "${params.style}" style. ${params.style === 'hybrid' ? 'The reference image shows the SUBJECT MATTER to include, but the rendering style must be a MIX of real photographs and cartoon illustrations. Do NOT make everything one style.' : 'Do NOT convert photographic reference images into illustrations. Maintain photorealistic rendering.'} If the reference image is low-resolution or blurry, IGNORE the quality  - extract ONLY the concept.
+
+${params.style === 'hybrid' ? 'The style is HYBRID  - this OVERRIDES any tendency to make everything cartoon or everything realistic. You MUST mix both.' : 'The rendering style must be ' + params.style + '.'}` : `1. Begin with a 3-4 sentence STYLE BLOCK that describes this EXACT visual style so the image AI can replicate it  - if the reference is a 3D render, describe a 3D render. If it's a soft/fluffy style, describe soft/fluffy. If it's a cartoon, describe cartoon. MATCH the rendering technique EXACTLY as you see it.
 2. Use the SAME color palette, saturation, and temperature as the reference
 3. Match the SAME level of detail density and decoration
-4. Replicate the SAME art style and rendering approach
-5. Include these MANDATORY quality keywords: "Crisp, sharp, ultra-detailed illustration. Clean precise edges, no blur, no artifacts, no soft unfocused areas. High-resolution professional product-quality rendering. Vivid saturated colors with strong contrast."
+4. Replicate the SAME art style and rendering approach  - do NOT default to "cartoon illustration" if the reference is a different style (3D render, watercolor, realistic painting, etc.)
+5. Include quality keywords that MATCH the reference style. Do NOT hard-code "illustration"  - instead, describe the actual rendering: "soft 3D render" for 3D, "bold cartoon illustration with thick outlines" for cartoon, "watercolor painting" for watercolor, etc. Always add: "high-resolution, professional quality, no compression artifacts, detailed."
 
-[!] IMPORTANT: If the style reference image is low-resolution, blurry, or has compression artifacts  - COMPLETELY IGNORE the image quality. Extract ONLY the artistic style, color palette, and composition approach. Your prompt must produce a PRISTINE, SHARP, DETAILED result regardless of the reference's quality.
+[!] IMPORTANT: If the style reference image is low-resolution, blurry, or has compression artifacts  - COMPLETELY IGNORE the image quality. Extract ONLY the artistic style, color palette, and composition approach. Your prompt must produce a HIGH-QUALITY result in the SAME rendering style as the reference.
 
 This style reference OVERRIDES the style dropdown selection. The reference image IS the style.
-DO NOT deviate from this style. DO NOT use a different art style, color palette, or composition approach.
+DO NOT deviate from this style. If the reference has SOFT edges, describe SOFT edges. If it has BOLD outlines, describe BOLD outlines. If it's a 3D render with volumetric lighting, describe a 3D render with volumetric lighting. MATCH the reference rendering EXACTLY  - do NOT default to any other style.`}
 ${'='.repeat(50)}`;
     }
 
@@ -569,10 +915,10 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
     if (params.style) {
       const styleNames = {
         'cartoon': 'Cartoon - Playful cartoon style with bold outlines and vibrant colors',
-        'realistic': 'Realistic - Detailed realistic illustration with natural colors and textures',
+        'realistic': 'Realistic - PHOTOREALISTIC rendering  - every element must look like a real photograph or high-end photo composite. Camera-quality depth of field, real material textures, natural lighting. This is NOT an illustration  - do NOT use words like illustration, cartoon, outlines, or sticker.',
         'collage': 'Collage - CRITICAL: Create a true mixed media COLLAGE design with these specific requirements:\n  - Use layered cutout style with visible edges and overlapping elements\n  - Include varied textures (paper, fabric, photo fragments, patterns)\n  - Mix different art styles and media types (photos, illustrations, patterns, text)\n  - Create depth through overlapping layers with shadows/highlights\n  - Use irregular torn/cut edges on elements (NOT perfect vector shapes)\n  - Include decorative elements like tape, borders, stamps, or stitching effects\n  - Intentional composition that looks hand-assembled from multiple sources\n  - This should look like physical collage art, NOT a regular illustration',
         'photography': 'Photography - Photography-based design with real photo elements integrated into the composition. Combine real photography with illustrated elements, decorative frames, or use photos as texture fills for regional shapes.',
-        'hybrid': 'Hybrid Real+Cartoon - CRITICAL: Create a design that seamlessly BLENDS real photographic elements with cartoon/illustrated elements so they complement each other:\n  - Use REAL photographic imagery for key elements (landmarks, animals, objects, food, nature, textures)  - these should look like actual photographs\n  - Use CARTOON/ILLUSTRATED style for characters, decorative elements, borders, typography, and supporting graphics  - bold outlines, vibrant flat colors\n  - The real and cartoon elements must INTERACT and OVERLAP naturally (e.g., a cartoon character sitting on a real photographed rock, illustrated flowers growing around a real building photo, cartoon birds flying over a real landscape)\n  - Create a cohesive composition where neither style dominates  - they work together harmoniously\n  - Use shadows, lighting, and scale to make the blend feel intentional and polished, not like a lazy paste job\n  - Think: Who Framed Roger Rabbit meets travel poster  - the real world and the illustrated world coexist beautifully'
+        'hybrid': 'Hybrid Real+Cartoon - CRITICAL MANDATORY STYLE:\n  [!!!] This design MUST contain TWO VISUALLY DISTINCT rendering styles in ONE image:\n  REAL PHOTO ELEMENTS: Describe key subjects (animals, landmarks, waterfalls, nature) as ACTUAL PHOTOGRAPHS  - use these exact words in your prompt: "real photograph of...", "photo cutout of...", "camera-captured image of...", "stock photo quality image of...". These elements must have real camera depth of field, real natural lighting, real fur/feather/stone textures  - as if cut from a real photo and placed into the design.\n  CARTOON ELEMENTS: Describe text, borders, decorative elements, patterns as BOLD CARTOON ILLUSTRATIONS  - use words: "cartoon illustrated...", "bold black outlines...", "flat vibrant colors...", "hand-drawn...".\n  The VISUAL CONTRAST between the real photo cutouts and the cartoon drawings is what makes this style unique. The viewer must CLEARLY see both a real photograph and a cartoon illustration in the same image.\n  Think: a real photo of a parrot physically cut out and placed on a cartoon-drawn jungle background with illustrated colorful text.\n  [!!!] QUALITY CHECK: If your output describes ALL elements with the same rendering language (all "illustration" or all "photograph"), you have FAILED. REWRITE until both styles are present.'
       };
       fullInstruction += `\nStyle: ${styleNames[params.style] || params.style}`;
     }
@@ -587,21 +933,77 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
     if (params.productType) {
       fullInstruction += `\nProduct Type: ${params.productType}`;
 
+      // MANDATORY: Flat front-facing design view for ALL product types
+      const productDescriptions = {
+        'bottle-opener': 'a flat, front-facing design for a bottle opener souvenir (approximately 3" x 6") with a tall vertical shape, a rounded arch opening at the top, a narrow neck, and a wider rounded base. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
+        'magnet': 'a flat, front-facing design for a souvenir magnet (approximately 3.5" x 4") with an organic, irregular silhouette shape (NOT a rectangle or circle - edges follow the design elements). NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
+        'keychain': 'a flat, front-facing design for a keychain souvenir (approximately 1.5-2.5") with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.'
+      };
+
+      const productDesc = productDescriptions[params.productType] || productDescriptions['magnet'];
+
+      fullInstruction += `\n\n${'='.repeat(50)}
+CRITICAL: FLAT FRONT-FACING DESIGN VIEW (NON-NEGOTIABLE)
+${'='.repeat(50)}
+
+Your generated prompt MUST describe a FLAT, FRONT-FACING design on a CLEAN WHITE BACKGROUND.
+This is NOT product photography. This is NOT a 3D object.
+
+The prompt you generate MUST START with:
+"${productDesc} On a clean white background."
+
+MANDATORY FLAT VIEW RULES:
+1. The design is shown PERFECTLY FLAT - as if it were a sticker laid flat on a scanner
+2. PURE WHITE background - no shadows, no gradients, no textures behind the design
+3. NO 3D perspective, NO angled view, NO tilting, NO depth effect whatsoever
+4. NO product photography language (no "studio lighting", no "85mm lens", no "f/2.8", no "drop shadow")
+5. NO physical object descriptions (no "glossy film", no "MDF wood", no "you could pick up", no "physical depth")
+6. NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
+7. The viewer sees the design STRAIGHT ON from directly in front - completely flat
+8. Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
+9. The design MUST feature COLORFUL, BIG, BOLD title/text letters as the main visual element - vibrant multi-colored typography is essential
+10. Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
+
+BANNED WORDS/PHRASES in your output prompt (DO NOT USE ANY OF THESE):
+"product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "physical depth", "weight", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo"
+
+DO generate prompts that describe a FLAT DESIGN viewed STRAIGHT-ON on a WHITE BACKGROUND.
+${'='.repeat(50)}`;
+
       // Add shape constraints if this is a bottle opener AND user has uploaded shape references
       if (params.productType === 'bottle-opener' && params.images && params.images.length > 0) {
-        fullInstruction += `\n\nMANDATORY BOTTLE OPENER SHAPE (CRITICAL - NON-NEGOTIABLE):
+        fullInstruction += `\n\n${'!'.repeat(50)}
+MANDATORY PRODUCT SILHOUETTE SHAPE (THIS IS THE #1 PRIORITY - NON-NEGOTIABLE)
+${'!'.repeat(50)}
 
-EXACT SHAPE REQUIREMENTS - Study the reference images carefully:
-- TOP SECTION: Large rounded opening (upside-down U or rounded rectangle) where bottle cap fits - this opening is ESSENTIAL and must be clearly visible
-- OVERALL PROPORTIONS: Tall vertical format, approximately 6" height x 3" width ratio
-- MIDDLE SECTION: Narrower "neck" area (2-2.5" wide) with gentle organic curves on sides
-- BOTTOM SECTION: Wider rounded base (3.5-4" wide, occupying 35-40% of height) for stability
-- ALL EDGES: Organic flowing curves following design elements - NO straight lines or hard corners
-- STRUCTURAL INTEGRITY: All decorative elements connect to main composition, no floating parts
+Your FORMAT line MUST say: "Tall vertical product shape  - NOT a rectangle, NOT a circle, NOT a badge."
 
-The reference images show EXACTLY how this should look. Your design MUST match this silhouette - it's a functional product, not a decorative rectangle or circle. The top opening and bottom base widening are the defining features that make this recognizable as a bottle opener.
+The design MUST fit within this EXACT silhouette outline (describe this PRECISELY in your output prompt):
 
-VISUAL CHECK: If someone saw just the outline/silhouette, would they recognize it as a bottle opener? If not, fix the shape.`;
+SILHOUETTE DESCRIPTION (put this at the VERY START of your output prompt):
+"The entire design fits within a TALL VERTICAL custom silhouette shape: at the very top, there is a ROUNDED ARCH OPENING (like an upside-down U or horseshoe) which is a cutout/hole  - this is the most distinctive feature and MUST be clearly visible. Below the arch opening, the shape NARROWS into a slim neck section. Then the shape WIDENS into a large rounded base that contains the main artwork. The overall proportions are approximately 2:1 height-to-width ratio. Think of a guitar pick shape but taller, with an arch-shaped hole at the top."
+
+CRITICAL SHAPE RULES:
+1. The ARCH OPENING at the top is MANDATORY  - without it, the shape is wrong
+2. The shape must be VERTICAL (taller than wide)  - NOT horizontal, NOT square
+3. The neck must be NARROWER than the base
+4. The base is the WIDEST part and holds most of the design content
+5. One of the reference images shows this EXACT shape  - study it carefully
+6. Do NOT produce a rectangular badge, circular emblem, or generic rounded shape
+
+Your output prompt MUST begin the FORMAT/SHAPE section with this silhouette description. The AI image generator needs to understand this is a SPECIFIC PRODUCT SHAPE, not a standard rectangle.
+${'!'.repeat(50)}`;
+      }
+
+      // Count content reference images (exclude shape templates and style references)
+      if (params.images && params.images.length > 0) {
+        const contentImageCount = params.images.filter(img => {
+          const name = path.basename(img).toLowerCase();
+          return !name.includes('bottle-opener-shape') && !name.includes('vertical bottle opener') && !name.includes('horizontal bottle opener') && !name.includes('shape-ref') && !name.includes('style-ref');
+        }).length;
+        if (contentImageCount > 0) {
+          fullInstruction += `\n\n[!] REFERENCE IMAGE COUNT: There are ${contentImageCount} content reference images uploaded. Your generated prompt MUST describe and include ALL ${contentImageCount} of them in the design. Do NOT skip any reference image. Each one must appear as a visible element in the final design.`;
+        }
       }
     }
 
@@ -805,7 +1207,7 @@ LETTER ARRANGEMENT: "${destination}" spelled out in [horizontal row / slightly s
 PHOTO FILLS  - Each letter is a window/cutout showing a DIFFERENT ${destination} scene:
 ${letterList}
 
-MATERIAL & FINISH: [Natural wood border with subtly burned/darkened edges / Brushed metal frame / Glossy acrylic with clean edges]. Each photo is vivid, high-resolution, fills the entire letter shape edge-to-edge.
+MATERIAL & FINISH: 3D letters with subtle texture [natural wood / brushed metal / glossy acrylic]. Each photo is vivid, high-resolution, fills the entire letter shape edge-to-edge. NO external border or outline around the letters or the overall design.
 
 BACKGROUND: Clean white or transparent. The letters sit as a group  - no additional framing, badges, or borders around them.
 
@@ -900,11 +1302,11 @@ LETTER ARRANGEMENT: "${destination}" spelled horizontally, each letter acting as
 PHOTO FILLS  - Each letter shows a DIFFERENT ${destination} scene:
 ${letterList}
 
-MATERIAL & FINISH: Natural wood border with subtly burned/darkened edges. Vivid, high-resolution photos fill each letter edge-to-edge.
+MATERIAL & FINISH: 3D letters with subtle texture. Vivid, high-resolution photos fill each letter edge-to-edge. NO external border or outline around the letters.
 
 BACKGROUND: Clean white or transparent. No additional framing or borders.
 
-STYLE: Photorealistic product shot of a physical souvenir magnet.
+STYLE: Flat front-facing view of a souvenir magnet design. NO borders, NO outlines around the design.
 
 CREATE DESIGN
 
@@ -947,7 +1349,7 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
       }
     }, 20000);
 
-    // Timeout after 120 seconds (increased for projects with heavy documentation)
+    // Timeout after 180 seconds (increased for projects with images + heavy documentation)
     const timeoutTimer = setTimeout(async () => {
       clearTimeout(warningTimer); // Clean up warning timer
       claude.kill();
@@ -957,13 +1359,13 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
 
       if (output && output.length > 50) {
         console.log('[!]  Timeout reached, returning partial output');
-        resolve(output);
+        resolve(enforceImageQuality(output));
       } else if (hasReceivedOutput) {
         reject(new Error(`Claude Code stalled after ${Math.round(timeSinceLastOutput/1000)}s with no new output. The generation may be incomplete.`));
       } else {
-        reject(new Error('Claude Code timed out after 120 seconds with no output. Possible causes:\n- Large documentation files taking too long to read\n- Network latency to Anthropic API\n- Claude Code not properly installed\n\nTry: Simplify instruction, check internet connection, or restart the app.'));
+        reject(new Error('Claude Code timed out after 180 seconds with no output. Possible causes:\n- Large documentation files taking too long to read\n- Network latency to Anthropic API\n- Claude Code not properly installed\n\nTry: Simplify instruction, check internet connection, or restart the app.'));
       }
-    }, 120000);
+    }, 180000);
 
     // Capture stdout
     claude.stdout.on('data', (data) => {
@@ -1035,10 +1437,10 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
       }
 
       if (filteredOutput && filteredOutput.length > 100) {
-        resolve(filteredOutput);
+        resolve(enforceImageQuality(filteredOutput));
       } else if (output && output.length > 100) {
         // Fallback to full output if filtering didn't work
-        resolve(output);
+        resolve(enforceImageQuality(output));
       } else {
         reject(new Error(`Claude Code failed to generate output: ${errorOutput || 'No substantial output received'}`));
       }
@@ -1093,87 +1495,205 @@ async function generateVariations(params, count, onVariationComplete) {
   }
   console.log(`${'*'.repeat(60)}\n`);
 
-  for (let i = 0; i < count; i++) {
-    try {
-      // Modify instruction for each variation to get different results
-      let modifiedInstruction = instructions;
-      const hasImages = params.images && params.images.length > 0;
+  // TURBO PARALLEL MODE: Run all variations simultaneously for maximum speed
+  if (params.turboMode && count > 1) {
+    console.log(`\n> PARALLEL TURBO: Launching ${count} variations simultaneously\n`);
 
-      // Pick a diversity angle for this variation
-      const diversityAngle = DIVERSITY_ANGLES[i % DIVERSITY_ANGLES.length];
+    const promises = Array.from({ length: count }, async (_, i) => {
+      try {
+        let modifiedInstruction = instructions;
+        const hasImages = params.images && params.images.length > 0;
+        const diversityAngle = DIVERSITY_ANGLES[i % DIVERSITY_ANGLES.length];
+        const variationStyle = styleAssignments[i];
 
-      // Override the style for this specific variation
-      const variationStyle = styleAssignments[i];
-      if (variationStyle) {
-        params.style = variationStyle;
+        // Create a copy of params for this variation to avoid mutation conflicts
+        const variationParams = { ...params, style: variationStyle || params.style };
+
+        if (hasImages && count === 1) {
+          modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
+        } else if (count > 1) {
+          if (hasImages) {
+            modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
+          } else {
+            modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
+          }
+        }
+
+        const styleLabel = variationStyle ? ` [${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}]` : '';
+        console.log(`[${'='.repeat(10)} VARIATION ${i + 1}/${count}${styleLabel} (PARALLEL) ${'='.repeat(10)}]`);
+
+        console.log(`> [V${i + 1}] TURBO launching...`);
+        let output = await invokeClaudeTurbo(modifiedInstruction, variationParams);
+
+        // Append mandatory design rules
+        const instructionCheck = (modifiedInstruction || '').toLowerCase();
+        const isLetterFillDesign = variationParams.productType === 'magnet' && /\b(letter.?fill|photo.?fill|each\s+letter\s+(shows?|contains?|filled|has)|inside\s+(of\s+)?(the\s+)?letters?|uneven\s+letters?|block\s+letters?|3d\s+letters?|chunky\s+letters?|letras?\s+(rellenas?|con\s+fotos?|con\s+imagenes?))\b/i.test(instructionCheck);
+
+        if (isLetterFillDesign) {
+          output += `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
+        } else {
+          output += `\n\n[!] CRITICAL DESIGN RULES  - MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette  - like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge  - a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely  - NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
+        }
+
+        const variation = {
+          title: variationStyle ? `Variation ${i + 1}  - ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation ${i + 1}`,
+          prompt: sanitizePrompt(output),
+          index: i,
+          style: variationStyle || null
+        };
+
+        console.log(`\n[OK] Variation ${i + 1} completed (PARALLEL)\n`);
+        if (onVariationComplete) {
+          onVariationComplete(variation, i, count);
+        }
+        return variation;
+
+      } catch (error) {
+        console.error(`[X] Error generating variation ${i + 1}:`, error.message);
+        const errorVariation = {
+          title: `Variation ${i + 1} - Error`,
+          prompt: `[X] Error generating prompt:\n\n${error.message}\n\n**Troubleshooting:**\n- Make sure Claude Code is installed (npm install -g @anthropics/claude-code)\n- Ensure the 'claude' command is available in your terminal\n- Check that you're in the correct directory\n- Verify the project documentation exists in: ${PROJECTS[projectType]?.folder}`,
+          index: i
+        };
+        if (onVariationComplete) {
+          onVariationComplete(errorVariation, i, count);
+        }
+        return errorVariation;
       }
+    });
 
-      // When reference images are provided: keep same elements AND SAME STYLE, vary only arrangement
-      if (hasImages && count === 1) {
-        modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
-      } else if (count > 1) {
+    const results = await Promise.all(promises);
+    variations.push(...results);
+
+  } else if (count > 1) {
+    // PARALLEL MODE: Run ALL variations simultaneously (normal mode + multiple variations)
+    console.log(`\n> PARALLEL MODE: Launching ${count} variations simultaneously\n`);
+
+    const promises = Array.from({ length: count }, async (_, i) => {
+      try {
+        let modifiedInstruction = instructions;
+        const hasImages = params.images && params.images.length > 0;
+        const diversityAngle = DIVERSITY_ANGLES[i % DIVERSITY_ANGLES.length];
+        const variationStyle = styleAssignments[i];
+
+        // Create a copy of params for this variation to avoid mutation conflicts
+        const variationParams = { ...params, style: variationStyle || params.style };
+
         if (hasImages) {
-          // Reference image + multiple variations: same elements AND STYLE, different arrangements
           modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
         } else {
           modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
         }
+
+        const styleLabel = variationStyle ? ` [${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}]` : '';
+        console.log(`[${'='.repeat(10)} VARIATION ${i + 1}/${count}${styleLabel} (PARALLEL) ${'='.repeat(10)}]`);
+
+        let output;
+        if (variationParams.turboMode) {
+          console.log(`> [V${i + 1}] TURBO launching...`);
+          output = await invokeClaudeTurbo(modifiedInstruction, variationParams);
+        } else {
+          console.log(`> [V${i + 1}] Normal mode launching...`);
+          output = await invokeClaude(projectType, modifiedInstruction, variationParams);
+        }
+
+        // Append mandatory design rules
+        const instructionCheck = (modifiedInstruction || '').toLowerCase();
+        const isLetterFillDesign = variationParams.productType === 'magnet' && /\b(letter.?fill|photo.?fill|each\s+letter\s+(shows?|contains?|filled|has)|inside\s+(of\s+)?(the\s+)?letters?|uneven\s+letters?|block\s+letters?|3d\s+letters?|chunky\s+letters?|letras?\s+(rellenas?|con\s+fotos?|con\s+imagenes?))\b/i.test(instructionCheck);
+
+        if (isLetterFillDesign) {
+          output += `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
+        } else {
+          output += `\n\n[!] CRITICAL DESIGN RULES  - MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette  - like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge  - a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely  - NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
+        }
+
+        const variation = {
+          title: variationStyle ? `Variation ${i + 1}  - ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation ${i + 1}`,
+          prompt: sanitizePrompt(output),
+          index: i,
+          style: variationStyle || null
+        };
+
+        console.log(`\n[OK] Variation ${i + 1} completed (PARALLEL)\n`);
+        if (onVariationComplete) {
+          onVariationComplete(variation, i, count);
+        }
+        return variation;
+
+      } catch (error) {
+        console.error(`[X] Error generating variation ${i + 1}:`, error.message);
+        const errorVariation = {
+          title: `Variation ${i + 1} - Error`,
+          prompt: `[X] Error generating prompt:\n\n${error.message}\n\n**Troubleshooting:**\n- Make sure Claude Code is installed (npm install -g @anthropics/claude-code)\n- Ensure the 'claude' command is available in your terminal\n- Check that you're in the correct directory\n- Verify the project documentation exists in: ${PROJECTS[projectType]?.folder}`,
+          index: i
+        };
+        if (onVariationComplete) {
+          onVariationComplete(errorVariation, i, count);
+        }
+        return errorVariation;
+      }
+    });
+
+    const results = await Promise.all(promises);
+    variations.push(...results);
+
+  } else {
+    // SINGLE VARIATION: Sequential (only 1 variation, no need for parallel)
+    try {
+      let modifiedInstruction = instructions;
+      const hasImages = params.images && params.images.length > 0;
+      const variationStyle = styleAssignments[0];
+      if (variationStyle) {
+        params.style = variationStyle;
+      }
+
+      if (hasImages) {
+        modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
       }
 
       const styleLabel = variationStyle ? ` [${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}]` : '';
-      console.log(`\n[${'='.repeat(10)} VARIATION ${i + 1}/${count}${styleLabel} ${'='.repeat(10)}]\n`);
+      console.log(`\n[${'='.repeat(10)} VARIATION 1/1${styleLabel} ${'='.repeat(10)}]\n`);
 
-      // Use TURBO mode for ultra-fast generation, or standard mode for full documentation
       let output;
       if (params.turboMode) {
         console.log(`> Using TURBO mode - skipping documentation for maximum speed`);
         output = await invokeClaudeTurbo(modifiedInstruction, params);
       } else {
-        // Invoke Claude Code - this will read all the project documentation
         output = await invokeClaude(projectType, modifiedInstruction, params);
       }
 
-      // Append mandatory design rules to every prompt (Gemini must see these)
-      // EXCEPTION: Letter-fill magnets have their own shape rules (letters are naturally rectangular)
       const instructionCheck = (modifiedInstruction || '').toLowerCase();
       const isLetterFillDesign = params.productType === 'magnet' && /\b(letter.?fill|photo.?fill|each\s+letter\s+(shows?|contains?|filled|has)|inside\s+(of\s+)?(the\s+)?letters?|uneven\s+letters?|block\s+letters?|3d\s+letters?|chunky\s+letters?|letras?\s+(rellenas?|con\s+fotos?|con\s+imagenes?))\b/i.test(instructionCheck);
 
       if (isLetterFillDesign) {
-        const letterDesignRules = `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
-        output += letterDesignRules;
+        output += `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
       } else {
-        const designRules = `\n\n[!] CRITICAL DESIGN RULES  - MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette  - like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge  - a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely  - NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
-        output += designRules;
+        output += `\n\n[!] CRITICAL DESIGN RULES  - MANDATORY (DO NOT IGNORE):\n- BANNED OUTER SHAPES: NEVER use a square, rectangle, perfect circle, oval, medallion, or any simple geometric shape as the overall silhouette. These are ALL wrong.\n- REQUIRED OUTER SHAPE: The design MUST have a COMPLEX, IRREGULAR, ASYMMETRIC silhouette  - like a hand-cut vinyl sticker. The outline should be shaped BY the design elements themselves.\n- HOW TO ACHIEVE THIS: Let elements break out and define the edge  - a palm tree extends upward creating a bump, waves flow along the bottom creating scallops, a character's arm pokes out one side, buildings create a jagged skyline. The silhouette should be UNIQUE to this specific design.\n- GOOD EXAMPLES: A travel design where the top edge is shaped by mountains and a palm tree, sides follow the curves of buildings and foliage, bottom has wave-shaped edges. Each design has a one-of-a-kind outline.\n- BAD EXAMPLES: Design crammed inside a circle. Design filling a square. Design inside a round badge/medallion. Design with uniform rounded edges all around (that's just a soft rectangle).\n- BACKGROUND: Clean white or transparent. The design floats freely  - NO borders, NO frames, NO containers of any kind.\n- SELF-CHECK: Trace the outer edge with your finger. If it's a recognizable geometric shape (circle, square, rectangle, oval), it is WRONG. The outline should be complex and impossible to describe with one word.`;
       }
 
       const variation = {
-        title: variationStyle ? `Variation ${i + 1}  - ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation ${i + 1}`,
+        title: variationStyle ? `Variation 1  - ${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}` : `Variation 1`,
         prompt: sanitizePrompt(output),
-        index: i,
+        index: 0,
         style: variationStyle || null
       };
 
       variations.push(variation);
-      console.log(`\n[OK] Variation ${i + 1} completed successfully\n`);
-
-      // Call the callback immediately when this variation is ready
+      console.log(`\n[OK] Variation 1 completed successfully\n`);
       if (onVariationComplete) {
-        onVariationComplete(variation, i, count);
+        onVariationComplete(variation, 0, count);
       }
 
     } catch (error) {
-      console.error(`[X] Error generating variation ${i + 1}:`, error.message);
+      console.error(`[X] Error generating variation 1:`, error.message);
       const errorVariation = {
-        title: `Variation ${i + 1} - Error`,
+        title: `Variation 1 - Error`,
         prompt: `[X] Error generating prompt:\n\n${error.message}\n\n**Troubleshooting:**\n- Make sure Claude Code is installed (npm install -g @anthropics/claude-code)\n- Ensure the 'claude' command is available in your terminal\n- Check that you're in the correct directory\n- Verify the project documentation exists in: ${PROJECTS[projectType]?.folder}`,
-        index: i
+        index: 0
       };
-
       variations.push(errorVariation);
-
-      // Call callback for error variations too
       if (onVariationComplete) {
-        onVariationComplete(errorVariation, i, count);
+        onVariationComplete(errorVariation, 0, count);
       }
     }
   }
@@ -1796,6 +2316,1214 @@ delay 0.3
   }
 });
 
+// ═══ SEND TO ENVATO (single prompt, text-only, auto-submit) ═══
+app.post('/api/send-to-envato', async (req, res) => {
+  try {
+    const { prompt, aspectRatio, referenceImages } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'No prompt provided' });
+    }
+
+    // Map app ratio to Envato option: Square, Portrait, Landscape
+    let envatoAspect = 'Square'; // default
+    if (aspectRatio === '1:2') envatoAspect = 'Portrait';
+    else if (aspectRatio === '2:1') envatoAspect = 'Landscape';
+
+    // Write reference images to tmp-ref if provided
+    let refFilenames = [];
+    if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+      refFilenames = await writeRefImages(referenceImages);
+      console.log(`\n🚀 Send to Envato: prompt length=${prompt.length}, aspect=${envatoAspect}, refs=${refFilenames.length}`);
+    } else {
+      console.log(`\n🚀 Send to Envato: prompt length=${prompt.length}, aspect=${envatoAspect}`);
+    }
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Write prompt to temp file
+    const promptFile = path.join(tempDir, 'prompt.txt');
+    await fs.writeFile(promptFile, sanitizePrompt(prompt), 'utf8');
+
+    // Write reference upload JS to temp file if we have images
+    let refJSFile = '';
+    if (refFilenames.length > 0) {
+      refJSFile = path.join(tempDir, 'ref-upload.js');
+      await fs.writeFile(refJSFile, generateRefUploadJS(refFilenames), 'utf8');
+    }
+
+    // Build reference image upload AppleScript section
+    let refUploadSection = '';
+    if (refFilenames.length > 0) {
+      refUploadSection = `
+  -- Upload reference images
+  set refJS to do shell script "cat " & quoted form of "${refJSFile}"
+  execute active tab of front window javascript refJS
+  -- Wait for ref upload to complete
+  repeat 30 times
+    set isDone to (execute active tab of front window javascript "window.__refUploadDone ? 'yes' : 'no'")
+    if isDone is "yes" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5`;
+    }
+
+    // AppleScript: open Envato ImageGen, paste text, click Generate
+    const appleScript = `
+tell application "Google Chrome"
+  activate
+  tell front window to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
+  -- Wait for page to load
+  repeat 50 times
+    if not (loading of active tab of front window) then exit repeat
+    delay 0.15
+  end repeat
+  -- Wait for the text input to be ready (textarea or input)
+  repeat 40 times
+    set inputReady to (execute active tab of front window javascript "
+      var ta = document.querySelector('textarea, input[type=text]');
+      ta ? '1' : '0';
+    ")
+    if inputReady is "1" then exit repeat
+    delay 0.2
+  end repeat
+  delay 0.3
+${refUploadSection}
+  -- Select aspect ratio: click the dropdown then the option
+  execute active tab of front window javascript "
+    (function(){
+      var labels = document.querySelectorAll('label, span, div, button');
+      for(var i=0;i<labels.length;i++){
+        var t = labels[i].textContent.trim().toLowerCase();
+        if(t==='square'||t==='portrait'||t==='landscape'){
+          var el = labels[i].closest('button') || labels[i].closest('label') || labels[i];
+          if(el.querySelector('input[type=radio],input[type=checkbox]')){
+            el.click();
+          }
+        }
+      }
+      // Try clicking the aspect ratio dropdown/selector first
+      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
+      for(var j=0;j<triggers.length;j++){
+        var txt = triggers[j].textContent.trim().toLowerCase();
+        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
+          triggers[j].click();
+          break;
+        }
+      }
+    })();
+    'ok';
+  "
+  delay 0.3
+  -- Now click the specific aspect ratio option
+  execute active tab of front window javascript "
+    (function(){
+      var target = '${envatoAspect}'.toLowerCase();
+      var items = document.querySelectorAll('li, label, button, div[role=option], span');
+      for(var i=0;i<items.length;i++){
+        if(items[i].textContent.trim().toLowerCase()===target){
+          items[i].click();
+          return 'clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.3
+  -- Focus the text input
+  execute active tab of front window javascript "
+    var ta = document.querySelector('textarea, input[type=text]');
+    if(ta){ta.focus();ta.click();} 'ok';
+  "
+end tell
+-- Paste text via clipboard
+do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+-- Wait for paste to register
+delay 0.8
+-- Click the Generate button via JS injection
+tell application "Google Chrome"
+  execute active tab of front window javascript "
+    var btns = document.querySelectorAll('button');
+    for(var i=0;i<btns.length;i++){
+      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+        btns[i].click();
+        break;
+      }
+    }
+    'ok';
+  "
+end tell
+return "done"
+`;
+
+    const scriptFile = path.join(tempDir, 'automate.scpt');
+    await fs.writeFile(scriptFile, appleScript, 'utf8');
+
+    exec(`osascript "${scriptFile}"`, { timeout: 30000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
+      if (error) console.error('  [X] Envato AppleScript error:', error.message);
+      else console.log('  [OK] Envato automation completed');
+    });
+
+    res.json({ success: true, message: 'Sending to Envato...' });
+
+  } catch (error) {
+    console.error('[X] Send to Envato error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══ BULK SEND TO ENVATO (pre-open all tabs, then rapid-paste) ═══
+app.post('/api/send-all-to-envato', async (req, res) => {
+  try {
+    const { prompts, aspectRatios, referenceImages } = req.body;
+
+    if (!prompts || !Array.isArray(prompts) || prompts.length === 0) {
+      return res.status(400).json({ success: false, error: 'No prompts provided' });
+    }
+
+    // Map per-prompt aspect ratios (distributed randomly by frontend)
+    function mapAspect(ratio) {
+      if (ratio === '1:2') return 'Portrait';
+      if (ratio === '2:1') return 'Landscape';
+      return 'Square';
+    }
+    const envatoAspects = (aspectRatios && Array.isArray(aspectRatios))
+      ? aspectRatios.map(mapAspect)
+      : prompts.map(() => 'Square');
+
+    // Write reference images to tmp-ref if provided
+    let refFilenames = [];
+    if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+      refFilenames = await writeRefImages(referenceImages);
+      console.log(`\n🚀 BULK Send to Envato: ${prompts.length} prompts, aspects=[${envatoAspects.join(', ')}], refs=${refFilenames.length}`);
+    } else {
+      console.log(`\n🚀 BULK Send to Envato: ${prompts.length} prompts, aspects=[${envatoAspects.join(', ')}]`);
+    }
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-bulk-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Write each prompt to its own temp file
+    const promptFiles = [];
+    for (let i = 0; i < prompts.length; i++) {
+      const promptFile = path.join(tempDir, `prompt-${i}.txt`);
+      await fs.writeFile(promptFile, sanitizePrompt(prompts[i]), 'utf8');
+      promptFiles.push(promptFile);
+    }
+
+    // Write reference upload JS to temp file if we have images
+    let refJSFile = '';
+    if (refFilenames.length > 0) {
+      refJSFile = path.join(tempDir, 'ref-upload.js');
+      await fs.writeFile(refJSFile, generateRefUploadJS(refFilenames), 'utf8');
+    }
+
+    const tabCount = prompts.length;
+
+    // Build bulk AppleScript: open all tabs -> wait -> paste each
+    let script = `
+tell application "Google Chrome"
+  activate
+  set w to front window
+  -- Open ALL tabs at once
+`;
+    for (let i = 0; i < tabCount; i++) {
+      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
+    }
+    script += `
+  -- Wait for all tabs to load
+  set tabTotal to count of tabs of w
+  repeat 60 times
+    set allDone to true
+    repeat with i from (tabTotal - ${tabCount - 1}) to tabTotal
+      if (loading of tab i of w) then set allDone to false
+    end repeat
+    if allDone then exit repeat
+    delay 0.1
+  end repeat
+  delay 0.3
+end tell
+`;
+
+    // Build ref upload AppleScript section for bulk (same for all tabs)
+    let bulkRefSection = '';
+    if (refFilenames.length > 0) {
+      bulkRefSection = `
+  -- Upload reference images
+  set refJS to do shell script "cat " & quoted form of "${refJSFile}"
+  execute active tab of w javascript refJS
+  -- Wait for ref upload to complete
+  repeat 30 times
+    set isDone to (execute active tab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
+    if isDone is "yes" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5`;
+    }
+
+    // For each tab: switch + paste text + click Generate
+    for (let i = 0; i < tabCount; i++) {
+      const promptFile = promptFiles[i];
+
+      script += `
+-- TAB ${i + 1}/${tabCount}
+tell application "Google Chrome"
+  set w to front window
+  set tabTotal to count of tabs of w
+  set active tab index of w to (tabTotal - ${tabCount - 1 - i})
+  -- Wait for input ready (tight polling)
+  repeat 30 times
+    set inputReady to (execute active tab of w javascript "
+      var ta = document.querySelector('textarea, input[type=text]');
+      ta ? '1' : '0';
+    ")
+    if inputReady is "1" then exit repeat
+    delay 0.1
+  end repeat
+${bulkRefSection}
+  -- Select aspect ratio (combined: open dropdown + pick option in one call)
+  execute active tab of w javascript "
+    (function(){
+      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
+      for(var j=0;j<triggers.length;j++){
+        var txt = triggers[j].textContent.trim().toLowerCase();
+        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
+          triggers[j].click();
+          break;
+        }
+      }
+      setTimeout(function(){
+        var target = '${envatoAspects[i]}'.toLowerCase();
+        var items = document.querySelectorAll('li, label, button, div[role=option], span');
+        for(var k=0;k<items.length;k++){
+          if(items[k].textContent.trim().toLowerCase()===target){
+            items[k].click(); break;
+          }
+        }
+      }, 150);
+    })();
+    'ok';
+  "
+  delay 0.25
+  -- Focus input
+  execute active tab of w javascript "
+    var ta = document.querySelector('textarea, input[type=text]');
+    if(ta){ta.focus();ta.click();} 'ok';
+  "
+end tell
+-- Paste text
+do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 0.5
+-- Click Generate
+tell application "Google Chrome"
+  execute active tab of w javascript "
+    var btns = document.querySelectorAll('button');
+    for(var i=0;i<btns.length;i++){
+      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+        btns[i].click();
+        break;
+      }
+    }
+    'ok';
+  "
+end tell
+delay 0.15
+`;
+    }
+
+    script += `\nreturn "done"\n`;
+
+    const scriptFile = path.join(tempDir, 'bulk_automate.scpt');
+    await fs.writeFile(scriptFile, script, 'utf8');
+
+    console.log(`  📝 Executing FAST bulk Envato automation (${tabCount} tabs)...`);
+
+    exec(`osascript "${scriptFile}"`, { timeout: 90000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
+      if (error) console.error('  [X] Bulk Envato error:', error.message);
+      else console.log(`  [OK] Bulk Envato done (${tabCount} tabs)`);
+    });
+
+    res.json({ success: true, message: `Opening ${tabCount} Envato tabs...`, count: tabCount });
+
+  } catch (error) {
+    console.error('[X] Bulk Send to Envato error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══ IMAGE TO VIDEO: Generate image on ImageGen, wait, then convert to video ═══
+app.post('/api/send-to-envato-image-to-video', async (req, res) => {
+  try {
+    const { imagePrompt, videoPrompt, speech } = req.body;
+
+    if (!imagePrompt) {
+      return res.status(400).json({ success: false, error: 'No image prompt provided' });
+    }
+
+    console.log(`\n🎬🖼️ Image→Video: imgPrompt=${imagePrompt.length} chars, vidPrompt=${(videoPrompt || '').length} chars, speech=${(speech || '').length} chars`);
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-img2vid-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Write image prompt (ASCII for ImageGen)
+    const imgPromptFile = path.join(tempDir, 'img_prompt.txt');
+    await fs.writeFile(imgPromptFile, sanitizePrompt(imagePrompt), 'utf8');
+
+    // Combine video prompt + speech (Unicode-safe for VideoGen)
+    const hasSpeech = speech && speech.trim().length > 0;
+    const vidText = videoPrompt || imagePrompt;
+    const combinedVideo = hasSpeech
+      ? `${vidText}\n\nVoiceover (Spanish): ${speech}`
+      : vidText;
+    const vidPromptFile = path.join(tempDir, 'vid_prompt.txt');
+    await fs.writeFile(vidPromptFile, sanitizeVideoPrompt(combinedVideo), 'utf8');
+
+    // Full AppleScript pipeline:
+    // 1. Open ImageGen → paste image prompt → Generate
+    // 2. Wait ~50s for image generation
+    // 3. Click generated image → detail view
+    // 4. Click "Video" button → opens VideoGen with image
+    // 5. Configure 9:16, Sound, Speech
+    // 6. Paste video prompt → React update → Generate
+    const appleScript = `
+tell application "Google Chrome"
+  activate
+  set w to front window
+  -- Open new tab and remember its index
+  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
+  set myTab to (count of tabs of w)
+
+  -- Wait for page load
+  repeat 60 times
+    if not (loading of tab myTab of w) then exit repeat
+    delay 0.15
+  end repeat
+  delay 1.5
+
+  -- Re-focus our tab (user may have switched)
+  set active tab index of w to myTab
+
+  -- Wait for textarea
+  repeat 40 times
+    set inputReady to (execute tab myTab of w javascript "
+      var ta = document.querySelector('textarea');
+      ta ? '1' : '0';
+    ")
+    if inputReady is "1" then exit repeat
+    delay 0.2
+  end repeat
+  delay 0.3
+
+  -- Select Portrait (9:16) aspect ratio for video-ready images
+  -- Step 1: Click the current aspect ratio button to open dropdown
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = btns[i].textContent.trim();
+        if(t==='Square' || t==='Portrait' || t==='Landscape'){
+          btns[i].click();
+          return 'opened: ' + t;
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+  -- Step 2: Click Portrait
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Portrait'){
+          btns[i].click();
+          return 'portrait selected';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+
+  -- Focus textarea and select all
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    var ta = document.querySelector('textarea');
+    if(ta){ta.focus();ta.select();} 'ok';
+  "
+end tell
+
+-- PHASE 1: Paste image prompt (re-focus our tab first)
+tell application "Google Chrome"
+  set active tab index of front window to myTab
+end tell
+do shell script "cat " & quoted form of "${imgPromptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 1.0
+
+-- Trigger React update for image prompt
+tell application "Google Chrome"
+  set w to front window
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'ok: ' + ta.value.length;
+    })();
+  "
+  delay 0.5
+
+  -- Click Generate for image
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+          btns[i].disabled = false;
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'generate clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+end tell
+
+-- PHASE 2: Wait for image generation (~25 seconds)
+delay 25
+
+-- Re-focus our ORIGINAL window and tab (user may have switched during wait)
+tell application "Google Chrome"
+  activate
+  -- Find our ImageGen tab across ALL windows by URL (concrete indices)
+  set foundTab to false
+  repeat with winIdx from 1 to (count of windows)
+    repeat with tIdx from 1 to (count of tabs of window winIdx)
+      if URL of tab tIdx of window winIdx contains "image-gen" then
+        set w to window winIdx
+        set myTab to tIdx
+        set active tab index of w to myTab
+        set foundTab to true
+        exit repeat
+      end if
+    end repeat
+    if foundTab then exit repeat
+  end repeat
+
+  -- Click on first generated image to open detail view
+  -- Get image coordinates for physical click fallback
+  set imgCoords to (execute tab myTab of w javascript "
+    (function(){
+      var imgs = document.querySelectorAll('img');
+      var best = null;
+      var bestArea = 0;
+      for(var i=0;i<imgs.length;i++){
+        var r = imgs[i].getBoundingClientRect();
+        var area = r.width * r.height;
+        if(r.width > 150 && r.height > 150 && area > bestArea && r.y > 100){
+          best = imgs[i];
+          bestArea = area;
+        }
+      }
+      if(best){
+        best.click();
+        var r = best.getBoundingClientRect();
+        return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
+      }
+      return '';
+    })();
+  ")
+  delay 1.5
+
+  -- Physical click on the image as fallback (in case JS click didn't trigger React)
+  if imgCoords is not "" then
+    set active tab index of w to myTab
+    set AppleScript's text item delimiters to ","
+    set imgParts to text items of imgCoords
+    set AppleScript's text item delimiters to ""
+    set winBounds to bounds of w
+    set winX to item 1 of winBounds
+    set winY to item 2 of winBounds
+    set clickX to winX + (item 1 of imgParts as integer)
+    set clickY to winY + 88 + (item 2 of imgParts as integer)
+    tell application "System Events"
+      click at {clickX, clickY}
+    end tell
+  end if
+  delay 2.0
+
+  -- PHASE 3: Click "Video" button — this opens a NEW tab
+  -- Wait for the detail view to load and the "Video" button to appear (poll up to 15s)
+  set vidBtnFound to false
+  repeat 30 times
+    set vidCheck to (execute tab myTab of w javascript "
+      (function(){
+        var btns = document.querySelectorAll('button');
+        for(var i=0;i<btns.length;i++){
+          var t = btns[i].textContent.trim();
+          if(t==='Video' || t.includes('Video')){
+            return 'found';
+          }
+        }
+        return 'no';
+      })();
+    ")
+    if vidCheck is "found" then
+      set vidBtnFound to true
+      exit repeat
+    end if
+    delay 0.5
+  end repeat
+
+  -- JS click on Video button (this opens a NEW tab — Chrome auto-switches to it)
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = btns[i].textContent.trim();
+        if(t==='Video' || t.includes('Video')){
+          btns[i].click();
+          return 'video clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 3.0
+
+  -- Find the video-gen tab (Chrome should have auto-switched to it)
+  -- Poll up to 15s across ALL windows using concrete indices
+  set vidFound to false
+  repeat 30 times
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from 1 to (count of tabs of window winIdx)
+        if URL of tab tIdx of window winIdx contains "video-gen" then
+          set w to window winIdx
+          set myTab to tIdx
+          set active tab index of w to myTab
+          set vidFound to true
+          exit repeat
+        end if
+      end repeat
+      if vidFound then exit repeat
+    end repeat
+    if vidFound then exit repeat
+    delay 0.5
+  end repeat
+
+  -- Wait for VideoGen page to load (textarea appears)
+  repeat 40 times
+    set vidReady to (execute tab myTab of w javascript "
+      var ta = document.querySelector('textarea');
+      ta ? '1' : '0';
+    ")
+    if vidReady is "1" then exit repeat
+    delay 0.3
+  end repeat
+  delay 0.5
+
+  -- PHASE 4: Configure video settings
+  set active tab index of w to myTab
+
+  -- Step A: Open aspect ratio dropdown
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = btns[i].textContent.trim();
+        var r = btns[i].getBoundingClientRect();
+        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'opened ratio: ' + t;
+        }
+      }
+      return 'ratio not found';
+    })();
+  "
+  delay 0.5
+
+  -- Step B: Select 9:16
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='9:16'){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'selected 9:16';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+
+  -- Step C: Click settings icon
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var r = btns[i].getBoundingClientRect();
+        var t = btns[i].textContent.trim();
+        if(t==='' && !btns[i].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
+          if(btns[i].querySelector('svg')){
+            btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            return 'opened settings';
+          }
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+
+  -- Step D: Click Sound
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Sound' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'sound on';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+
+  -- Step E: Click Speech
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Speech' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'speech on';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.3
+
+  -- Step F: Close settings dropdown
+  execute tab myTab of w javascript "
+    document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    'ok';
+  "
+  delay 0.3
+
+  -- Step G: Focus video textarea and select all
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    var ta = document.querySelector('textarea');
+    if(ta){ta.focus();ta.select();} 'ok';
+  "
+end tell
+
+-- PHASE 5: Paste video prompt (re-focus video-gen tab first)
+tell application "Google Chrome"
+  activate
+  set active tab index of w to myTab
+end tell
+do shell script "cat " & quoted form of "${vidPromptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 1.5
+
+-- Trigger React update and Generate (w and myTab still reference the video-gen tab)
+tell application "Google Chrome"
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'react update: ' + ta.value.length;
+    })();
+  "
+  delay 0.5
+
+  -- PHASE 6: Click Generate for video
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+          btns[i].disabled = false;
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'video generate clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+end tell
+return "done"
+`;
+
+    const scriptFile = path.join(tempDir, 'img2vid_automate.scpt');
+    await fs.writeFile(scriptFile, appleScript, 'utf8');
+
+    // Long timeout: ~50s image gen + ~20s video setup
+    exec(`osascript "${scriptFile}"`, { timeout: 120000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 60000);
+      if (error) console.error('  [X] Image→Video AppleScript error:', error.message);
+      else console.log('  [OK] Image→Video automation completed');
+    });
+
+    res.json({ success: true, message: 'Image→Video pipeline started (image gen ~50s, then auto-converts to video)...' });
+
+  } catch (error) {
+    console.error('[X] Image→Video error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══ SEND TO ENVATO VIDEO GEN (single prompt — video, 9:16, Sound+Speech) ═══
+app.post('/api/send-to-envato-video', async (req, res) => {
+  try {
+    const { prompt, speech } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'No prompt provided' });
+    }
+
+    console.log(`\n🎬 Send to Envato Video Gen: prompt length=${prompt.length}, speech length=${(speech || '').length}`);
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-video-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Combine prompt + speech into one text (Envato has only 1 textarea, Speech toggle = AI voiceover)
+    const hasSpeech = speech && speech.trim().length > 0;
+    const combinedPrompt = hasSpeech
+      ? `${prompt}\n\nVoiceover (Spanish): ${speech}`
+      : prompt;
+
+    const promptFile = path.join(tempDir, 'prompt.txt');
+    await fs.writeFile(promptFile, sanitizeVideoPrompt(combinedPrompt), 'utf8');
+
+    // AppleScript: open Envato Video Gen, select 9:16, enable Sound+Speech, paste prompt
+    // DOM sequence verified via live browser inspection:
+    // 1. Click ratio button (text "16:9") to open dropdown -> click "9:16"
+    // 2. Click settings icon (empty 48x48 btn after ratio) to open Sound/Speech panel
+    // 3. Click Sound btn -> enables Speech btn
+    // 4. Click Speech btn
+    // 5. Close dropdown -> paste prompt -> Generate
+    const appleScript = `
+tell application "Google Chrome"
+  activate
+  set w to front window
+  tell w to make new tab with properties {URL:"https://labs.envato.com/video-gen"}
+  set myTab to (count of tabs of w)
+
+  -- Wait for page to load
+  repeat 60 times
+    if not (loading of tab myTab of w) then exit repeat
+    delay 0.15
+  end repeat
+  delay 2.0
+
+  -- Re-focus our tab
+  set active tab index of w to myTab
+
+  -- STEP 1: Open aspect ratio dropdown
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = btns[i].textContent.trim();
+        var r = btns[i].getBoundingClientRect();
+        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'opened ratio dropdown: ' + t;
+        }
+      }
+      return 'ratio button not found';
+    })();
+  "
+  delay 0.5
+
+  -- STEP 2: Click 9:16
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='9:16'){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'selected 9:16';
+        }
+      }
+      return '9:16 not found';
+    })();
+  "
+  delay 0.5
+
+  -- STEP 3: Click settings icon
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var r = btns[i].getBoundingClientRect();
+        var t = btns[i].textContent.trim();
+        if(t==='' && !btns[i].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
+          if(btns[i].querySelector('svg')){
+            btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            return 'opened settings';
+          }
+        }
+      }
+      return 'settings icon not found';
+    })();
+  "
+  delay 0.5
+
+  -- STEP 4: Click Sound
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Sound' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'sound clicked';
+        }
+      }
+      return 'sound not found';
+    })();
+  "
+  delay 0.5
+
+  -- STEP 5: Click Speech
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Speech' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'speech clicked';
+        }
+      }
+      return 'speech not found or disabled';
+    })();
+  "
+  delay 0.3
+
+  -- STEP 6: Close the settings dropdown
+  execute tab myTab of w javascript "
+    document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    'closed dropdown';
+  "
+  delay 0.3
+
+  -- STEP 7: Focus textarea and select all
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    var ta = document.querySelector('textarea');
+    if(ta){ta.focus();ta.select();} 'ok';
+  "
+end tell
+-- Paste prompt via clipboard (re-focus tab first)
+tell application "Google Chrome"
+  set active tab index of front window to myTab
+end tell
+do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 1.5
+-- STEP 8: Trigger React state update
+tell application "Google Chrome"
+  set w to front window
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'react update: ' + ta.value.length;
+    })();
+  "
+  delay 0.5
+  -- STEP 9: Click Generate (now enabled)
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+          btns[i].disabled = false;
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'generate clicked';
+        }
+      }
+      return 'generate not found';
+    })();
+  "
+end tell
+return "done"
+`;
+
+    const scriptFile = path.join(tempDir, 'automate.scpt');
+    await fs.writeFile(scriptFile, appleScript, 'utf8');
+
+    exec(`osascript "${scriptFile}"`, { timeout: 45000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
+      if (error) console.error('  [X] Envato Video AppleScript error:', error.message);
+      else console.log('  [OK] Envato Video automation completed');
+    });
+
+    res.json({ success: true, message: 'Sending to Envato Video Gen...' });
+
+  } catch (error) {
+    console.error('[X] Send to Envato Video error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══ BULK SEND TO ENVATO VIDEO GEN (each prompt = one video) ═══
+app.post('/api/send-all-to-envato-video', async (req, res) => {
+  try {
+    const { prompts, speeches } = req.body;
+
+    if (!prompts || !Array.isArray(prompts) || prompts.length === 0) {
+      return res.status(400).json({ success: false, error: 'No prompts provided' });
+    }
+
+    const speechList = (speeches && Array.isArray(speeches)) ? speeches : prompts.map(() => '');
+
+    console.log(`\n🎬 BULK Send to Envato Video Gen: ${prompts.length} videos`);
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-video-bulk-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Write each combined prompt+speech to temp files
+    const promptFiles = [];
+    for (let i = 0; i < prompts.length; i++) {
+      const hasSpeech = speechList[i] && speechList[i].trim().length > 0;
+      const combined = hasSpeech
+        ? `${prompts[i]}\n\nVoiceover (Spanish): ${speechList[i]}`
+        : prompts[i];
+      const pf = path.join(tempDir, `prompt-${i}.txt`);
+      await fs.writeFile(pf, sanitizeVideoPrompt(combined), 'utf8');
+      promptFiles.push(pf);
+    }
+
+    const tabCount = prompts.length;
+
+    // Build bulk AppleScript: open all tabs -> wait -> configure each
+    let script = `
+tell application "Google Chrome"
+  activate
+  set w to front window
+  -- Open ALL tabs at once
+`;
+    for (let i = 0; i < tabCount; i++) {
+      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/video-gen"}\n`;
+    }
+    script += `
+  -- Wait for all tabs to load
+  set tabTotal to count of tabs of w
+  repeat 80 times
+    set allDone to true
+    repeat with i from (tabTotal - ${tabCount - 1}) to tabTotal
+      if (loading of tab i of w) then set allDone to false
+    end repeat
+    if allDone then exit repeat
+    delay 0.15
+  end repeat
+  delay 2.0
+end tell
+`;
+
+    // For each tab: switch + select 9:16 + Sound + Speech + paste prompt
+    for (let i = 0; i < tabCount; i++) {
+      script += `
+-- TAB ${i + 1}/${tabCount}
+tell application "Google Chrome"
+  set w to front window
+  set tabTotal to count of tabs of w
+  set active tab index of w to (tabTotal - ${tabCount - 1 - i})
+  -- Wait for textarea ready
+  repeat 40 times
+    set inputReady to (execute active tab of w javascript "
+      var ta = document.querySelector('textarea');
+      ta ? '1' : '0';
+    ")
+    if inputReady is "1" then exit repeat
+    delay 0.2
+  end repeat
+  delay 0.3
+
+  -- STEP 1: Open aspect ratio dropdown
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = btns[i].textContent.trim();
+        var r = btns[i].getBoundingClientRect();
+        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'opened: ' + t;
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.4
+
+  -- STEP 2: Click 9:16
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='9:16'){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'selected';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.4
+
+  -- STEP 3: Click settings icon (empty ~48x48 button with SVG)
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var r = btns[i].getBoundingClientRect();
+        var t = btns[i].textContent.trim();
+        if(t==='' && !btns[i].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
+          if(btns[i].querySelector('svg')){
+            btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            return 'opened settings';
+          }
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.4
+
+  -- STEP 4: Click Sound
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Sound' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'sound on';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.4
+
+  -- STEP 5: Click Speech
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim()==='Speech' && !btns[i].disabled){
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'speech on';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.3
+
+  -- STEP 6: Close dropdown
+  execute active tab of w javascript "
+    document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+    'ok';
+  "
+  delay 0.3
+
+  -- STEP 7: Focus textarea and select all
+  execute active tab of w javascript "
+    var ta = document.querySelector('textarea');
+    if(ta){ta.focus();ta.select();} 'ok';
+  "
+end tell
+-- Paste prompt via clipboard
+do shell script "cat " & quoted form of "${promptFiles[i]}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 1.5
+-- STEP 8: Trigger React state update
+tell application "Google Chrome"
+  set w to front window
+  execute active tab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'react update: ' + ta.value.length;
+    })();
+  "
+  delay 0.5
+  -- STEP 9: Click Generate
+  execute active tab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        if(btns[i].textContent.trim().toLowerCase().includes('generate')){
+          btns[i].disabled = false;
+          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'generate clicked';
+        }
+      }
+      return 'generate not found';
+    })();
+  "
+end tell
+delay 0.5
+`;
+    }
+
+    script += `\nreturn "done"\n`;
+
+    const scriptFile = path.join(tempDir, 'bulk_video_automate.scpt');
+    await fs.writeFile(scriptFile, script, 'utf8');
+
+    console.log(`  📝 Executing BULK Envato Video automation (${tabCount} tabs)...`);
+
+    exec(`osascript "${scriptFile}"`, { timeout: 120000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
+      if (error) console.error('  [X] Bulk Envato Video error:', error.message);
+      else console.log(`  [OK] Bulk Envato Video done (${tabCount} tabs)`);
+    });
+
+    res.json({ success: true, message: `Opening ${tabCount} Envato Video tabs...`, count: tabCount });
+
+  } catch (error) {
+    console.error('[X] Bulk Send to Envato Video error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Function to open Chrome browser
 function openChrome(url) {
   const platform = process.platform;
@@ -1841,6 +3569,6 @@ app.listen(PORT, () => {
   `);
   console.log('\n[OK] Server ready! Waiting for requests...\n');
 
-  // Auto-open Chrome after a brief delay to ensure server is ready
-  setTimeout(() => openChrome(url), 1000);
+  // Auto-open disabled — server is used as an automation backend only
+  // setTimeout(() => openChrome(url), 1000);
 });

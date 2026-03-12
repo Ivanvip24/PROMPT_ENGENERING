@@ -1250,7 +1250,7 @@
             color: var(--text-primary);
         }
         .variation-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-        .copy-btn, .gemini-btn {
+        .copy-btn, .gemini-btn, .envato-btn {
             padding: 6px 12px;
             border: none;
             border-radius: var(--radius-full);
@@ -1291,6 +1291,39 @@
             background: var(--verde);
             box-shadow: 0 0 12px rgba(138,183,59,0.5), inset 0 1px 1px rgba(255,255,255,0.3);
             animation: none;
+        }
+        .envato-btn {
+            background: linear-gradient(135deg, #7cb342, #4caf50, #00897b, #26c6da, #7cb342);
+            background-size: 300% 300%;
+            animation: envatoShimmer 4s ease infinite;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 700;
+            box-shadow:
+                0 0 8px rgba(124,179,66,0.5),
+                0 0 20px rgba(0,137,123,0.2),
+                inset 0 1px 1px rgba(255,255,255,0.3);
+            text-shadow: 0 0 6px rgba(255,255,255,0.3);
+        }
+        .envato-btn:hover {
+            box-shadow:
+                0 0 12px rgba(124,179,66,0.7),
+                0 0 30px rgba(0,137,123,0.4),
+                0 0 50px rgba(38,198,218,0.2),
+                inset 0 1px 2px rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+        .envato-btn.sent {
+            background: var(--verde);
+            box-shadow: 0 0 12px rgba(138,183,59,0.5), inset 0 1px 1px rgba(255,255,255,0.3);
+            animation: none;
+        }
+        @keyframes envatoShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         @keyframes geminiShimmer {
             0% { background-position: 0% 50%; }
@@ -1334,6 +1367,35 @@
                 0 0 14px rgba(66,133,244,0.6),
                 0 0 35px rgba(231,42,136,0.35),
                 0 0 55px rgba(123,94,167,0.2),
+                inset 0 1px 2px rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+        .send-all-envato-btn {
+            display: none;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, #7cb342, #4caf50, #00897b, #26c6da, #7cb342);
+            background-size: 300% 300%;
+            animation: envatoShimmer 4s ease infinite;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            text-shadow: 0 0 6px rgba(255,255,255,0.3);
+            box-shadow:
+                0 0 10px rgba(124,179,66,0.5),
+                0 0 25px rgba(0,137,123,0.2),
+                inset 0 1px 1px rgba(255,255,255,0.3);
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .send-all-envato-btn:hover {
+            box-shadow:
+                0 0 14px rgba(124,179,66,0.7),
+                0 0 35px rgba(0,137,123,0.4),
+                0 0 55px rgba(38,198,218,0.2),
                 inset 0 1px 2px rgba(255,255,255,0.4);
             transform: scale(1.05);
         }
@@ -1730,14 +1792,14 @@
             <div class="stepper-card">
                 <div class="stepper-label" data-translate="variationCard.title">Variations</div>
                 <div class="stepper">
-                    <span class="stepper-value" id="variationDisplay">1</span>
+                    <span class="stepper-value" id="variationDisplay" onclick="editVariationCount()" style="cursor:pointer" title="Click to type a number">1</span>
                     <div class="stepper-arrows">
                         <button class="stepper-btn" onclick="changeVariations(1)">▲</button>
                         <button class="stepper-btn" onclick="changeVariations(-1)">▼</button>
                     </div>
                 </div>
                 <input type="hidden" id="variationCount" value="1">
-                <div class="stepper-help" data-translate="variationCard.help">1-10 unique variations</div>
+                <div class="stepper-help" data-translate="variationCard.help">1-1000 unique variations</div>
             </div>
             <div class="sliders-card" id="slidersCard">
                 <!-- Transformeter: variations only -->
@@ -1950,10 +2012,16 @@
                         </div>
                         <div class="output-description" data-translate="outputCard.description">Copy and use these prompts in your design tool</div>
                     </div>
-                    <button class="send-all-gemini-btn" id="sendAllGeminiBtn" onclick="sendAllToGemini()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-                        Send All to Gemini
-                    </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="send-all-gemini-btn" id="sendAllGeminiBtn" onclick="sendAllToGemini()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            Send All to Gemini
+                        </button>
+                        <button class="send-all-envato-btn" id="sendAllEnvatoBtn" onclick="sendAllToEnvato()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            Send All to Envato
+                        </button>
+                    </div>
                 </div>
                 <div class="variations-grid" id="variationsContainer">
                     <!-- Variation cards inserted here -->
@@ -2248,7 +2316,7 @@
                     help: 'Be as specific as possible about what you want to change or create'
                 },
                 template: { title: '📋 Quick Template', copyBtn: 'Copy' },
-                variationCard: { title: 'Variations', description: 'Each variation generated with unique approach', help: '1-10 unique variations' },
+                variationCard: { title: 'Variations', description: 'Each variation generated with unique approach', help: '1-1000 unique variations' },
                 imageCard: {
                     title: 'Reference Images (Optional)',
                     description: 'Upload images to guide design generation',
@@ -2334,7 +2402,7 @@
                 alerts: {
                     selectProject: 'Please select a project first!',
                     provideInstructions: 'Please provide instructions!',
-                    variationRange: 'Please enter 1-10 for variations',
+                    variationRange: 'Please enter 1-1000 for variations',
                     clearImages: 'Remove all images and shape references?',
                     settingsSaved: 'Settings saved! Using Claude API.',
                     settingsSavedTemplate: 'Settings saved! Using template mode.'
@@ -2369,7 +2437,7 @@
                     help: 'Sé lo más específico posible'
                 },
                 template: { title: '📋 Plantilla Rápida', copyBtn: 'Copiar' },
-                variationCard: { title: 'Variaciones', description: 'Cada variación con enfoque único', help: '1-10 variaciones únicas' },
+                variationCard: { title: 'Variaciones', description: 'Cada variación con enfoque único', help: '1-1000 variaciones únicas' },
                 imageCard: {
                     title: 'Imágenes de Referencia (Opcional)',
                     description: 'Sube imágenes para guiar la generación',
@@ -2455,7 +2523,7 @@
                 alerts: {
                     selectProject: '¡Selecciona un proyecto primero!',
                     provideInstructions: '¡Proporciona instrucciones!',
-                    variationRange: 'Ingresa 1-10 para variaciones',
+                    variationRange: 'Ingresa 1-1000 para variaciones',
                     clearImages: '¿Eliminar todas las imágenes y referencias?',
                     settingsSaved: '¡Configuración guardada! Usando API de Claude.',
                     settingsSavedTemplate: '¡Configuración guardada! Usando modo plantilla.'
@@ -2560,9 +2628,20 @@
             const input = document.getElementById('variationCount');
             const display = document.getElementById('variationDisplay');
             let val = parseInt(input.value) || 1;
-            val = Math.max(1, Math.min(10, val + delta));
+            val = Math.max(1, Math.min(1000, val + delta));
             input.value = val;
             display.textContent = val;
+        }
+
+        function editVariationCount() {
+            const val = prompt('Enter number of variations (1-1000):', document.getElementById('variationCount').value);
+            if (val !== null) {
+                let num = parseInt(val);
+                if (!isNaN(num) && num >= 1 && num <= 1000) {
+                    document.getElementById('variationCount').value = num;
+                    document.getElementById('variationDisplay').textContent = num;
+                }
+            }
         }
 
         // ═══ DROPDOWN HANDLERS ═══
@@ -3075,7 +3154,7 @@
             const instructions = document.getElementById('instructions').value;
             if (!instructions.trim()) { alert(translations[currentLanguage].alerts.provideInstructions); return; }
             const variationCount = parseInt(document.getElementById('variationCount').value) || 1;
-            if (variationCount < 1 || variationCount > 10) { alert(translations[currentLanguage].alerts.variationRange); return; }
+            if (variationCount < 1 || variationCount > 1000) { alert(translations[currentLanguage].alerts.variationRange); return; }
 
             const formData = new FormData();
             formData.append('projectType', currentProject);
@@ -3260,6 +3339,8 @@
             const container = document.getElementById('variationsContainer');
             const sendAllBtn = document.getElementById('sendAllGeminiBtn');
             if (sendAllBtn) sendAllBtn.style.display = 'inline-flex';
+            const sendAllEnvatoBtn = document.getElementById('sendAllEnvatoBtn');
+            if (sendAllEnvatoBtn) sendAllEnvatoBtn.style.display = 'inline-flex';
 
             const card = document.createElement('div');
             card.className = 'variation-card';
@@ -3273,6 +3354,10 @@
                         <button class="gemini-btn" onclick="event.stopPropagation(); sendToGemini(${index})" id="gemini-btn-${index}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
                             Gemini
+                        </button>
+                        <button class="envato-btn" onclick="event.stopPropagation(); sendToEnvato(${index})" id="envato-btn-${index}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            Envato
                         </button>
                     </div>
                 </div>
@@ -3396,6 +3481,93 @@
             }
 
             setTimeout(() => { sendAllBtn.innerHTML = originalHTML; document.querySelectorAll('.gemini-btn').forEach(b => b.classList.remove('sent')); }, 5000);
+        }
+
+        // ═══ ENVATO AUTOMATION ═══
+        async function postToEnvato(prompt) {
+            try {
+                const aspectRatio = document.getElementById('ratioDropdown')?.value || '1:1';
+                // Collect reference images (first 2 for Envato's 2-slot modal)
+                const allImages = await collectAllImageData();
+                const referenceImages = allImages.slice(0, 2).map(img => img.dataUrl);
+                const response = await fetch('/api/send-to-envato', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, aspectRatio, referenceImages })
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('Send to Envato failed:', err);
+                await navigator.clipboard.writeText(prompt);
+                window.open('https://labs.envato.com/apps/image-gen/', '_blank');
+                return { success: false, fallback: true };
+            }
+        }
+
+        async function sendToEnvato(index) {
+            const text = document.getElementById(`prompt-${index}`).textContent;
+            const btn = document.getElementById(`envato-btn-${index}`);
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending...';
+            btn.classList.add('sent');
+            const result = await postToEnvato(text);
+            if (result.success) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent!';
+            else if (result.fallback) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+            setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.remove('sent'); }, 4000);
+        }
+
+        async function sendAllToEnvato() {
+            const promptEls = document.querySelectorAll('.prompt-output');
+            if (promptEls.length === 0) return;
+
+            const sendAllBtn = document.getElementById('sendAllEnvatoBtn');
+            const originalHTML = sendAllBtn.innerHTML;
+            sendAllBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Opening ${promptEls.length} tabs...`;
+
+            const allPrompts = Array.from(promptEls).map(el => el.textContent);
+
+            try {
+                // Distribute prompts evenly across all 3 aspect ratios (shuffle assignment)
+                const ratios = ['1:1', '2:1', '1:2'];
+                const shuffled = [...ratios, ...ratios, ...ratios].slice(0, allPrompts.length > 3 ? allPrompts.length : 3);
+                // Fisher-Yates shuffle for random distribution
+                for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+                const aspectRatios = allPrompts.map((_, idx) => ratios[idx % 3]);
+                // Shuffle the assigned ratios so it's not just repeating 1-2-3
+                for (let i = aspectRatios.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [aspectRatios[i], aspectRatios[j]] = [aspectRatios[j], aspectRatios[i]]; }
+                // Collect reference images (first 2 for Envato's 2-slot modal)
+                const allImages = await collectAllImageData();
+                const referenceImages = allImages.slice(0, 2).map(img => img.dataUrl);
+                const response = await fetch('/api/send-all-to-envato', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompts: allPrompts, aspectRatios, referenceImages })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    for (let i = 0; i < promptEls.length; i++) {
+                        const eb = document.getElementById(`envato-btn-${i}`);
+                        if (eb) { eb.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent!'; eb.classList.add('sent'); }
+                    }
+                    sendAllBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${promptEls.length} tabs opened!`;
+                } else {
+                    console.warn('Bulk Envato send failed, falling back to sequential...');
+                    for (let i = 0; i < allPrompts.length; i++) {
+                        sendAllBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${i + 1}/${allPrompts.length}...`;
+                        await postToEnvato(allPrompts[i]);
+                        const eb = document.getElementById(`envato-btn-${i}`);
+                        if (eb) { eb.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent!'; eb.classList.add('sent'); }
+                        if (i < allPrompts.length - 1) await new Promise(r => setTimeout(r, 4000));
+                    }
+                    sendAllBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> All sent!';
+                }
+            } catch (err) {
+                console.error('Bulk Envato send error:', err);
+                sendAllBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Error';
+            }
+
+            setTimeout(() => { sendAllBtn.innerHTML = originalHTML; document.querySelectorAll('.envato-btn').forEach(b => b.classList.remove('sent')); }, 5000);
         }
 
         // ═══ SETTINGS ═══
