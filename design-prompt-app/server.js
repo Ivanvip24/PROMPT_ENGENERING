@@ -3132,6 +3132,427 @@ return "done"
   }
 });
 
+// ═══ BULK IMAGE→VIDEO: All clips in ONE script (parallel image gen, sequential video setup) ═══
+app.post('/api/send-bulk-image-to-video', async (req, res) => {
+  try {
+    const { clips, referenceImages } = req.body;
+    // clips = [{imagePrompt, videoPrompt, speech}, ...]
+
+    if (!clips || !Array.isArray(clips) || clips.length === 0) {
+      return res.status(400).json({ success: false, error: 'No clips provided' });
+    }
+
+    // Write reference images
+    let refFilenames = [];
+    if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+      refFilenames = await writeRefImages(referenceImages);
+    }
+
+    const clipCount = clips.length;
+    console.log(`\n🎬🚀 BULK Image→Video: ${clipCount} clips, refs=${refFilenames.length}`);
+
+    const timestamp = Date.now();
+    const tempDir = path.join(os.tmpdir(), `envato-bulk-img2vid-${timestamp}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // Write all prompt files
+    const imgPromptFiles = [];
+    const vidPromptFiles = [];
+    for (let i = 0; i < clipCount; i++) {
+      const c = clips[i];
+      const imgFile = path.join(tempDir, `img_prompt_${i}.txt`);
+      await fs.writeFile(imgFile, sanitizePrompt(c.imagePrompt), 'utf8');
+      imgPromptFiles.push(imgFile);
+
+      const hasSpeech = c.speech && c.speech.trim().length > 0;
+      const vidText = c.videoPrompt || c.imagePrompt;
+      const combined = hasSpeech ? `${vidText}\n\nVoiceover (Spanish): ${c.speech}` : vidText;
+      const vidFile = path.join(tempDir, `vid_prompt_${i}.txt`);
+      await fs.writeFile(vidFile, sanitizeVideoPrompt(combined), 'utf8');
+      vidPromptFiles.push(vidFile);
+    }
+
+    // Write ref upload JS
+    let refUploadSection = '';
+    if (refFilenames.length > 0) {
+      await fs.writeFile(path.join(tmpRefDir, 'ref-upload.js'), generateRefUploadJS(refFilenames), 'utf8');
+      refUploadSection = `
+  -- Upload reference images via fetch
+  execute tab myTab of w javascript "fetch('http://localhost:${PORT}/tmp-ref/ref-upload.js').then(r=>r.text()).then(js=>eval(js)).catch(e=>{ window.__refUploadDone=true; });"
+  repeat 30 times
+    set isDone to (execute tab myTab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
+    if isDone is "yes" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5`;
+    }
+
+    // ─── BUILD APPLESCRIPT ───
+    // PHASE A: Open ALL ImageGen tabs, paste all image prompts, click Generate on each
+    let script = `
+tell application "Google Chrome"
+  activate
+  set w to front window
+`;
+    // Open N tabs
+    for (let i = 0; i < clipCount; i++) {
+      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
+    }
+    script += `
+  -- Wait for all tabs to load
+  set tabTotal to count of tabs of w
+  set firstTab to (tabTotal - ${clipCount - 1})
+  repeat 60 times
+    set allDone to true
+    repeat with i from firstTab to tabTotal
+      if (loading of tab i of w) then set allDone to false
+    end repeat
+    if allDone then exit repeat
+    delay 0.15
+  end repeat
+  delay 1.5
+end tell
+`;
+
+    // For each tab: set Portrait, upload refs, paste prompt, Generate
+    for (let i = 0; i < clipCount; i++) {
+      script += `
+-- === IMAGE TAB ${i + 1}/${clipCount} ===
+tell application "Google Chrome"
+  set w to front window
+  set tabTotal to count of tabs of w
+  set myTab to (tabTotal - ${clipCount - 1 - i})
+  set active tab index of w to myTab
+  -- Wait for textarea
+  repeat 40 times
+    set inputReady to (execute tab myTab of w javascript "var ta = document.querySelector('textarea'); ta ? '1' : '0';")
+    if inputReady is "1" then exit repeat
+    delay 0.2
+  end repeat
+  delay 0.3
+${i === 0 ? refUploadSection : ''}
+  -- Select Portrait
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        var t = btns[j].textContent.trim();
+        if(t==='Square' || t==='Portrait' || t==='Landscape'){ btns[j].click(); break; }
+      }
+      setTimeout(function(){
+        var items = document.querySelectorAll('button');
+        for(var k=0;k<items.length;k++){
+          if(items[k].textContent.trim()==='Portrait'){ items[k].click(); break; }
+        }
+      }, 200);
+    })(); 'ok';
+  "
+  delay 0.5
+  -- Focus textarea
+  execute tab myTab of w javascript "var ta = document.querySelector('textarea'); if(ta){ta.focus();ta.select();} 'ok';"
+end tell
+do shell script "cat " & quoted form of "${imgPromptFiles[i]}" & " | pbcopy"
+tell application "Google Chrome"
+  set active tab index of front window to (count of tabs of front window) - ${clipCount - 1 - i}
+end tell
+tell application "System Events" to keystroke "v" using command down
+delay 0.5
+-- React update + Generate
+tell application "Google Chrome"
+  set w to front window
+  set myTab to (count of tabs of w) - ${clipCount - 1 - i}
+  execute tab myTab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      ns.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'ok';
+    })();
+  "
+  delay 0.3
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        if(btns[j].textContent.trim().toLowerCase().includes('generate')){
+          btns[j].disabled = false;
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'generate clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+end tell
+delay 0.3
+`;
+    }
+
+    // PHASE B: Wait for ALL images to generate in parallel (~25s)
+    script += `
+-- === WAIT FOR ALL IMAGES TO GENERATE (parallel, ~25s) ===
+delay 28
+`;
+
+    // PHASE C: For each ImageGen tab, click image → Video → configure → paste video prompt → Generate
+    for (let i = 0; i < clipCount; i++) {
+      script += `
+-- === VIDEO CONVERSION ${i + 1}/${clipCount} ===
+tell application "Google Chrome"
+  activate
+  set w to front window
+  -- Find the ImageGen tab for clip ${i + 1} (search all windows)
+  set foundImg to false
+  set imgTabCount to 0
+  repeat with winIdx from 1 to (count of windows)
+    repeat with tIdx from 1 to (count of tabs of window winIdx)
+      if URL of tab tIdx of window winIdx contains "image-gen" then
+        set imgTabCount to imgTabCount + 1
+        if imgTabCount is ${i + 1} then
+          set w to window winIdx
+          set myTab to tIdx
+          set active tab index of w to myTab
+          set foundImg to true
+          exit repeat
+        end if
+      end if
+    end repeat
+    if foundImg then exit repeat
+  end repeat
+  if not foundImg then return "no image-gen tab for clip ${i + 1}"
+
+  -- Click largest generated image
+  set imgCoords to (execute tab myTab of w javascript "
+    (function(){
+      var imgs = document.querySelectorAll('img');
+      var best = null; var bestArea = 0;
+      for(var j=0;j<imgs.length;j++){
+        var r = imgs[j].getBoundingClientRect();
+        var area = r.width * r.height;
+        if(r.width > 150 && r.height > 150 && area > bestArea && r.y > 100){
+          best = imgs[j]; bestArea = area;
+        }
+      }
+      if(best){
+        best.click();
+        var r = best.getBoundingClientRect();
+        return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
+      }
+      return '';
+    })();
+  ")
+  delay 1.5
+
+  -- Physical click fallback
+  if imgCoords is not "" then
+    set active tab index of w to myTab
+    set AppleScript's text item delimiters to ","
+    set imgParts to text items of imgCoords
+    set AppleScript's text item delimiters to ""
+    set winBounds to bounds of w
+    set winX to item 1 of winBounds
+    set winY to item 2 of winBounds
+    set clickX to winX + (item 1 of imgParts as integer)
+    set clickY to winY + 88 + (item 2 of imgParts as integer)
+    tell application "System Events"
+      click at {clickX, clickY}
+    end tell
+  end if
+  delay 2.0
+
+  -- Wait for Video button
+  set vidBtnFound to false
+  repeat 30 times
+    set vidCheck to (execute tab myTab of w javascript "
+      (function(){
+        var btns = document.querySelectorAll('button');
+        for(var j=0;j<btns.length;j++){
+          var t = btns[j].textContent.trim();
+          if(t==='Video' || t.includes('Video')) return 'found';
+        }
+        return 'no';
+      })();
+    ")
+    if vidCheck is "found" then
+      set vidBtnFound to true
+      exit repeat
+    end if
+    delay 0.5
+  end repeat
+
+  -- Click Video button (opens new tab)
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        var t = btns[j].textContent.trim();
+        if(t==='Video' || t.includes('Video')){ btns[j].click(); return 'video clicked'; }
+      }
+      return 'not found';
+    })();
+  "
+  delay 3.0
+
+  -- Find video-gen tab
+  set vidFound to false
+  repeat 30 times
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from 1 to (count of tabs of window winIdx)
+        if URL of tab tIdx of window winIdx contains "video-gen" then
+          set w to window winIdx
+          set myTab to tIdx
+          set active tab index of w to myTab
+          set vidFound to true
+          exit repeat
+        end if
+      end repeat
+      if vidFound then exit repeat
+    end repeat
+    if vidFound then exit repeat
+    delay 0.5
+  end repeat
+
+  -- Wait for VideoGen textarea
+  repeat 40 times
+    set vidReady to (execute tab myTab of w javascript "var ta = document.querySelector('textarea'); ta ? '1' : '0';")
+    if vidReady is "1" then exit repeat
+    delay 0.3
+  end repeat
+  delay 0.5
+
+  -- Configure: 9:16, Sound, Speech
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        var t = btns[j].textContent.trim();
+        var r = btns[j].getBoundingClientRect();
+        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          break;
+        }
+      }
+    })();
+  "
+  delay 0.4
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        if(btns[j].textContent.trim()==='9:16'){
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          break;
+        }
+      }
+    })();
+  "
+  delay 0.4
+  -- Settings: Sound + Speech
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        var r = btns[j].getBoundingClientRect();
+        var t = btns[j].textContent.trim();
+        if(t==='' && !btns[j].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
+          if(btns[j].querySelector('svg')){ btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break; }
+        }
+      }
+    })();
+  "
+  delay 0.4
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        if(btns[j].textContent.trim()==='Sound' && !btns[j].disabled){
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+        }
+      }
+    })();
+  "
+  delay 0.3
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        if(btns[j].textContent.trim()==='Speech' && !btns[j].disabled){
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+        }
+      }
+    })();
+  "
+  delay 0.3
+  execute tab myTab of w javascript "document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); 'ok';"
+  delay 0.3
+  execute tab myTab of w javascript "var ta = document.querySelector('textarea'); if(ta){ta.focus();ta.select();} 'ok';"
+end tell
+-- Paste video prompt
+do shell script "cat " & quoted form of "${vidPromptFiles[i]}" & " | pbcopy"
+tell application "Google Chrome"
+  activate
+  set active tab index of w to myTab
+end tell
+tell application "System Events" to keystroke "v" using command down
+delay 1.0
+-- React update + Generate video
+tell application "Google Chrome"
+  set active tab index of w to myTab
+  execute tab myTab of w javascript "
+    (function(){
+      var ta = document.querySelector('textarea');
+      if(!ta) return 'no textarea';
+      var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      ns.call(ta, ta.value);
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta.dispatchEvent(new Event('change', {bubbles:true}));
+      return 'ok';
+    })();
+  "
+  delay 0.3
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var j=0;j<btns.length;j++){
+        if(btns[j].textContent.trim().toLowerCase().includes('generate')){
+          btns[j].disabled = false;
+          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+          return 'video generate clicked';
+        }
+      }
+      return 'not found';
+    })();
+  "
+end tell
+delay 1.0
+`;
+    }
+
+    script += `return "done"\n`;
+
+    const scriptFile = path.join(tempDir, 'bulk_img2vid.scpt');
+    await fs.writeFile(scriptFile, script, 'utf8');
+
+    console.log(`  📝 Executing BULK Image→Video (${clipCount} clips, parallel image gen)...`);
+
+    exec(`osascript "${scriptFile}"`, { timeout: 300000 }, (error) => {
+      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 60000);
+      if (error) console.error(`  [X] Bulk Image→Video error: ${error.message}`);
+      else console.log(`  [OK] Bulk Image→Video completed (${clipCount} clips)`);
+    });
+
+    res.json({ success: true, message: `Bulk Image→Video started: ${clipCount} clips (parallel image gen, ~${25 + clipCount * 15}s total)`, count: clipCount });
+
+  } catch (error) {
+    console.error('[X] Bulk Image→Video error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ═══ SEND TO ENVATO VIDEO GEN (single prompt — video, 9:16, Sound+Speech) ═══
 app.post('/api/send-to-envato-video', async (req, res) => {
   try {

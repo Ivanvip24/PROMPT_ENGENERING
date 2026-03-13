@@ -1,185 +1,276 @@
-# Design Prompt Generator App
+# AXKAN Design Prompt Generator
 
-A beautiful, user-friendly web application that makes generating design prompts easy and accessible - no terminal experience needed!
+A web application that generates AI image prompts for AXKAN souvenir products (magnets, bottle openers, stickers, etc.) using Claude Code as the AI backbone. Supports batch generation, key-based permutations, Gemini/Envato integration, and style reference analysis.
 
-## Features
+## Prerequisites
 
-- 🎨 **Beautiful Interface** - Clean, modern design that's easy to use
-- 🔄 **Multi-Project Support** - Works with all your design workflows:
-  - Generate Variations from an Existing Design
-  - Design from Scratch
-  - Design Based on a Previous Element
-  - Modify Existing Design
-- 📷 **Image Upload** - Attach reference images to your prompts
-- 📋 **One-Click Copy** - Copy generated prompts instantly to clipboard
-- ⚡ **Smart Generation** - Automatically uses the right formula for each project type
-- 🔄 **Generate Variations** - Try different prompt variations with one click
+Before cloning, ensure the following are installed on the target machine:
 
-## Quick Start
-
-### EASIEST WAY (No Terminal!) 🎉
-
-**Already set up for you!** Just double-click these files:
-
-1. **START_APP.command** - Starts the app
-2. Open browser → **http://localhost:3001**
-3. When done, double-click **STOP_APP.command** - Stops the app
-
-**First time only:** If macOS asks for permission, right-click the file → Open → click "Open" in the dialog.
-
-**Visual Guide:** Open **HOW_TO_USE.html** in your browser for step-by-step instructions!
-
----
-
-### Alternative: Terminal Method
-
-### 1. Install Node.js (One-Time Setup)
-
-If you don't have Node.js installed:
-- Visit https://nodejs.org
-- Download and install the LTS (Long Term Support) version
-- This is a one-time setup!
-
-### 2. Install Dependencies
-
-Open Terminal (or Command Prompt on Windows) and run:
+### 1. Node.js (v18+ required, v22 recommended)
 
 ```bash
-cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/READY/PROMPT_ENGENERING/design-prompt-app"
+# macOS (Homebrew)
+brew install node
+
+# Or download from https://nodejs.org (LTS version)
+
+# Verify
+node -v   # should be v18+
+npm -v    # should be v9+
+```
+
+### 2. Claude Code CLI
+
+The app spawns `claude` CLI processes to generate prompts. This is the core AI engine.
+
+```bash
+# Install globally
+npm install -g @anthropic/claude-code
+
+# Verify
+claude --version
+
+# First-time: authenticate
+claude
+# Follow the prompts to log in with your Anthropic account
+```
+
+**Important:** The `claude` command must be available in `PATH`. If installed via npm global, it should be automatic. If not, add the npm global bin to your shell profile:
+
+```bash
+# Find where npm globals are installed
+npm config get prefix
+
+# Add to ~/.zshrc or ~/.bashrc
+export PATH="$(npm config get prefix)/bin:$PATH"
+```
+
+### 3. Anthropic API Access
+
+Claude Code requires an active Anthropic account with API access. The CLI handles authentication — no API key environment variables needed.
+
+## Installation
+
+### Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd PROMPT_ENGENERING
+```
+
+### Install Node.js dependencies
+
+```bash
+cd design-prompt-app
 npm install
 ```
 
-This installs the required packages (only need to do this once).
+This installs:
+- `express` (v4.18+) — web server
+- `multer` (v1.4+) — file upload handling
 
-### 3. Start the App
+### Verify project documentation folders exist
+
+The app reads design documentation from sibling folders. These must exist at the repository root:
+
+```
+PROMPT_ENGENERING/
+├── Generate Variations from an Existing Design/   # variation docs + examples
+├── Design from Scratch/                            # from-scratch docs
+├── Design Based on a Previous Element/             # previous-element docs
+├── MODIFY_DESIGN/                                  # modify docs
+├── AXKAN/                                          # brand assets
+├── PRODUCT_TYPE/                                   # product type specs
+└── design-prompt-app/                              # this app
+```
+
+These folders contain `.md` files that Claude reads to understand the design system, brand guidelines, product constraints, and prompt patterns. Without them, prompts will be generic.
+
+## Running the App
+
+### Start the server
 
 ```bash
+cd design-prompt-app
 npm start
 ```
 
-You'll see a beautiful ASCII art message telling you the app is running!
+Or directly:
 
-### 4. Open in Browser
-
-Open your web browser and go to:
-```
-http://localhost:3001
+```bash
+node server.js
 ```
 
-That's it! The app is now running. 🎉
+The server starts on **http://localhost:3001**.
 
-## How to Use
+### macOS Quick Start (double-click)
 
-### Step 1: Select Your Project
-Click on one of the four project cards at the top:
-- **Generate Variations** - For creating variations of existing designs
-- **Design from Scratch** - For creating brand new designs
-- **Previous Element** - For designs based on existing elements
-- **Modify Design** - For modifying specific aspects of designs
+Pre-made scripts are included:
 
-### Step 2: Describe What You Want
-In the big text box, describe what you want to create or modify. Examples:
-- "Create a variation with the Ángel swimming in water surrounded by tropical fish"
-- "Change the character's outfit to traditional Mexican clothing"
-- "Add Christmas decorations around the main element"
+- **`START_APP.command`** — double-click to start the server
+- **`STOP_APP.command`** — double-click to stop
+- **`REBOOT_APP.command`** — double-click to restart
 
-### Step 3: Fill Optional Fields (Helps AI Generate Better Prompts)
-- **Destination**: Where is this design for? (e.g., "Hermosillo", "CDMX")
-- **Theme**: Any specific theme? (e.g., "Christmas", "Summer", "Dia de Muertos")
-- **Transformeter Level**: (Only for Variations) How much to change (1-10)
-  - 1-3: Minor adjustments
-  - 4-6: Moderate changes
-  - 7-10: Major transformation
-- **Decoration Level**: How much decorative detail (1-10)
+First time on macOS: right-click the `.command` file, select Open, then click "Open" in the security dialog.
 
-### Step 4: Upload Images (Optional)
-Click the upload area to attach reference images if needed.
+### Verify it works
 
-### Step 5: Generate!
-Click **"Generate Prompt"** and watch the magic happen! ✨
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3001
+# Should output: 200
+```
 
-Your prompt will appear below, ready to copy.
+Open **http://localhost:3001** in your browser.
 
-### Step 6: Copy & Use
-Click **"Copy to Clipboard"** and paste the prompt into your AI image generator (Gemini, DALL-E, Midjourney, etc.)
+## How It Works
 
-Want a different variation? Click **"Generate Another"** to try a different approach!
+### Architecture
 
-## Behind the Scenes (Technical Details)
+```
+Browser (index.html)
+    |
+    | POST /api/generate-prompt-stream (SSE)
+    v
+Express Server (server.js)
+    |
+    | spawn('claude', [...args])
+    v
+Claude Code CLI
+    |
+    | Reads project documentation (.md files)
+    | Analyzes uploaded reference images
+    | Generates design prompts
+    v
+Streaming response back to browser
+```
 
-The app runs a local web server on your computer:
-- **Backend**: Node.js + Express (handles prompt generation logic)
-- **Frontend**: Clean HTML/CSS/JavaScript (the beautiful interface you see)
-- **No Internet Required**: Runs entirely on your computer
-- **Privacy**: Your data stays on your machine
+### Generation Modes
 
-## Stopping the App
+| Mode | Speed | How |
+|------|-------|-----|
+| **Normal** | ~30-60s per prompt | Claude reads full project documentation |
+| **Turbo** | ~10-20s per prompt | Skips docs, uses inline system prompt |
+| **Parallel** | All at once | Multiple variations launch simultaneously |
 
-When you're done:
-1. Go back to the Terminal window
-2. Press `Ctrl + C` (or `Cmd + C` on Mac)
-3. The app will stop
+### Key Features
 
-## Tips & Tricks
+#### Project Types
+- **Design Variation** — Create variations of an existing design (reference image required)
+- **New Design** — Design from scratch with full creative freedom
+- **Previous Element** — Build on a specific existing element
+- **Modify Design** — Make specific changes to an existing design
 
-### For Best Results:
-1. **Be Specific** - The more detail you provide, the better the prompt
-2. **Use Keywords** - Words like "swimming", "flying", "holding" trigger smart suggestions
-3. **Reference Destinations** - Including location names pulls in regional elements
-4. **Adjust Levels** - Play with Transformeter and Decoration levels for different results
+#### Keys (Variables/Permutations)
+Define named variables that auto-substitute into instructions:
 
-### Making It Even Easier:
-You can create a shortcut:
-1. Create a text file called `start.command` (Mac) or `start.bat` (Windows)
-2. Add these lines:
-   ```bash
-   cd "/Users/ivanvalenciaperez/Desktop/CLAUDE/READY/PROMPT_ENGENERING/design-prompt-app"
-   npm start
-   ```
-3. Double-click the file to start the app instantly!
+1. Click **+ Add Key** in the form
+2. Name the key (e.g., `ANIMALS`)
+3. Add comma-separated values (e.g., `snake, turtle, capybara`)
+4. **Green dot** = permutation mode (one prompt per value)
+5. **Red dot** = single mode (all values as one string)
+
+The system computes the cartesian product. Example:
+- `ANIMALS = snake, turtle, capybara` (3 values, permute ON)
+- Variations slider = 2
+- Result: **6 prompts** (3 animals x 2 variations each)
+
+Key names are matched **case-insensitively** in the instructions. If you type `animals` and have an `ANIMALS` key, it highlights pink and gets replaced.
+
+#### Send to Gemini
+Copies the generated prompt to clipboard and opens a new Google Gemini tab. If reference images are uploaded, they're included.
+
+#### Send to Envato
+Automates pasting prompts into Envato ImageGen via AppleScript (macOS only). Supports bulk send for all variations.
+
+#### Style Reference
+Upload a reference image for style analysis. Claude describes the visual style and incorporates it into the generated prompt. This image is **not** sent to Gemini/Envato — it's only for Claude's analysis.
 
 ## Project Structure
 
 ```
 design-prompt-app/
-├── server.js           # Backend server (prompt generation logic)
-├── package.json        # Dependencies and scripts
+├── server.js              # Express server, Claude integration, API endpoints
+├── package.json           # Dependencies (express, multer)
 ├── public/
-│   └── index.html     # Frontend interface (what you see in browser)
-├── uploads/           # Temporary storage for uploaded images
-└── README.md          # This file!
+│   ├── index.html         # Entire frontend (HTML + CSS + JS, single file)
+│   └── fonts/
+│       └── rl-aqva-black.otf  # AXKAN display font
+├── uploads/               # Temp storage for uploaded images (auto-created)
+├── tmp/                   # Temp dirs for Claude invocations (auto-created)
+├── tmp-ref/               # CORS-served reference images for Envato (auto-created)
+├── START_APP.command       # macOS double-click launcher
+├── STOP_APP.command        # macOS double-click stopper
+├── REBOOT_APP.command      # macOS double-click restarter
+└── README.md              # This file
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Serves the frontend |
+| `/api/generate-prompt-stream` | POST | SSE stream — generates prompts via Claude |
+| `/api/send-to-gemini` | POST | Copies prompt + opens Gemini tab (macOS) |
+| `/api/send-to-envato` | POST | Pastes prompt into Envato ImageGen (macOS) |
+| `/api/send-all-to-gemini` | POST | Bulk send all prompts to Gemini |
+| `/api/send-all-to-envato` | POST | Bulk send all prompts to Envato |
+| `/api/analyze-instructions` | POST | AI-powered instruction enhancement |
+
+## Configuration
+
+### Port
+Default is `3001`. Change in `server.js`:
+```javascript
+const PORT = 3001;
+```
+
+### Max Permutations
+Default cap is 100 combinations. Change in `public/index.html`:
+```javascript
+const MAX_PERMUTATIONS = 100;
 ```
 
 ## Troubleshooting
 
-**Port already in use?**
-If you see "Port 3000 already in use", either:
-- Stop other apps using port 3000, or
-- Edit `server.js` and change `PORT = 3000` to another number like `3001`
+### "claude: command not found"
+The Claude Code CLI isn't in PATH. Reinstall or add to PATH:
+```bash
+npm install -g @anthropic/claude-code
+# Or add npm global bin to PATH (see Prerequisites above)
+```
 
-**npm command not found?**
-You need to install Node.js first (see Quick Start step 1).
+### Prompts take too long
+- Use **Turbo mode** (toggle in the UI) for faster generation
+- Reduce variation count — each variation spawns a separate Claude process
+- 10+ parallel processes will be slow; try 3-5 at a time
+- First request is always slower (Claude loads documentation)
 
-**App won't start?**
-Make sure you ran `npm install` first to install dependencies.
+### "Port 3001 already in use"
+```bash
+# Kill whatever is using the port
+lsof -ti:3001 | xargs kill -9
+# Then restart
+npm start
+```
 
-## Customization
+### Envato/Gemini buttons don't work
+These use AppleScript to control Chrome — **macOS only**. They won't work on Windows/Linux.
 
-Want to change the colors or add features? The code is clean and well-commented:
-- Edit `public/index.html` to change the interface
-- Edit `server.js` to modify prompt generation logic
+### Images not uploading
+Check that `uploads/` directory exists and is writable:
+```bash
+mkdir -p uploads tmp tmp-ref
+```
 
-## What's Next?
+### Keys not highlighting in instructions
+- Key name must be typed in the key input (e.g., `ANIMALS`)
+- The same word must appear in the instructions textarea
+- Matching is case-insensitive: `animals`, `Animals`, `ANIMALS` all match
 
-Future improvements could include:
-- Saving favorite prompts
-- History of generated prompts
-- Preset templates for common requests
-- Dark mode toggle
-- Export prompts as files
+## Environment Notes
 
----
-
-**Enjoy creating amazing designs!** 🎨✨
-
-If you have questions or suggestions, feel free to modify the app - it's yours!
+- **macOS**: Full support including Envato/Gemini automation
+- **Windows/Linux**: Core prompt generation works. Gemini/Envato browser automation requires macOS (AppleScript)
+- **Node.js**: v18 minimum, v22 recommended
+- **Browser**: Any modern browser (Chrome, Firefox, Safari, Edge)
+- **Disk**: ~50MB for dependencies + temporary files for image processing

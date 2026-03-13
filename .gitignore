@@ -32,3 +32,11 @@ Temporary Items
 # Local environment files
 .env
 .env.local
+
+# App temp/runtime files
+design-prompt-app/tmp/
+design-prompt-app/tmp-ref/
+design-prompt-app/uploads/
+design-prompt-app/node_modules/
+design-prompt-app/.server.pid
+design-prompt-app/*.log

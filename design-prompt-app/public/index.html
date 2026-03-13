@@ -216,6 +216,31 @@
         .form-grid .field-theme { grid-column: 2; grid-row: 2; }
         .form-grid .field-keys { grid-column: 2; grid-row: 2 / 4; align-self: start; }
         .form-grid .field-element { grid-column: 2; grid-row: 2; }
+        .textarea-wrapper {
+            position: relative;
+        }
+        .textarea-backdrop {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            padding: 16px;
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            pointer-events: none;
+            color: transparent;
+            background: var(--bg-primary);
+        }
+        .textarea-backdrop .key-highlight {
+            background: rgba(231,42,136,0.18);
+            color: transparent;
+            border-radius: 3px;
+            border-bottom: 2px solid var(--rosa);
+        }
         .form-textarea {
             width: 100%;
             min-height: 120px;
@@ -227,7 +252,8 @@
             line-height: 1.6;
             resize: vertical;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            background: var(--bg-primary);
+            background: transparent;
+            position: relative;
         }
         .form-textarea:focus {
             outline: none;
@@ -1904,13 +1930,18 @@
             <div class="form-grid">
                 <div class="form-field field-instructions">
                     <label class="form-label" data-translate="instructionsCard.title">What Would You Like to Create?</label>
-                    <textarea
-                        id="instructions"
-                        class="form-textarea"
-                        data-translate-placeholder="instructionsCard.placeholder"
-                        placeholder="Describe what you want..."
-                        style="min-height: 140px;"
-                    ></textarea>
+                    <div class="textarea-wrapper">
+                        <div class="textarea-backdrop" id="instructionsBackdrop"></div>
+                        <textarea
+                            id="instructions"
+                            class="form-textarea"
+                            data-translate-placeholder="instructionsCard.placeholder"
+                            placeholder="Describe what you want..."
+                            style="min-height: 140px;"
+                            oninput="updateInstructionsHighlight()"
+                            onscroll="syncBackdropScroll()"
+                        ></textarea>
+                    </div>
                     <div class="form-help">
                         <span>💡</span>
                         <span data-translate="instructionsCard.help">Be as specific as possible about what you want to change or create</span>
@@ -2263,6 +2294,34 @@
         let nextKeyId = 0;
         const MAX_PERMUTATIONS = 100;
 
+        // ─── Instructions ↔ Keys highlight ───
+        function updateInstructionsHighlight() {
+            const textarea = document.getElementById('instructions');
+            const backdrop = document.getElementById('instructionsBackdrop');
+            if (!textarea || !backdrop) return;
+            let text = textarea.value;
+            // Escape HTML
+            text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Find key names that exist in the text (case-insensitive)
+            const keyNames = promptKeys.filter(k => k.name).map(k => k.name);
+            if (keyNames.length > 0) {
+                const pattern = new RegExp(`(?:"?)(${keyNames.join('|')})(?:"?)`, 'gi');
+                text = text.replace(pattern, '<span class="key-highlight">$&</span>');
+            }
+            // Trailing newline fix for backdrop height sync
+            if (text.endsWith('\n')) text += ' ';
+            backdrop.innerHTML = text;
+            syncBackdropScroll();
+        }
+
+        function syncBackdropScroll() {
+            const textarea = document.getElementById('instructions');
+            const backdrop = document.getElementById('instructionsBackdrop');
+            if (textarea && backdrop) {
+                backdrop.scrollTop = textarea.scrollTop;
+            }
+        }
+
         function addKey() {
             promptKeys.push({ id: nextKeyId++, name: '', values: '', permute: true });
             renderKeys();
@@ -2275,6 +2334,7 @@
             promptKeys = promptKeys.filter(k => k.id !== keyId);
             renderKeys();
             updatePermutationInfo();
+            updateInstructionsHighlight();
         }
 
         function toggleKeyPermute(btn) {
@@ -2296,6 +2356,7 @@
             if (key) {
                 key.name = input.value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
                 input.value = key.name;
+                updateInstructionsHighlight();
             }
         }
 
@@ -2373,8 +2434,9 @@
             const permutedKeys = definedKeys.filter(k => k.permute);
             const staticKeys = definedKeys.filter(k => !k.permute);
             let baseText = instructionText;
+            // Case-insensitive match, with or without quotes around key name
             for (const key of staticKeys) {
-                baseText = baseText.replace(new RegExp(`"${key.name}"`, 'g'), key.values.trim());
+                baseText = baseText.replace(new RegExp(`"?${key.name}"?`, 'gi'), key.values.trim());
             }
             if (permutedKeys.length === 0) return [baseText];
             const valueArrays = permutedKeys.map(k => parseKeyValues(k.values));
@@ -2386,7 +2448,7 @@
             return combinations.map(combo => {
                 let text = baseText;
                 permutedKeys.forEach((key, i) => {
-                    text = text.replace(new RegExp(`"${key.name}"`, 'g'), combo[i]);
+                    text = text.replace(new RegExp(`"?${key.name}"?`, 'gi'), combo[i]);
                 });
                 return text;
             });
@@ -3667,8 +3729,9 @@
             if (sendAllBtn) sendAllBtn.style.display = 'inline-flex';
             const sendAllEnvatoBtn = document.getElementById('sendAllEnvatoBtn');
             if (sendAllEnvatoBtn) sendAllEnvatoBtn.style.display = 'inline-flex';
-            const sendAllImg2VidBtn = document.getElementById('sendAllImg2VidBtn');
-            if (sendAllImg2VidBtn) sendAllImg2VidBtn.style.display = 'inline-flex';
+            // Img2Vid buttons hidden for now
+            // const sendAllImg2VidBtn = document.getElementById('sendAllImg2VidBtn');
+            // if (sendAllImg2VidBtn) sendAllImg2VidBtn.style.display = 'inline-flex';
 
             const card = document.createElement('div');
             card.className = 'variation-card';
@@ -3687,7 +3750,7 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
                             Envato
                         </button>
-                        <button class="envato-btn img2vid-btn" onclick="event.stopPropagation(); sendImageToVideo(${index})" id="img2vid-btn-${index}" style="background: linear-gradient(135deg, var(--magenta), #9b59b6);">
+                        <button class="envato-btn img2vid-btn" onclick="event.stopPropagation(); sendImageToVideo(${index})" id="img2vid-btn-${index}" style="display:none; background: linear-gradient(135deg, var(--magenta), #9b59b6);">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                             Img→Vid
                         </button>
@@ -3726,13 +3789,7 @@
 
         async function collectAllImageData() {
             const images = [];
-            // Style reference image goes FIRST (highest priority for Envato's 2-slot limit)
-            if (styleReferenceDataUrl) {
-                images.push({ dataUrl: styleReferenceDataUrl, name: 'style-reference.png' });
-            } else if (styleReferenceFile) {
-                const dataUrl = await fileToDataUrl(styleReferenceFile);
-                images.push({ dataUrl, name: 'style-reference.png' });
-            }
+            // Style reference is for Claude's style analysis only — NOT sent as reference to Envato/Gemini
             for (let i = 0; i < selectedImages.length; i++) {
                 const dataUrl = await fileToDataUrl(selectedImages[i]);
                 images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.${getExtFromDataUrl(dataUrl)}` });
