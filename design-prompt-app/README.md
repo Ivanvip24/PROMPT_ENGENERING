@@ -185,6 +185,131 @@ Automates pasting prompts into Envato ImageGen via AppleScript (macOS only). Sup
 #### Style Reference
 Upload a reference image for style analysis. Claude describes the visual style and incorporates it into the generated prompt. This image is **not** sent to Gemini/Envato — it's only for Claude's analysis.
 
+#### Default Keys
+The **DESTINATION** key appears by default and cannot be deleted. Enter comma-separated destinations (e.g., `Cancún, CDMX, Hermosillo`). With permutation ON (green dot), each destination generates its own prompt.
+
+## macOS Setup (Required for Gemini/Envato Automation)
+
+The "Send to Gemini" and "Send to Envato" buttons use **AppleScript** to control Google Chrome. This requires manual permission setup on each new machine.
+
+### 1. Install Google Chrome
+
+The automation targets Chrome specifically. Safari or Firefox will not work for the send features.
+
+### 2. Grant Accessibility Permissions
+
+AppleScript needs permission to control Chrome's UI (clicking, typing, opening tabs).
+
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**
+2. Click the **+** button and add **Terminal** (or **iTerm** if you use that)
+3. If you run the app via the `.command` scripts, also add **Terminal** there
+4. You may also need to add **Google Chrome** itself
+
+> First time you click "Send to Gemini" or "Send to Envato", macOS will pop up a dialog asking to allow control. **Click "OK"/"Allow"**. If you accidentally click "Don't Allow", go to System Settings and enable it manually.
+
+### 3. Grant Automation Permissions
+
+1. Open **System Settings** → **Privacy & Security** → **Automation**
+2. Ensure **Terminal** (or your terminal app) has permission to control **Google Chrome**
+3. This usually gets prompted automatically on first use — click **OK**
+
+### 4. Allow JavaScript Execution in Chrome (for Envato)
+
+Envato automation uses `execute javascript` in Chrome tabs via AppleScript. This requires:
+
+1. Open Chrome → **View** → **Developer** → **Allow JavaScript from Apple Events**
+2. Or from Terminal:
+```bash
+defaults write com.google.Chrome AppleEnableJavaScriptFromAppleEvents -bool true
+```
+3. **Restart Chrome** after enabling this
+
+> Without this setting, the Envato send will fail silently — prompts won't paste into the text field.
+
+### 5. Python 3 with PyObjC (for Gemini image clipboard)
+
+The "Send to Gemini" feature copies reference images to the clipboard using Python's `AppKit` (PyObjC). macOS includes Python 3, but PyObjC may need to be installed:
+
+```bash
+# Check if it works
+python3 -c "from AppKit import NSPasteboard; print('OK')"
+
+# If that fails, install PyObjC
+pip3 install pyobjc-framework-Cocoa
+```
+
+## Workflow: How to Use the App
+
+### Basic Workflow (Prompt Generation Only)
+
+1. Open `http://localhost:3001` in your browser
+2. Select a **project type** (Design Variation, New Design, etc.)
+3. Fill in the **DESTINATION** key values (e.g., `Cancún`)
+4. Write **instructions** describing what you want
+5. Upload **reference images** if needed (drag & drop or paste from clipboard)
+6. Choose **product type**, **style**, **ratio**
+7. Set **variation count** (how many prompts to generate)
+8. Click **Generate** — prompts appear as they complete
+
+### Copy-Paste Workflow (Manual)
+
+1. Generate your prompts
+2. Click the **copy button** on any prompt card to copy it to clipboard
+3. Open [Google Gemini](https://gemini.google.com/) or any AI image tool
+4. Paste the prompt and upload your reference images manually
+5. Generate the image
+
+### Send to Gemini (Automated — macOS only)
+
+1. Generate your prompts
+2. Click **Send to Gemini** on a prompt card
+3. The app automatically:
+   - Copies the prompt text to clipboard
+   - If you have reference images uploaded, copies each image to clipboard using Python
+   - Opens a **new Chrome tab** with Google Gemini
+   - Pastes the prompt into the Gemini text field
+   - If images exist, pastes each image one by one (Cmd+V)
+4. You just need to **click Generate** in Gemini
+5. **Bulk send**: Click "Send All to Gemini" to repeat this for every generated prompt (each gets its own tab)
+
+> **Note**: Each image is given a unique filename so Gemini doesn't reject duplicate uploads.
+
+### Send to Envato (Automated — macOS only)
+
+1. Generate your prompts
+2. Click **Send to Envato** on a prompt card
+3. The app automatically:
+   - Opens a **new Chrome tab** with Envato ImageGen (`labs.envato.com/apps/image-gen`)
+   - Waits for the page to load
+   - Selects the correct **aspect ratio** (Square, Portrait, or Landscape based on your ratio setting)
+   - Pastes the prompt into the text field
+   - If reference images exist, uploads them via drag-and-drop simulation using a local server URL
+   - Clicks the **Generate** button
+4. **Bulk send**: Click "Send All to Envato" to open multiple tabs and fill each one — the app staggers them to avoid overloading
+
+> **Important**: Don't switch away from Chrome while bulk send is running. AppleScript controls the active window.
+
+### Reference Images vs Style Reference
+
+| | Reference Images | Style Reference |
+|--|-----------------|-----------------|
+| **Purpose** | Shown to Gemini/Envato as visual input | Analyzed by Claude to describe the style |
+| **Sent to Gemini/Envato?** | Yes | No |
+| **Used in prompt text?** | No (sent as images) | Yes (style description embedded in prompt) |
+| **Upload location** | Main image upload area | Separate "Style Reference" card |
+
+### Using Keys for Batch Generation
+
+**Example**: Generate magnet designs for 3 animals across 2 destinations:
+
+1. **DESTINATION** key (default): `Cancún, Los Cabos` — green dot ON
+2. Click **+ Add Key**, name it `ANIMALS`: `turtle, whale, parrot` — green dot ON
+3. Instructions: `Create a fun souvenir magnet with ANIMALS and tropical vibes`
+4. Variations: `1`
+5. Result: **6 prompts** (3 animals × 2 destinations), each with the animal and destination substituted
+
+The info banner shows the total count before you generate.
+
 ## Project Structure
 
 ```
@@ -254,7 +379,28 @@ npm start
 ```
 
 ### Envato/Gemini buttons don't work
-These use AppleScript to control Chrome — **macOS only**. They won't work on Windows/Linux.
+These use AppleScript to control Chrome — **macOS only**. They won't work on Windows/Linux. Checklist:
+1. Is **Google Chrome** installed and set as the browser?
+2. Did you grant **Accessibility** permission to Terminal? (System Settings → Privacy & Security → Accessibility)
+3. Did you grant **Automation** permission? (System Settings → Privacy & Security → Automation → Terminal → Google Chrome)
+4. Did you enable **JavaScript from Apple Events** in Chrome? (`defaults write com.google.Chrome AppleEnableJavaScriptFromAppleEvents -bool true` then restart Chrome)
+5. Is Chrome the **frontmost app** when bulk sending? AppleScript controls the active window.
+
+### Gemini images not pasting
+The image clipboard uses Python's `AppKit` (PyObjC). If images don't paste:
+```bash
+# Test if PyObjC works
+python3 -c "from AppKit import NSPasteboard; print('OK')"
+
+# If it fails, install it
+pip3 install pyobjc-framework-Cocoa
+```
+
+### Envato prompt not typing into the text field
+Chrome must have "Allow JavaScript from Apple Events" enabled:
+- Chrome menu → View → Developer → Allow JavaScript from Apple Events
+- Or: `defaults write com.google.Chrome AppleEnableJavaScriptFromAppleEvents -bool true`
+- Restart Chrome after enabling
 
 ### Images not uploading
 Check that `uploads/` directory exists and is writable:
