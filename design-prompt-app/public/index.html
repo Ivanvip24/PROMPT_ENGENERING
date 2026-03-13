@@ -4005,12 +4005,8 @@
         // ═══ IMAGE→VIDEO AUTOMATION ═══
         async function postToEnvatoImageToVideo(imagePrompt, videoPrompt, speech) {
             try {
-                // Get style reference image as reference material for Envato
-                const styleRef = await getStyleRefDataUrl();
-                const referenceImages = styleRef ? [styleRef] : [];
-                // Also include regular uploaded images
+                // Collect regular uploaded images only (style ref is NOT sent — analysis only)
                 const allImages = await collectAllImageData();
-                // Style ref is already first in collectAllImageData, so just use first 2
                 const refs = allImages.slice(0, 2).map(img => img.dataUrl);
 
                 const response = await fetch('/api/send-to-envato-image-to-video', {
