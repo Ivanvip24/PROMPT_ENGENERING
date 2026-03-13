@@ -214,6 +214,7 @@
         .form-grid .field-instructions { grid-column: 1; grid-row: 1 / 3; }
         .form-grid .field-destino { grid-column: 2; grid-row: 1; }
         .form-grid .field-theme { grid-column: 2; grid-row: 2; }
+        .form-grid .field-keys { grid-column: 2; grid-row: 2 / 4; align-self: start; }
         .form-grid .field-element { grid-column: 2; grid-row: 2; }
         .form-textarea {
             width: 100%;
@@ -1081,33 +1082,13 @@
         .btn-clear-ai:hover { border-color: var(--rojo); color: var(--rojo); }
 
         /* ═══ KEYS (VARIABLES) SECTION ═══ */
-        .keys-section {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(0,0,0,0.04);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        .keys-header {
+        .keys-inline-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 20px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-            user-select: none;
+            margin-bottom: 8px;
         }
-        .keys-header:hover { background: var(--bg-tertiary); }
         .keys-header-left { display: flex; align-items: center; gap: 8px; }
-        .keys-title {
-            font-family: var(--font-display);
-            font-size: 14px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-primary);
-        }
         .keys-count-badge {
             padding: 2px 10px;
             background: var(--rosa-light);
@@ -1116,15 +1097,7 @@
             font-weight: 600;
             color: var(--rosa);
         }
-        .keys-collapse-arrow {
-            transition: transform 0.3s ease;
-            font-size: 11px;
-            color: var(--text-tertiary);
-        }
-        .keys-section.collapsed .keys-collapse-arrow { transform: rotate(-90deg); }
-        .keys-section.collapsed .keys-body { display: none; }
-        .keys-body { padding: 0 20px 16px; }
-        .keys-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+        .keys-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
         .key-row {
             display: flex;
             align-items: center;
@@ -1804,6 +1777,7 @@
             .form-grid .field-instructions { grid-row: auto; }
             .form-grid .field-destino { grid-column: 1; grid-row: auto; }
             .form-grid .field-theme { grid-column: 1; grid-row: auto; }
+            .form-grid .field-keys { grid-column: 1; grid-row: auto; }
             .form-grid .field-element { grid-column: 1; grid-row: auto; }
             .image-upload-body { grid-template-columns: 1fr; }
             .controls-row { grid-template-columns: 1fr; }
@@ -1946,9 +1920,24 @@
                     <label class="form-label" for="destination" data-translate="parametersCard.destination">Destination *</label>
                     <input type="text" id="destination" class="form-input" data-translate-placeholder="parametersCard.destinationPlaceholder" placeholder="e.g., Hermosillo, CDMX" required>
                 </div>
-                <div class="form-field field-theme" id="field-theme">
+                <div class="form-field field-theme" id="field-theme" style="display:none">
                     <label class="form-label" for="theme" data-translate="parametersCard.theme">Theme</label>
                     <input type="text" id="theme" class="form-input" data-translate-placeholder="parametersCard.themePlaceholder" placeholder="e.g., Christmas, Summer">
+                </div>
+                <div class="form-field field-keys" id="field-keys">
+                    <div class="keys-inline-header">
+                        <div class="keys-header-left">
+                            <span style="font-size:14px">&#128273;</span>
+                            <label class="form-label" style="margin-bottom:0">Keys</label>
+                            <span class="keys-count-badge" id="keysCountBadge" style="display: none;">0</span>
+                        </div>
+                    </div>
+                    <div class="keys-list" id="keysList"></div>
+                    <button class="keys-add-btn" onclick="addKey()">+ Add Key</button>
+                    <div class="keys-permutation-info" id="keysPermInfo" style="display: none;">
+                        <span style="font-size:14px">&#8644;</span>
+                        <span id="keysPermText">Will generate 0 combinations</span>
+                    </div>
                 </div>
                 <div class="form-field field-element hidden" id="field-elementDescription">
                     <label class="form-label" for="elementDescription" data-translate="parametersCard.elementDescription">Previous Element Description</label>
@@ -1957,25 +1946,7 @@
             </div>
         </div>
 
-        <!-- Keys (Variables) Section -->
-        <div class="keys-section" id="keysSection" style="display: none;">
-            <div class="keys-header" onclick="toggleKeysCollapse()">
-                <div class="keys-header-left">
-                    <span style="font-size:16px">&#128273;</span>
-                    <span class="keys-title">Keys</span>
-                    <span class="keys-count-badge" id="keysCountBadge" style="display: none;">0</span>
-                </div>
-                <span class="keys-collapse-arrow" id="keysCollapseArrow">&#9660;</span>
-            </div>
-            <div class="keys-body" id="keysBody">
-                <div class="keys-list" id="keysList"></div>
-                <button class="keys-add-btn" onclick="addKey()">+ Add Key</button>
-                <div class="keys-permutation-info" id="keysPermInfo" style="display: none;">
-                    <span style="font-size:14px">&#8644;</span>
-                    <span id="keysPermText">Will generate 0 combinations</span>
-                </div>
-            </div>
-        </div>
+        <!-- Keys section is now inline in the form grid (field-keys) -->
 
         <!-- Controls Row: Stepper + Sliders -->
         <div class="controls-row" id="controlsRow" style="display: none;">
@@ -2336,10 +2307,6 @@
             updatePermutationInfo();
         }
 
-        function toggleKeysCollapse() {
-            document.getElementById('keysSection').classList.toggle('collapsed');
-        }
-
         function renderKeys() {
             const list = document.getElementById('keysList');
             list.innerHTML = promptKeys.map(key => `
@@ -2371,7 +2338,9 @@
             const permutedKeys = promptKeys.filter(k => k.permute && k.name && k.values.trim());
             if (permutedKeys.length === 0) { infoDiv.style.display = 'none'; return; }
             const counts = permutedKeys.map(k => parseKeyValues(k.values).length);
-            const total = counts.reduce((a, b) => a * b, 1);
+            const keyCombos = counts.reduce((a, b) => a * b, 1);
+            const variations = parseInt(document.getElementById('variationCount')?.value) || 1;
+            const total = keyCombos * variations;
             infoDiv.style.display = 'flex';
             if (total > MAX_PERMUTATIONS) {
                 infoDiv.style.borderLeftColor = 'var(--rojo)';
@@ -2382,7 +2351,10 @@
                 infoDiv.style.borderLeftColor = 'var(--verde)';
                 infoDiv.style.background = 'var(--verde-light)';
                 infoDiv.style.color = '#558b2f';
-                textSpan.textContent = `Will generate ${total} prompt combination${total > 1 ? 's' : ''}`;
+                const parts = [];
+                if (keyCombos > 1) parts.push(`${keyCombos} key combos`);
+                if (variations > 1) parts.push(`${variations} variations`);
+                textSpan.textContent = `Will generate ${total} prompt${total > 1 ? 's' : ''}${parts.length > 1 ? ` (${parts.join(' × ')})` : ''}`;
             }
         }
 
@@ -2958,6 +2930,7 @@
             val = Math.max(1, Math.min(1000, val + delta));
             input.value = val;
             display.textContent = val;
+            updatePermutationInfo();
         }
 
         function editVariationCount() {
@@ -2967,6 +2940,7 @@
                 if (!isNaN(num) && num >= 1 && num <= 1000) {
                     document.getElementById('variationCount').value = num;
                     document.getElementById('variationDisplay').textContent = num;
+                    updatePermutationInfo();
                 }
             }
         }
@@ -3124,7 +3098,6 @@
             document.getElementById('actionsRow').style.display = '';
             document.getElementById('imageUploadSection').style.display = '';
             document.getElementById('aiAnalyzerToggle').style.display = '';
-            document.getElementById('keysSection').style.display = '';
 
             const isModify = (key === 'modify');
             const isVariations = (key === 'variations');
@@ -3141,7 +3114,8 @@
             };
 
             showField('field-destination', !isModify);
-            showField('field-theme', isVariations || isFromScratch);
+            showField('field-theme', false);
+            showField('field-keys', !isModify);
             showField('field-elementDescription', isPreviousElement);
 
             // Sliders visibility
@@ -3487,16 +3461,28 @@
             // ─── KEY PERMUTATION RESOLUTION ───
             const resolvedInstructions = resolveKeyPermutations(instructions, promptKeys);
             if (resolvedInstructions === null) return;
-            const usePermutedMode = resolvedInstructions.length > 1;
-            if (usePermutedMode) variationCount = resolvedInstructions.length;
+            const hasKeyCombos = resolvedInstructions.length > 1;
+
+            // Multiply: each key combo × variationCount
+            let allInstructions = resolvedInstructions;
+            if (hasKeyCombos && variationCount > 1) {
+                allInstructions = [];
+                for (const inst of resolvedInstructions) {
+                    for (let v = 0; v < variationCount; v++) {
+                        allInstructions.push(inst);
+                    }
+                }
+            }
+            const usePermutedMode = allInstructions.length > 1;
+            if (usePermutedMode) variationCount = allInstructions.length;
 
             const formData = new FormData();
             formData.append('projectType', currentProject);
             if (usePermutedMode) {
-                formData.append('permutedInstructions', JSON.stringify(resolvedInstructions));
-                formData.append('instructions', resolvedInstructions[0]);
+                formData.append('permutedInstructions', JSON.stringify(allInstructions));
+                formData.append('instructions', allInstructions[0]);
             } else {
-                formData.append('instructions', resolvedInstructions[0]);
+                formData.append('instructions', allInstructions[0]);
             }
             formData.append('variationCount', variationCount);
             formData.append('productType', selectedProduct);

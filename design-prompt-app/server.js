@@ -1790,7 +1790,9 @@ app.post('/api/generate-prompt-stream', upload.fields([
       level: params.level,
       decorationLevel: params.decorationLevel,
       crazymeter: params.crazymeter,
-      turboMode: params.turboMode
+      turboMode: params.turboMode,
+      permutedMode: !!params.permutedInstructions,
+      permutedCount: params.permutedInstructions ? params.permutedInstructions.length : 0
     });
 
     // Send initial message
