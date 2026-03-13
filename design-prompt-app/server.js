@@ -1501,7 +1501,8 @@ async function generateVariations(params, count, onVariationComplete) {
 
     const promises = Array.from({ length: count }, async (_, i) => {
       try {
-        let modifiedInstruction = instructions;
+        const baseInstruction = params.permutedInstructions ? params.permutedInstructions[i] : instructions;
+        let modifiedInstruction = baseInstruction;
         const hasImages = params.images && params.images.length > 0;
         const diversityAngle = DIVERSITY_ANGLES[i % DIVERSITY_ANGLES.length];
         const variationStyle = styleAssignments[i];
@@ -1510,12 +1511,12 @@ async function generateVariations(params, count, onVariationComplete) {
         const variationParams = { ...params, style: variationStyle || params.style };
 
         if (hasImages && count === 1) {
-          modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
+          modifiedInstruction = `${baseInstruction}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
         } else if (count > 1) {
           if (hasImages) {
-            modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
+            modifiedInstruction = `${baseInstruction}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
           } else {
-            modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
+            modifiedInstruction = `${baseInstruction}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
           }
         }
 
@@ -1571,7 +1572,8 @@ async function generateVariations(params, count, onVariationComplete) {
 
     const promises = Array.from({ length: count }, async (_, i) => {
       try {
-        let modifiedInstruction = instructions;
+        const baseInstruction = params.permutedInstructions ? params.permutedInstructions[i] : instructions;
+        let modifiedInstruction = baseInstruction;
         const hasImages = params.images && params.images.length > 0;
         const diversityAngle = DIVERSITY_ANGLES[i % DIVERSITY_ANGLES.length];
         const variationStyle = styleAssignments[i];
@@ -1580,9 +1582,9 @@ async function generateVariations(params, count, onVariationComplete) {
         const variationParams = { ...params, style: variationStyle || params.style };
 
         if (hasImages) {
-          modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
+          modifiedInstruction = `${baseInstruction}\n\nREFERENCE IMAGE VARIATION ${i + 1} of ${count}:\n- STYLE MATCH IS MANDATORY: Start your prompt with a detailed description of the EXACT visual style from the reference (line work, shading, proportions, rendering). Be specific, not generic.\n- Keep the SAME protagonist with SAME clothing/accessories, SAME types of supporting elements, SAME color palette.\n- COMPOSITION CHANGE for variation ${i + 1}: ${diversityAngle}\n- The protagonist should have a DIFFERENT pose/gesture/action, but must be the SAME character with SAME style.\n- The result must look like it was drawn by the SAME ARTIST as the reference  - only the arrangement changes.`;
         } else {
-          modifiedInstruction = `${instructions}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
+          modifiedInstruction = `${baseInstruction}\n\nIMPORTANT: Create variation ${i + 1} of ${count}.\n\nDIVERSITY REQUIREMENT (variation ${i + 1}): ${diversityAngle}\nThis must be COMPLETELY DIFFERENT from other variations. Use a different composition layout, different hero element treatment, different color mood, and different visual storytelling approach. Do NOT produce a slight tweak of the same design  - create a genuinely new concept.`;
         }
 
         const styleLabel = variationStyle ? ` [${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}]` : '';
@@ -1640,7 +1642,8 @@ async function generateVariations(params, count, onVariationComplete) {
   } else {
     // SINGLE VARIATION: Sequential (only 1 variation, no need for parallel)
     try {
-      let modifiedInstruction = instructions;
+      const baseInstruction = params.permutedInstructions ? params.permutedInstructions[0] : instructions;
+      let modifiedInstruction = baseInstruction;
       const hasImages = params.images && params.images.length > 0;
       const variationStyle = styleAssignments[0];
       if (variationStyle) {
@@ -1648,7 +1651,7 @@ async function generateVariations(params, count, onVariationComplete) {
       }
 
       if (hasImages) {
-        modifiedInstruction = `${instructions}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
+        modifiedInstruction = `${baseInstruction}\n\nREFERENCE IMAGE VARIATION RULES:\n- You MUST create a variation OF the reference image, not a new design from scratch.\n- STYLE MATCH IS MANDATORY: Your prompt MUST start with a detailed style description that replicates the EXACT rendering style, line work, shading, proportions, and color approach from the reference image. Be hyper-specific (e.g., "kawaii chibi-style with bold 2px black outlines, flat color fills, no gradients" NOT just "cartoon style").\n- Keep the SAME protagonist character with SAME clothing, accessories, and proportions.\n- Keep the SAME types of supporting elements (same flower species, same animals).\n- Keep the SAME color palette and saturation level.\n- CHANGE ONLY: pose, gesture, action, composition layout, or element arrangement.\n- The result should look like it was drawn by the SAME ARTIST as the reference.`;
       }
 
       const styleLabel = variationStyle ? ` [${variationStyle.charAt(0).toUpperCase() + variationStyle.slice(1)}]` : '';
@@ -1713,7 +1716,7 @@ app.post('/api/generate-prompt-stream', upload.fields([
   { name: 'styleReference', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode, permutedInstructions: permutedInstructionsRaw } = req.body;
     const images = req.files?.['images'] || [];
     const styleRefFiles = req.files?.['styleReference'] || [];
     const count = parseInt(variationCount) || 1;
@@ -1774,7 +1777,8 @@ app.post('/api/generate-prompt-stream', upload.fields([
       photoStyle: photoStyle || null,
       turboMode: turboMode === 'true',
       images: allImages,
-      styleReferenceImage: styleRefImagePath
+      styleReferenceImage: styleRefImagePath,
+      permutedInstructions: permutedInstructionsRaw ? JSON.parse(permutedInstructionsRaw) : null
     };
 
     console.log('\n📥 Received streaming request:', {
@@ -2661,13 +2665,19 @@ delay 0.15
 // ═══ IMAGE TO VIDEO: Generate image on ImageGen, wait, then convert to video ═══
 app.post('/api/send-to-envato-image-to-video', async (req, res) => {
   try {
-    const { imagePrompt, videoPrompt, speech } = req.body;
+    const { imagePrompt, videoPrompt, speech, referenceImages } = req.body;
 
     if (!imagePrompt) {
       return res.status(400).json({ success: false, error: 'No image prompt provided' });
     }
 
-    console.log(`\n🎬🖼️ Image→Video: imgPrompt=${imagePrompt.length} chars, vidPrompt=${(videoPrompt || '').length} chars, speech=${(speech || '').length} chars`);
+    // Write reference images to tmp-ref if provided
+    let refFilenames = [];
+    if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+      refFilenames = await writeRefImages(referenceImages);
+    }
+
+    console.log(`\n🎬🖼️ Image→Video: imgPrompt=${imagePrompt.length} chars, vidPrompt=${(videoPrompt || '').length} chars, speech=${(speech || '').length} chars, refs=${refFilenames.length}`);
 
     const timestamp = Date.now();
     const tempDir = path.join(os.tmpdir(), `envato-img2vid-${timestamp}`);
@@ -2686,9 +2696,34 @@ app.post('/api/send-to-envato-image-to-video', async (req, res) => {
     const vidPromptFile = path.join(tempDir, 'vid_prompt.txt');
     await fs.writeFile(vidPromptFile, sanitizeVideoPrompt(combinedVideo), 'utf8');
 
+    // Write reference upload JS if we have images
+    let refJSFile = '';
+    if (refFilenames.length > 0) {
+      refJSFile = path.join(tempDir, 'ref-upload.js');
+      await fs.writeFile(refJSFile, generateRefUploadJS(refFilenames), 'utf8');
+    }
+
+    // Build reference image upload AppleScript section
+    // Use fetch() from the page to load and execute the JS (avoids do shell script which can break System Events auth)
+    let refUploadSection = '';
+    if (refFilenames.length > 0) {
+      refUploadSection = `
+  -- Upload reference images via fetch from local server
+  execute tab myTab of w javascript "fetch('http://localhost:${PORT}/tmp-ref/ref-upload.js').then(r=>r.text()).then(js=>eval(js)).catch(e=>{ window.__refUploadDone=true; });"
+  -- Wait for ref upload to complete
+  repeat 30 times
+    set isDone to (execute tab myTab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
+    if isDone is "yes" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5`;
+      // Also save ref-upload.js to the CORS-enabled tmp-ref dir so the page can fetch it
+      await fs.writeFile(path.join(tmpRefDir, 'ref-upload.js'), generateRefUploadJS(refFilenames), 'utf8');
+    }
+
     // Full AppleScript pipeline:
-    // 1. Open ImageGen → paste image prompt → Generate
-    // 2. Wait ~50s for image generation
+    // 1. Open ImageGen → upload refs → paste image prompt → Generate
+    // 2. Wait ~25s for image generation
     // 3. Click generated image → detail view
     // 4. Click "Video" button → opens VideoGen with image
     // 5. Configure 9:16, Sound, Speech
@@ -2721,7 +2756,7 @@ tell application "Google Chrome"
     delay 0.2
   end repeat
   delay 0.3
-
+${refUploadSection}
   -- Select Portrait (9:16) aspect ratio for video-ready images
   -- Step 1: Click the current aspect ratio button to open dropdown
   execute tab myTab of w javascript "
