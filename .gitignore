@@ -39,4 +39,5 @@ design-prompt-app/tmp-ref/
 design-prompt-app/uploads/
 design-prompt-app/node_modules/
 design-prompt-app/.server.pid
+design-prompt-app/.puppeteer-profile/
 design-prompt-app/*.log

@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { spawn, exec } = require('child_process');
+const envatoPuppeteer = require('./envato-puppeteer');
 const app = express();
 const PORT = 3001;
 
@@ -2332,7 +2333,7 @@ app.post('/api/send-to-envato', async (req, res) => {
     }
 
     // Map app ratio to Envato option: Square, Portrait, Landscape
-    let envatoAspect = 'Square'; // default
+    let envatoAspect = 'Square';
     if (aspectRatio === '1:2') envatoAspect = 'Portrait';
     else if (aspectRatio === '2:1') envatoAspect = 'Landscape';
 
@@ -2340,141 +2341,20 @@ app.post('/api/send-to-envato', async (req, res) => {
     let refFilenames = [];
     if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
       refFilenames = await writeRefImages(referenceImages);
-      console.log(`\n🚀 Send to Envato: prompt length=${prompt.length}, aspect=${envatoAspect}, refs=${refFilenames.length}`);
+      console.log(`\n🚀 Send to Envato (Puppeteer): prompt length=${prompt.length}, aspect=${envatoAspect}, refs=${refFilenames.length}`);
     } else {
-      console.log(`\n🚀 Send to Envato: prompt length=${prompt.length}, aspect=${envatoAspect}`);
+      console.log(`\n🚀 Send to Envato (Puppeteer): prompt length=${prompt.length}, aspect=${envatoAspect}`);
     }
 
-    const timestamp = Date.now();
-    const tempDir = path.join(os.tmpdir(), `envato-${timestamp}`);
-    await fs.mkdir(tempDir, { recursive: true });
+    // Fire and forget — automation runs in background
+    envatoPuppeteer.sendToEnvato({
+      prompt: sanitizePrompt(prompt),
+      aspectRatio: envatoAspect,
+      refFilenames,
+      port: PORT
+    }).catch(err => console.error('[X] Envato Puppeteer error:', err.message));
 
-    // Write prompt to temp file
-    const promptFile = path.join(tempDir, 'prompt.txt');
-    await fs.writeFile(promptFile, sanitizePrompt(prompt), 'utf8');
-
-    // Write reference upload JS to temp file if we have images
-    let refJSFile = '';
-    if (refFilenames.length > 0) {
-      refJSFile = path.join(tempDir, 'ref-upload.js');
-      await fs.writeFile(refJSFile, generateRefUploadJS(refFilenames), 'utf8');
-    }
-
-    // Build reference image upload AppleScript section
-    let refUploadSection = '';
-    if (refFilenames.length > 0) {
-      refUploadSection = `
-  -- Upload reference images
-  set refJS to do shell script "cat " & quoted form of "${refJSFile}"
-  execute active tab of front window javascript refJS
-  -- Wait for ref upload to complete
-  repeat 30 times
-    set isDone to (execute active tab of front window javascript "window.__refUploadDone ? 'yes' : 'no'")
-    if isDone is "yes" then exit repeat
-    delay 0.5
-  end repeat
-  delay 0.5`;
-    }
-
-    // AppleScript: open Envato ImageGen, paste text, click Generate
-    const appleScript = `
-tell application "Google Chrome"
-  activate
-  tell front window to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
-  -- Wait for page to load
-  repeat 50 times
-    if not (loading of active tab of front window) then exit repeat
-    delay 0.15
-  end repeat
-  -- Wait for the text input to be ready (textarea or input)
-  repeat 40 times
-    set inputReady to (execute active tab of front window javascript "
-      var ta = document.querySelector('textarea, input[type=text]');
-      ta ? '1' : '0';
-    ")
-    if inputReady is "1" then exit repeat
-    delay 0.2
-  end repeat
-  delay 0.3
-${refUploadSection}
-  -- Select aspect ratio: click the dropdown then the option
-  execute active tab of front window javascript "
-    (function(){
-      var labels = document.querySelectorAll('label, span, div, button');
-      for(var i=0;i<labels.length;i++){
-        var t = labels[i].textContent.trim().toLowerCase();
-        if(t==='square'||t==='portrait'||t==='landscape'){
-          var el = labels[i].closest('button') || labels[i].closest('label') || labels[i];
-          if(el.querySelector('input[type=radio],input[type=checkbox]')){
-            el.click();
-          }
-        }
-      }
-      // Try clicking the aspect ratio dropdown/selector first
-      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
-      for(var j=0;j<triggers.length;j++){
-        var txt = triggers[j].textContent.trim().toLowerCase();
-        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
-          triggers[j].click();
-          break;
-        }
-      }
-    })();
-    'ok';
-  "
-  delay 0.3
-  -- Now click the specific aspect ratio option
-  execute active tab of front window javascript "
-    (function(){
-      var target = '${envatoAspect}'.toLowerCase();
-      var items = document.querySelectorAll('li, label, button, div[role=option], span');
-      for(var i=0;i<items.length;i++){
-        if(items[i].textContent.trim().toLowerCase()===target){
-          items[i].click();
-          return 'clicked';
-        }
-      }
-      return 'not found';
-    })();
-  "
-  delay 0.3
-  -- Focus the text input
-  execute active tab of front window javascript "
-    var ta = document.querySelector('textarea, input[type=text]');
-    if(ta){ta.focus();ta.click();} 'ok';
-  "
-end tell
--- Paste text via clipboard
-do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
-tell application "System Events" to keystroke "v" using command down
--- Wait for paste to register
-delay 0.8
--- Click the Generate button via JS injection
-tell application "Google Chrome"
-  execute active tab of front window javascript "
-    var btns = document.querySelectorAll('button');
-    for(var i=0;i<btns.length;i++){
-      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
-        btns[i].click();
-        break;
-      }
-    }
-    'ok';
-  "
-end tell
-return "done"
-`;
-
-    const scriptFile = path.join(tempDir, 'automate.scpt');
-    await fs.writeFile(scriptFile, appleScript, 'utf8');
-
-    exec(`osascript "${scriptFile}"`, { timeout: 30000 }, (error) => {
-      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
-      if (error) console.error('  [X] Envato AppleScript error:', error.message);
-      else console.log('  [OK] Envato automation completed');
-    });
-
-    res.json({ success: true, message: 'Sending to Envato...' });
+    res.json({ success: true, message: 'Sending to Envato (background)...' });
 
   } catch (error) {
     console.error('[X] Send to Envato error:', error);
@@ -2491,7 +2371,7 @@ app.post('/api/send-all-to-envato', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No prompts provided' });
     }
 
-    // Map per-prompt aspect ratios (distributed randomly by frontend)
+    // Map per-prompt aspect ratios
     function mapAspect(ratio) {
       if (ratio === '1:2') return 'Portrait';
       if (ratio === '2:1') return 'Landscape';
@@ -2505,158 +2385,20 @@ app.post('/api/send-all-to-envato', async (req, res) => {
     let refFilenames = [];
     if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
       refFilenames = await writeRefImages(referenceImages);
-      console.log(`\n🚀 BULK Send to Envato: ${prompts.length} prompts, aspects=[${envatoAspects.join(', ')}], refs=${refFilenames.length}`);
+      console.log(`\n🚀 BULK Send to Envato (Puppeteer): ${prompts.length} prompts, refs=${refFilenames.length}`);
     } else {
-      console.log(`\n🚀 BULK Send to Envato: ${prompts.length} prompts, aspects=[${envatoAspects.join(', ')}]`);
+      console.log(`\n🚀 BULK Send to Envato (Puppeteer): ${prompts.length} prompts`);
     }
 
-    const timestamp = Date.now();
-    const tempDir = path.join(os.tmpdir(), `envato-bulk-${timestamp}`);
-    await fs.mkdir(tempDir, { recursive: true });
+    // Fire and forget — automation runs in background
+    envatoPuppeteer.sendAllToEnvato({
+      prompts: prompts.map(p => sanitizePrompt(p)),
+      aspectRatios: envatoAspects,
+      refFilenames,
+      port: PORT
+    }).catch(err => console.error('[X] Bulk Envato Puppeteer error:', err.message));
 
-    // Write each prompt to its own temp file
-    const promptFiles = [];
-    for (let i = 0; i < prompts.length; i++) {
-      const promptFile = path.join(tempDir, `prompt-${i}.txt`);
-      await fs.writeFile(promptFile, sanitizePrompt(prompts[i]), 'utf8');
-      promptFiles.push(promptFile);
-    }
-
-    // Write reference upload JS to temp file if we have images
-    let refJSFile = '';
-    if (refFilenames.length > 0) {
-      refJSFile = path.join(tempDir, 'ref-upload.js');
-      await fs.writeFile(refJSFile, generateRefUploadJS(refFilenames), 'utf8');
-    }
-
-    const tabCount = prompts.length;
-
-    // Build bulk AppleScript: open all tabs -> wait -> paste each
-    let script = `
-tell application "Google Chrome"
-  activate
-  set w to front window
-  -- Open ALL tabs at once
-`;
-    for (let i = 0; i < tabCount; i++) {
-      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
-    }
-    script += `
-  -- Wait for all tabs to load
-  set tabTotal to count of tabs of w
-  repeat 60 times
-    set allDone to true
-    repeat with i from (tabTotal - ${tabCount - 1}) to tabTotal
-      if (loading of tab i of w) then set allDone to false
-    end repeat
-    if allDone then exit repeat
-    delay 0.1
-  end repeat
-  delay 0.3
-end tell
-`;
-
-    // Build ref upload AppleScript section for bulk (same for all tabs)
-    let bulkRefSection = '';
-    if (refFilenames.length > 0) {
-      bulkRefSection = `
-  -- Upload reference images
-  set refJS to do shell script "cat " & quoted form of "${refJSFile}"
-  execute active tab of w javascript refJS
-  -- Wait for ref upload to complete
-  repeat 30 times
-    set isDone to (execute active tab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
-    if isDone is "yes" then exit repeat
-    delay 0.5
-  end repeat
-  delay 0.5`;
-    }
-
-    // For each tab: switch + paste text + click Generate
-    for (let i = 0; i < tabCount; i++) {
-      const promptFile = promptFiles[i];
-
-      script += `
--- TAB ${i + 1}/${tabCount}
-tell application "Google Chrome"
-  set w to front window
-  set tabTotal to count of tabs of w
-  set active tab index of w to (tabTotal - ${tabCount - 1 - i})
-  -- Wait for input ready (tight polling)
-  repeat 30 times
-    set inputReady to (execute active tab of w javascript "
-      var ta = document.querySelector('textarea, input[type=text]');
-      ta ? '1' : '0';
-    ")
-    if inputReady is "1" then exit repeat
-    delay 0.1
-  end repeat
-${bulkRefSection}
-  -- Select aspect ratio (combined: open dropdown + pick option in one call)
-  execute active tab of w javascript "
-    (function(){
-      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
-      for(var j=0;j<triggers.length;j++){
-        var txt = triggers[j].textContent.trim().toLowerCase();
-        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
-          triggers[j].click();
-          break;
-        }
-      }
-      setTimeout(function(){
-        var target = '${envatoAspects[i]}'.toLowerCase();
-        var items = document.querySelectorAll('li, label, button, div[role=option], span');
-        for(var k=0;k<items.length;k++){
-          if(items[k].textContent.trim().toLowerCase()===target){
-            items[k].click(); break;
-          }
-        }
-      }, 150);
-    })();
-    'ok';
-  "
-  delay 0.25
-  -- Focus input
-  execute active tab of w javascript "
-    var ta = document.querySelector('textarea, input[type=text]');
-    if(ta){ta.focus();ta.click();} 'ok';
-  "
-end tell
--- Paste text
-do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
-tell application "System Events" to keystroke "v" using command down
-delay 0.5
--- Click Generate
-tell application "Google Chrome"
-  execute active tab of w javascript "
-    var btns = document.querySelectorAll('button');
-    for(var i=0;i<btns.length;i++){
-      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
-        btns[i].click();
-        break;
-      }
-    }
-    'ok';
-  "
-end tell
-delay 0.15
-`;
-    }
-
-    script += `\nreturn "done"\n`;
-
-    const scriptFile = path.join(tempDir, 'bulk_automate.scpt');
-    await fs.writeFile(scriptFile, script, 'utf8');
-
-    console.log(`  📝 Executing FAST bulk Envato automation (${tabCount} tabs)...`);
-
-    exec(`osascript "${scriptFile}"`, { timeout: 90000 }, (error) => {
-      setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
-      if (error) console.error('  [X] Bulk Envato error:', error.message);
-      else console.log(`  [OK] Bulk Envato done (${tabCount} tabs)`);
-    });
-
-    res.json({ success: true, message: `Opening ${tabCount} Envato tabs...`, count: tabCount });
+    res.json({ success: true, message: `Opening ${prompts.length} Envato tabs (background)...`, count: prompts.length });
 
   } catch (error) {
     console.error('[X] Bulk Send to Envato error:', error);
@@ -2885,20 +2627,22 @@ tell application "Google Chrome"
   ")
   delay 1.5
 
-  -- Physical click on the image as fallback (in case JS click didn't trigger React)
+  -- Physical click fallback (wrapped in try to avoid -25200 errors)
   if imgCoords is not "" then
-    set active tab index of w to myTab
-    set AppleScript's text item delimiters to ","
-    set imgParts to text items of imgCoords
-    set AppleScript's text item delimiters to ""
-    set winBounds to bounds of w
-    set winX to item 1 of winBounds
-    set winY to item 2 of winBounds
-    set clickX to winX + (item 1 of imgParts as integer)
-    set clickY to winY + 88 + (item 2 of imgParts as integer)
-    tell application "System Events"
-      click at {clickX, clickY}
-    end tell
+    try
+      set active tab index of w to myTab
+      set AppleScript's text item delimiters to ","
+      set imgParts to text items of imgCoords
+      set AppleScript's text item delimiters to ""
+      set winBounds to bounds of w
+      set winX to item 1 of winBounds
+      set winY to item 2 of winBounds
+      set clickX to winX + (item 1 of imgParts as integer)
+      set clickY to winY + 88 + (item 2 of imgParts as integer)
+      tell application "System Events"
+        click at {clickX, clickY}
+      end tell
+    end try
   end if
   delay 2.0
 
@@ -3346,20 +3090,22 @@ tell application "Google Chrome"
   ")
   delay 1.5
 
-  -- Physical click fallback
+  -- Physical click fallback (wrapped in try to avoid -25200 errors)
   if imgCoords is not "" then
-    set active tab index of w to myTab
-    set AppleScript's text item delimiters to ","
-    set imgParts to text items of imgCoords
-    set AppleScript's text item delimiters to ""
-    set winBounds to bounds of w
-    set winX to item 1 of winBounds
-    set winY to item 2 of winBounds
-    set clickX to winX + (item 1 of imgParts as integer)
-    set clickY to winY + 88 + (item 2 of imgParts as integer)
-    tell application "System Events"
-      click at {clickX, clickY}
-    end tell
+    try
+      set active tab index of w to myTab
+      set AppleScript's text item delimiters to ","
+      set imgParts to text items of imgCoords
+      set AppleScript's text item delimiters to ""
+      set winBounds to bounds of w
+      set winX to item 1 of winBounds
+      set winY to item 2 of winBounds
+      set clickX to winX + (item 1 of imgParts as integer)
+      set clickY to winY + 88 + (item 2 of imgParts as integer)
+      tell application "System Events"
+        click at {clickX, clickY}
+      end tell
+    end try
   end if
   delay 2.0
 
@@ -4007,6 +3753,28 @@ function openChrome(url) {
     }
   });
 }
+
+// ═══ ENVATO PUPPETEER LOGIN (one-time visible browser for session) ═══
+app.post('/api/envato-login', async (req, res) => {
+  try {
+    console.log('\n🔐 Opening Envato login browser...');
+    res.json({ success: true, message: 'Login browser opening. Log in to Envato, then close the browser.' });
+    // Don't await — let the browser stay open until user closes it
+    envatoPuppeteer.envLoginVisible().catch(err => console.error('[X] Login error:', err.message));
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Cleanup Puppeteer on server shutdown
+process.on('SIGINT', async () => {
+  await envatoPuppeteer.closeBrowser();
+  process.exit();
+});
+process.on('SIGTERM', async () => {
+  await envatoPuppeteer.closeBrowser();
+  process.exit();
+});
 
 app.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;

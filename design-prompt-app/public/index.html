@@ -2191,6 +2191,9 @@
                 <span id="generateBtnIcon">✨</span>
                 <span data-translate="generateBtn.text" id="generateBtnText">Generate Design Prompts</span>
             </button>
+            <button class="envato-login-btn" id="envatoLoginBtn" onclick="envatoLogin()" title="One-time login to Envato for background automation" style="padding:8px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;color:#666;display:flex;align-items:center;gap:6px;">
+                <span>🔐</span> Setup Envato
+            </button>
         </div>
 
         <!-- Output Section -->
@@ -3913,6 +3916,24 @@
             }
 
             setTimeout(() => { sendAllBtn.innerHTML = originalHTML; document.querySelectorAll('.gemini-btn').forEach(b => b.classList.remove('sent')); }, 5000);
+        }
+
+        // ═══ ENVATO LOGIN (Puppeteer session setup) ═══
+        async function envatoLogin() {
+            const btn = document.getElementById('envatoLoginBtn');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span>🔐</span> Opening...';
+            try {
+                const res = await fetch('/api/envato-login', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    btn.innerHTML = '<span>✓</span> Browser opened — log in!';
+                    setTimeout(() => { btn.innerHTML = orig; }, 10000);
+                }
+            } catch (err) {
+                btn.innerHTML = '<span>✗</span> Error';
+                setTimeout(() => { btn.innerHTML = orig; }, 3000);
+            }
         }
 
         // ═══ ENVATO AUTOMATION ═══
