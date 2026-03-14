@@ -2415,6 +2415,9 @@ app.post('/api/send-to-envato-image-to-video', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No image prompt provided' });
     }
 
+    // Close any Puppeteer headless Chrome — it interferes with AppleScript JS execution
+    await envatoPuppeteer.closeBrowser().catch(() => {});
+
     // Write reference images to tmp-ref if provided
     let refFilenames = [];
     if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
@@ -2472,9 +2475,15 @@ app.post('/api/send-to-envato-image-to-video', async (req, res) => {
     // 4. Click "Video" button → opens VideoGen with image
     // 5. Configure 9:16, Sound, Speech
     // 6. Paste video prompt → React update → Generate
+    const sessionMarker = `axkan_${Date.now()}`;
     const appleScript = `
 tell application "Google Chrome"
   activate
+  -- Ensure at least one window exists
+  if (count of windows) is 0 then
+    make new window
+    delay 1.0
+  end if
   set w to front window
   -- Open new tab and remember its index
   tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
@@ -2489,6 +2498,9 @@ tell application "Google Chrome"
 
   -- Re-focus our tab (user may have switched)
   set active tab index of w to myTab
+
+  -- Mark this tab with a unique session ID so we can find it later
+  execute tab myTab of w javascript "window.__axkan_session='${sessionMarker}';"
 
   -- Wait for textarea
   repeat 40 times
@@ -2565,6 +2577,16 @@ tell application "Google Chrome"
   "
   delay 0.5
 
+  -- Tag all existing images so we can distinguish them from the NEW one after generation
+  execute tab myTab of w javascript "
+    (function(){
+      var imgs = document.querySelectorAll('img');
+      for(var i=0;i<imgs.length;i++) imgs[i].setAttribute('data-axkan-old','1');
+      return 'tagged ' + imgs.length + ' existing images';
+    })();
+  "
+  delay 0.2
+
   -- Click Generate for image
   execute tab myTab of w javascript "
     (function(){
@@ -2584,45 +2606,64 @@ end tell
 -- PHASE 2: Wait for image generation (~25 seconds)
 delay 25
 
--- Re-focus our ORIGINAL window and tab (user may have switched during wait)
+-- Re-focus our SPECIFIC tab by session marker (not just any image-gen tab)
 tell application "Google Chrome"
   activate
-  -- Find our ImageGen tab across ALL windows by URL (concrete indices)
   set foundTab to false
   repeat with winIdx from 1 to (count of windows)
     repeat with tIdx from 1 to (count of tabs of window winIdx)
       if URL of tab tIdx of window winIdx contains "image-gen" then
-        set w to window winIdx
-        set myTab to tIdx
-        set active tab index of w to myTab
-        set foundTab to true
-        exit repeat
+        try
+          set markerVal to (execute tab tIdx of window winIdx javascript "window.__axkan_session || ''")
+          if markerVal is "${sessionMarker}" then
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            set foundTab to true
+            exit repeat
+          end if
+        end try
       end if
     end repeat
     if foundTab then exit repeat
   end repeat
+  -- Fallback: if marker not found (page refreshed?), use last image-gen tab
+  if not foundTab then
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from (count of tabs of window winIdx) to 1 by -1
+        if URL of tab tIdx of window winIdx contains "image-gen" then
+          set w to window winIdx
+          set myTab to tIdx
+          set active tab index of w to myTab
+          set foundTab to true
+          exit repeat
+        end if
+      end repeat
+      if foundTab then exit repeat
+    end repeat
+  end if
 
-  -- Click on first generated image to open detail view
-  -- Get image coordinates for physical click fallback
+  -- Click the NEW generated image (skip images tagged data-axkan-old)
   set imgCoords to (execute tab myTab of w javascript "
     (function(){
       var imgs = document.querySelectorAll('img');
-      var best = null;
-      var bestArea = 0;
+      var newImgs = [];
+      var allImgs = [];
       for(var i=0;i<imgs.length;i++){
         var r = imgs[i].getBoundingClientRect();
-        var area = r.width * r.height;
-        if(r.width > 150 && r.height > 150 && area > bestArea && r.y > 100){
-          best = imgs[i];
-          bestArea = area;
+        if(r.width > 120 && r.height > 120 && r.y > 80 && r.y < window.innerHeight){
+          var entry = {el: imgs[i], y: r.y, x: r.x, area: r.width*r.height};
+          allImgs.push(entry);
+          if(!imgs[i].hasAttribute('data-axkan-old')) newImgs.push(entry);
         }
       }
-      if(best){
-        best.click();
-        var r = best.getBoundingClientRect();
-        return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
-      }
-      return '';
+      var candidates = newImgs.length > 0 ? newImgs : allImgs;
+      if(candidates.length === 0) return '';
+      candidates.sort(function(a,b){ return a.y - b.y || a.x - b.x; });
+      var pick = candidates[0].el;
+      pick.click();
+      var r = pick.getBoundingClientRect();
+      return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
     })();
   ")
   delay 1.5
@@ -2669,6 +2710,40 @@ tell application "Google Chrome"
     delay 0.5
   end repeat
 
+  -- Close ALL existing video-gen tabs before clicking Video (prevents finding old ones)
+  repeat
+    set foundOld to false
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from (count of tabs of window winIdx) to 1 by -1
+        if URL of tab tIdx of window winIdx contains "video-gen" then
+          close tab tIdx of window winIdx
+          set foundOld to true
+          exit repeat
+        end if
+      end repeat
+      if foundOld then exit repeat
+    end repeat
+    if not foundOld then exit repeat
+  end repeat
+  delay 0.3
+
+  -- Re-find our ImageGen tab by session marker (closing tabs shifted indices)
+  repeat with winIdx from 1 to (count of windows)
+    repeat with tIdx from 1 to (count of tabs of window winIdx)
+      if URL of tab tIdx of window winIdx contains "image-gen" then
+        try
+          set mkVal to (execute tab tIdx of window winIdx javascript "window.__axkan_session || ''")
+          if mkVal is "${sessionMarker}" then
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            exit repeat
+          end if
+        end try
+      end if
+    end repeat
+  end repeat
+
   -- JS click on Video button (this opens a NEW tab — Chrome auto-switches to it)
   execute tab myTab of w javascript "
     (function(){
@@ -2685,8 +2760,7 @@ tell application "Google Chrome"
   "
   delay 3.0
 
-  -- Find the video-gen tab (Chrome should have auto-switched to it)
-  -- Poll up to 15s across ALL windows using concrete indices
+  -- Find the NEW video-gen tab (old ones were closed, so this must be fresh)
   set vidFound to false
   repeat 30 times
     repeat with winIdx from 1 to (count of windows)
@@ -2886,6 +2960,9 @@ app.post('/api/send-bulk-image-to-video', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No clips provided' });
     }
 
+    // Close any Puppeteer headless Chrome — it interferes with AppleScript JS execution
+    await envatoPuppeteer.closeBrowser().catch(() => {});
+
     // Write reference images
     let refFilenames = [];
     if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
@@ -2932,10 +3009,20 @@ app.post('/api/send-bulk-image-to-video', async (req, res) => {
     }
 
     // ─── BUILD APPLESCRIPT ───
+    // Session markers for each tab (so Phase C can reliably find them)
+    const bulkMarkers = [];
+    for (let i = 0; i < clipCount; i++) {
+      bulkMarkers.push(`axkan_bulk_${Date.now()}_${i}`);
+    }
+
     // PHASE A: Open ALL ImageGen tabs, paste all image prompts, click Generate on each
     let script = `
 tell application "Google Chrome"
   activate
+  if (count of windows) is 0 then
+    make new window
+    delay 1.0
+  end if
   set w to front window
 `;
     // Open N tabs
@@ -2955,7 +3042,13 @@ tell application "Google Chrome"
     delay 0.15
   end repeat
   delay 1.5
-end tell
+`;
+    // Mark each tab with its unique session marker
+    for (let i = 0; i < clipCount; i++) {
+      script += `  execute tab (tabTotal - ${clipCount - 1 - i}) of w javascript "window.__axkan_session='${bulkMarkers[i]}';"
+`;
+    }
+    script += `end tell
 `;
 
     // For each tab: set Portrait, upload refs, paste prompt, Generate
@@ -3017,6 +3110,15 @@ tell application "Google Chrome"
     })();
   "
   delay 0.3
+  -- Tag all existing images before generating
+  execute tab myTab of w javascript "
+    (function(){
+      var imgs = document.querySelectorAll('img');
+      for(var i=0;i<imgs.length;i++) imgs[i].setAttribute('data-axkan-old','1');
+      return 'tagged ' + imgs.length;
+    })();
+  "
+  delay 0.2
   execute tab myTab of w javascript "
     (function(){
       var btns = document.querySelectorAll('button');
@@ -3048,44 +3150,67 @@ delay 28
 tell application "Google Chrome"
   activate
   set w to front window
-  -- Find the ImageGen tab for clip ${i + 1} (search all windows)
+  -- Find the ImageGen tab for clip ${i + 1} using session marker
   set foundImg to false
-  set imgTabCount to 0
   repeat with winIdx from 1 to (count of windows)
     repeat with tIdx from 1 to (count of tabs of window winIdx)
       if URL of tab tIdx of window winIdx contains "image-gen" then
-        set imgTabCount to imgTabCount + 1
-        if imgTabCount is ${i + 1} then
-          set w to window winIdx
-          set myTab to tIdx
-          set active tab index of w to myTab
-          set foundImg to true
-          exit repeat
-        end if
+        try
+          set markerVal to (execute tab tIdx of window winIdx javascript "window.__axkan_session || ''")
+          if markerVal is "${bulkMarkers[i]}" then
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            set foundImg to true
+            exit repeat
+          end if
+        end try
       end if
     end repeat
     if foundImg then exit repeat
   end repeat
+  -- Fallback: use (i+1)th image-gen tab by count
+  if not foundImg then
+    set imgTabCount to 0
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from 1 to (count of tabs of window winIdx)
+        if URL of tab tIdx of window winIdx contains "image-gen" then
+          set imgTabCount to imgTabCount + 1
+          if imgTabCount is ${i + 1} then
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            set foundImg to true
+            exit repeat
+          end if
+        end if
+      end repeat
+      if foundImg then exit repeat
+    end repeat
+  end if
   if not foundImg then return "no image-gen tab for clip ${i + 1}"
 
-  -- Click largest generated image
+  -- Click the NEW generated image (skip images tagged data-axkan-old)
   set imgCoords to (execute tab myTab of w javascript "
     (function(){
       var imgs = document.querySelectorAll('img');
-      var best = null; var bestArea = 0;
+      var newImgs = [];
+      var allImgs = [];
       for(var j=0;j<imgs.length;j++){
         var r = imgs[j].getBoundingClientRect();
-        var area = r.width * r.height;
-        if(r.width > 150 && r.height > 150 && area > bestArea && r.y > 100){
-          best = imgs[j]; bestArea = area;
+        if(r.width > 120 && r.height > 120 && r.y > 80 && r.y < window.innerHeight){
+          var entry = {el: imgs[j], y: r.y, x: r.x, area: r.width*r.height};
+          allImgs.push(entry);
+          if(!imgs[j].hasAttribute('data-axkan-old')) newImgs.push(entry);
         }
       }
-      if(best){
-        best.click();
-        var r = best.getBoundingClientRect();
-        return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
-      }
-      return '';
+      var candidates = newImgs.length > 0 ? newImgs : allImgs;
+      if(candidates.length === 0) return '';
+      candidates.sort(function(a,b){ return a.y - b.y || a.x - b.x; });
+      var pick = candidates[0].el;
+      pick.click();
+      var r = pick.getBoundingClientRect();
+      return Math.round(r.x + r.width/2) + ',' + Math.round(r.y + r.height/2);
     })();
   ")
   delay 1.5
@@ -3129,6 +3254,40 @@ tell application "Google Chrome"
     delay 0.5
   end repeat
 
+  -- Close ALL existing video-gen tabs before clicking Video
+  repeat
+    set foundOldVid to false
+    repeat with winIdx from 1 to (count of windows)
+      repeat with tIdx from (count of tabs of window winIdx) to 1 by -1
+        if URL of tab tIdx of window winIdx contains "video-gen" then
+          close tab tIdx of window winIdx
+          set foundOldVid to true
+          exit repeat
+        end if
+      end repeat
+      if foundOldVid then exit repeat
+    end repeat
+    if not foundOldVid then exit repeat
+  end repeat
+  delay 0.3
+
+  -- Re-find our ImageGen tab by session marker (closing tabs shifted indices)
+  repeat with winIdx from 1 to (count of windows)
+    repeat with tIdx from 1 to (count of tabs of window winIdx)
+      if URL of tab tIdx of window winIdx contains "image-gen" then
+        try
+          set mkVal to (execute tab tIdx of window winIdx javascript "window.__axkan_session || ''")
+          if mkVal is "${bulkMarkers[i]}" then
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            exit repeat
+          end if
+        end try
+      end if
+    end repeat
+  end repeat
+
   -- Click Video button (opens new tab)
   execute tab myTab of w javascript "
     (function(){
@@ -3142,7 +3301,7 @@ tell application "Google Chrome"
   "
   delay 3.0
 
-  -- Find video-gen tab
+  -- Find the NEW video-gen tab (old ones were closed)
   set vidFound to false
   repeat 30 times
     repeat with winIdx from 1 to (count of windows)
