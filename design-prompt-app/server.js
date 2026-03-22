@@ -583,7 +583,8 @@ After reading the image, identify: the PROTAGONIST (character/animal/element), t
 Your generated prompt MUST describe the SAME protagonist and elements in a DIFFERENT pose/composition/context.
 Do NOT create a completely unrelated design. Keep the same character and destination.
 [!] If the reference image is low-quality/blurry  - IGNORE the quality, only extract the CONCEPT. Your prompt must produce a CRISP, SHARP result.
-Include in your prompt: "${_qualityKeywords}, vivid saturated colors."
+[!] If the reference is a PHOTO of a physical product (on fabric, table, surface)  - IGNORE the photo background entirely. Extract ONLY the design concept. Your prompt MUST specify "clean pure white background" and describe a NEW flat graphic design, NOT a photo of a physical object.
+Include in your prompt: "${_qualityKeywords}, vivid saturated colors, on a clean pure white background."
 
 THEN: ${turboPrompt}`;
       } else {
@@ -614,6 +615,14 @@ ${_isRealisticStyle ? '- REALISTIC RENDERING: Describe subjects as they appear �
 - Your prompt MUST include these quality keywords: ${_refQualityKw}
 - If the reference image looks low-resolution or blurry, IGNORE the quality  - describe the SUBJECT in detail, then specify a PRISTINE high-quality version
 - Add to your prompt: ${_refQualityLine}
+
+[!!!] NEW DESIGN, NOT A PHOTO COPY (NON-NEGOTIABLE):
+- The reference image is INSPIRATION ONLY. Your prompt must create a BRAND NEW, FRESH, HIGH-QUALITY design.
+- NEVER reproduce the reference photo's background (fabric, table, grey surface, etc.) — ALWAYS specify "clean pure white background".
+- NEVER reproduce the reference photo's quality issues (blur, grain, low resolution, compression artifacts, poor lighting).
+- NEVER describe the physical product itself (plastic magnet, rubber texture, 3D embossed surface) — describe a FLAT GRAPHIC DESIGN.
+- Extract ONLY the design concept, subjects, composition, and style — then describe a PRISTINE new version as if a professional designer created it from scratch.
+- Your prompt MUST explicitly state: "on a clean pure white background" — NO EXCEPTIONS.
 
 THEN: ${turboPrompt}`;
       }
@@ -1160,6 +1169,9 @@ WHAT TO NEVER DO:
 [X] Do NOT use terms like "gouache", "watercolor", "painterly", "screen-print texture" if the reference is clean flat vector
 [X] Do NOT write extremely long prompts. Keep the prompt between 150-350 words. Longer prompts confuse the image AI and dilute the style instructions
 [X] Do NOT reproduce the reference image's QUALITY  - if it's blurry, low-res, or has artifacts, IGNORE that. Only extract the STYLE and CONCEPT.
+[X] Do NOT reproduce the reference photo's BACKGROUND (fabric, table, surface, grey/dark backdrop)  - ALWAYS specify "clean pure white background"
+[X] Do NOT describe the physical product (plastic, rubber, 3D embossed)  - describe a FLAT GRAPHIC DESIGN
+[X] The reference is INSPIRATION  - create a BRAND NEW, PRISTINE design as if made from scratch by a professional designer
 
 MANDATORY QUALITY KEYWORDS (include in EVERY prompt you generate):
 Your output prompt MUST include these quality instructions to ensure crisp results:
@@ -1206,6 +1218,14 @@ D) SCALE & PRESENCE: How prominent/large should this be in the design?
 - Keep supporting elements MINIMAL and RELEVANT to the location — only add elements that enhance, not overwhelm
 - Do NOT default to adding marigolds, generic flowers, or cultural filler unless the user specifically asks for them
 - If the reference image is blurry or low-res, still extract the subject details — IGNORE quality, describe the CONTENT
+
+[!!!] NEW DESIGN, NOT A PHOTO COPY (NON-NEGOTIABLE):
+- The reference image is INSPIRATION ONLY. Your prompt must create a BRAND NEW, FRESH, HIGH-QUALITY design.
+- NEVER reproduce the reference photo's background (fabric, table, grey surface, etc.) — ALWAYS specify "clean pure white background".
+- NEVER reproduce the reference photo's quality issues (blur, grain, low resolution, poor lighting).
+- NEVER describe the physical product itself (plastic magnet, rubber texture, 3D embossed) — describe a FLAT GRAPHIC DESIGN.
+- Extract ONLY the design concept, subjects, composition, and style — then describe a PRISTINE new version as a professional designer would create from scratch.
+- Your prompt MUST explicitly state: "on a clean pure white background" — NO EXCEPTIONS.
 
 STEP 3  - MANDATORY QUALITY KEYWORDS (include ALL of these in your output prompt):
 Your generated prompt MUST include these quality instructions:
