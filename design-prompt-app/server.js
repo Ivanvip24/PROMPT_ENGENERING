@@ -801,6 +801,8 @@ async function invokeClaude(projectType, instruction, params) {
 > MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
 ${'='.repeat(50)}
 
+[!!!] PURE WHITE BACKGROUND (NON-NEGOTIABLE): Your output prompt MUST specify "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
+
 Your output prompt MUST produce a PROFESSIONAL, POLISHED product design.
 ${params.style === 'hybrid' ? `
 [!!!] CRITICAL STYLE RULE  - HYBRID REAL+CARTOON:
@@ -834,6 +836,10 @@ DESIGN REQUIREMENTS:
 [X] NEVER add decorative ribbons, scattered tiles, or ornamental filler not requested by the user
 [X] NEVER place text as a disconnected label below or above the art  - text must be visually woven INTO the composition
 [X] NEVER alter the architectural details of real buildings/monuments  - stylize the rendering, preserve the structure
+[X] NEVER use watercolor washes, paint splatters, ink bleeds, or painterly textures  - clean crisp edges ONLY
+[X] NEVER use dark, black, grey, or colored backgrounds  - ALWAYS pure white background
+[X] NEVER use rainbow/multicolor text where each letter is a different color  - use 1-2 colors max for ALL text
+[X] NEVER describe the design as a physical 3D object (plastic, rubber, embossed, sticker on surface)  - it is a FLAT graphic design
 [OK] ALWAYS describe photorealistic elements with camera/photo language
 [OK] ALWAYS describe cartoon elements with illustration/outline language
 ${'='.repeat(50)}`;
@@ -842,6 +848,8 @@ ${'='.repeat(50)}`;
         fullInstruction += `\n\n${'='.repeat(50)}
 > MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
 ${'='.repeat(50)}
+
+[!!!] PURE WHITE BACKGROUND (NON-NEGOTIABLE): Your output prompt MUST specify "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
 
 Your output prompt MUST produce a PROFESSIONAL, POLISHED souvenir product design.
 
@@ -872,6 +880,10 @@ DESIGN QUALITY REQUIREMENTS:
 [X] NEVER add decorative ribbons, scattered tiles, confetti, swirls, or ornamental filler that the user didn't ask for
 [X] NEVER place text as a disconnected label below or above the art  - text must be visually woven INTO the composition
 [X] NEVER alter the architectural details of real buildings/monuments  - stylize the rendering, preserve the structure
+[X] NEVER use watercolor washes, paint splatters, ink bleeds, or painterly textures  - clean crisp edges ONLY
+[X] NEVER use dark, black, grey, or colored backgrounds  - ALWAYS pure white background
+[X] NEVER use rainbow/multicolor text where each letter is a different color  - use 1-2 colors max for ALL text
+[X] NEVER describe the design as a physical 3D object (plastic, rubber, embossed, sticker on surface)  - it is a FLAT graphic design
 [OK] ALWAYS make the main subject the dominant focus of the design
 [OK] ALWAYS maintain one consistent rendering style throughout
 [OK] ALWAYS create an organic irregular silhouette shape on white background
