@@ -46,6 +46,7 @@ function sanitizePrompt(text) {
     .replace(/\bsexo\b/gi, '')
     .replace(/\brounded eyes\b/gi, 'expressive eyes')
     .replace(/\bround eyes\b/gi, 'expressive eyes')
+    .replace(/\bslopes?\b/gi, '')
     .replace(/  +/g, ' ').trim();
 }
 
