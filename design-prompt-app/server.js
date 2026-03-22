@@ -440,21 +440,18 @@ STYLE: ${(() => {
           return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. NO black outlines, NO contour lines around elements  - seamless blending using color and shadow. Premium souvenir product design quality  - NOT cheap AI collage, NOT watercolor, NOT painterly, NOT 3D render.');
         })()}
 COMPOSITION:
-- [Hero element position, size %, and POSE/ACTION described vividly]
-- [Supporting elements arrangement  - describe LAYERING and OVERLAP]
-- [Visual flow: where the eye enters, travels, and rests]
-- [Depth: foreground details, midground subject, background atmosphere]
-PROTAGONIST: [Main character/element  - 40 words: specific details about appearance, expression, clothing/texture, pose, distinctive features]
-ELEMENTS (4-8 items  - ONLY elements that directly relate to the subject/destination. Do NOT add random filler):
-- [Element 1  - specific species/type, color, position, how it interacts with other elements]
-- [Element 2]
-- [Element 3]
-- [Element 4]
-- [Element 5]
-- [Element 6]
-- [Element 7]
-- [Element 8]
-DECORATION: ${params.decorationLevel || 6}/10  - Add decorative details ONLY where they enhance the design. Do NOT stuff every gap with filler. Let the main subject breathe. Quality over quantity.
+- [Hero element dominates the CENTER of the design at 50-70% of the total area  - this is the ANCHOR that everything else orbits around]
+- [Supporting elements are SMALLER (10-20% each) and arranged AROUND the hero, not competing with it]
+- [Visual flow: eye goes to the HERO first, then explores the smaller supporting details]
+- [This is NOT a collage of equal-size objects  - it's a CENTERED HERO with supporting accents]
+PROTAGONIST: [The SINGLE MAIN element  - 50 words: describe it BIG, DOMINANT, CENTERED. It should take up 50-70% of the design. Describe its specific appearance, colors, textures, and details. This element is MUCH LARGER than everything else. The viewer's eye should go HERE first.]
+SUPPORTING ELEMENTS (3-5 SMALL items  - these are ACCENTS, not co-stars. Each should be 10-20% the size of the hero):
+- [Element 1  - SMALL, positioned to complement the hero, not compete with it]
+- [Element 2  - SMALL accent element]
+- [Element 3  - SMALL accent element]
+- [Element 4  - optional, only if needed]
+- [Element 5  - optional, only if needed]
+DECORATION: ${params.decorationLevel || 6}/10  - Decorative details should FRAME or ACCENT the hero, not overwhelm it. The hero must remain the clear focal point.
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
 • Primary: "${params.destination || 'DESTINATION'}" - [placement: INTEGRATED into the illustration, not floating separately], [size: 18-25% height], [style: use 1-2 COLORS ONLY for the text  - NEVER rainbow or multicolor letters. Text should feel like part of the artwork, with same shadows/depth as the illustration elements]
@@ -472,7 +469,7 @@ ${params.theme ? `THEME: ${params.theme}` : ''}
 CRITICAL DESIGN RULES (YOUR PROMPT MUST FOLLOW ALL OF THESE):
 1. PURE WHITE BACKGROUND: The prompt MUST say "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, or gradient backgrounds. This is NON-NEGOTIABLE.
 2. PROFESSIONAL QUALITY: Must look like it was designed by a professional graphic designer. Clean, polished, intentional. NOT cheap-looking AI collage or watercolor mess.
-3. ONE CLEAR HERO: The main subject must be significantly larger (50-70%) than everything else. No equal-size elements competing for attention.
+3. ONE CLEAR DOMINANT HERO (MOST IMPORTANT RULE): The main subject must occupy 50-70% of the design and be MUCH LARGER than everything else. This is NOT a collage of many equal-size objects. It's ONE BIG hero element with a few SMALL supporting accents around it. If the user says "talavera heart" then a GIANT talavera heart dominates the center. Supporting elements are tiny accents, not co-stars.
 4. STYLE CONSISTENCY: ALL elements MUST share the SAME clean illustration style. No mixing watercolor with vector. No 3D/plush/felt textures. No painterly/watercolor effects.
 5. FLAT DESIGN: Flat, front-facing product design. NOT a 3D object, NOT a photograph, NOT a scene.
 6. COHESIVE COLOR PALETTE: Use 3-4 dominant colors that complement each other. NOT every color of the rainbow.
@@ -815,8 +812,8 @@ Every element must look like a real photograph. Do NOT use "illustration", "cart
 This design uses REAL photo elements  - actual photographic quality, NOT illustrations.
 ` : ''}
 DESIGN REQUIREMENTS:
-1. **FOCUS ON MAIN SUBJECT**  - The requested subject dominates 50-70% of the design. Only add supporting elements that directly relate.
-2. **4-8 SUPPORTING ELEMENTS MAX**  - Quality over quantity. Every element must have a reason to be there.
+1. **ONE DOMINANT HERO (MOST IMPORTANT)**  - The main subject requested by the user MUST dominate 50-70% of the design. It should be MUCH LARGER than everything else. This is NOT a collage of equal-size objects. It's ONE BIG hero with small supporting accents around it.
+2. **3-5 SMALL SUPPORTING ELEMENTS**  - Supporting elements are ACCENTS (10-20% the size of the hero each), not co-stars. They orbit the hero, they don't compete with it. Quality over quantity.
 3. **VIVID MODERN COLORS**  - Bold, saturated, BRIGHT colors. NEVER default to vintage/sepia/warm brown/earth tone/muted palettes  - these make designs look OLD and CHEAP.
 4. **FLAT PRODUCT DESIGN**  - NOT a 3D object or photo of a physical item. Flat graphic design.
 5. **STYLE CONSISTENCY**  - ALL elements in the same rendering style. No mixing.${params.style === 'hybrid' ? ' Exception: hybrid intentionally mixes photo + cartoon.' : ''}
@@ -854,8 +851,8 @@ ${'='.repeat(50)}
 Your output prompt MUST produce a PROFESSIONAL, POLISHED souvenir product design.
 
 DESIGN QUALITY REQUIREMENTS:
-1. **FOCUS ON THE MAIN SUBJECT**  - The user's requested subject is the HERO. It should dominate the design (50-70% of the composition). Only add supporting elements that DIRECTLY relate to the subject or destination. Do NOT clutter the design with unrelated filler (random animals, food, pyramids, suns, etc. that the user didn't ask for).
-2. **ONLY ADD WHAT'S NEEDED**  - Supporting elements should ENHANCE the main subject, not overwhelm it. 4-8 supporting elements maximum. Quality over quantity. Every element must have a clear reason to be in the design.
+1. **ONE DOMINANT HERO (MOST IMPORTANT)**  - The user's requested subject is the HERO. It MUST dominate 50-70% of the design and be MUCH LARGER than everything else. This is NOT a collage of many equal-size objects  - it's ONE BIG central element with small accents around it. If the user says "talavera heart" then a GIANT talavera heart is the center of the design. If they say "iglesias" then ONE prominent church dominates.
+2. **3-5 SMALL SUPPORTING ACCENTS**  - Supporting elements should be 10-20% the size of the hero each. They ORBIT the hero, they don't COMPETE with it. Do NOT clutter the design with many equal-size objects. Quality over quantity.
 3. **STYLE CONSISTENCY (CRITICAL)**  - ALL elements MUST share the EXACT SAME rendering style. If cartoon: EVERYTHING is cartoon (same line weight, same shading, same proportions). If realistic: EVERYTHING is realistic. NEVER mix styles. No 3D/plush/felt textures mixed with flat illustrations. No photorealistic water mixed with cartoon characters. The design must look like ONE artist created the ENTIRE thing.
 4. **FLAT PRODUCT DESIGN**  - This is a FLAT, FRONT-FACING graphic design printed on a product  - NOT a 3D object, NOT a photograph, NOT a scene with camera perspective. Think: professional vector illustration. No depth-of-field blur, no 3D shadows, no physical material textures (felt, plush, glossy plastic, embossed metal).
 5. **DESIGN WITH BREATHING ROOM**  - The design must NOT span the entire white area like a wallpaper. It must have a clear IRREGULAR SILHOUETTE that floats on white background with visible white space around it. The design is a SHAPE, not a full-bleed image.
