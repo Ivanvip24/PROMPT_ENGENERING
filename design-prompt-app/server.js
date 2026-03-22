@@ -249,7 +249,7 @@ async function fixImageExtension(filePath) {
 function enforceImageQuality(promptText) {
   if (!promptText || promptText.length < 50) return promptText;
 
-  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product photography quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
+  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product photography quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nBackground: PURE WHITE background - absolutely NO dark, black, grey, textured, gradient, or colored backgrounds. The design floats on CLEAN WHITE.\nText: Title text uses 1-2 colors ONLY - NEVER rainbow or multicolor letters. Text is INTEGRATED into the artwork, not a separate floating label.\nStyle: NO watercolor, NO painterly effects, NO paint splatters, NO ink bleeds. Clean crisp edges only. NO 3D mockup or physical product appearance.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
 
   // Check if prompt already ends with CREATE DESIGN
   const createDesignIdx = promptText.lastIndexOf('CREATE DESIGN');
@@ -426,16 +426,18 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
         // DEFAULT: Cartoon/Collage/Other styles  - original sticker-style template
         turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
 
+[!!!] ABSOLUTE BACKGROUND RULE: The output prompt MUST specify "on a PURE WHITE background" or "on a CLEAN WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
+
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
 FORMAT: ${params.ratio || '1:1'}
 SUBJECT: [Describe main element + destination in ONE vivid sentence  - make it EXCITING]
 STYLE: ${(() => {
           const turboStyleMap = {
-            'cartoon': 'Vibrant cartoon illustration with highly saturated colors, dynamic shading, layered composition with depth  - NO black outlines, NO contour lines around elements, seamless blending between elements',
-            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece'
+            'cartoon': 'Clean, professional flat vector illustration. Bold saturated colors with smooth gradients and cel-shading. NO black outlines, NO contour lines  - elements blend seamlessly using color contrast and shadows. Crisp sharp edges on every shape. Think: premium souvenir design by a professional graphic designer, NOT cheap AI-generated art.',
+            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece. On PURE WHITE background.'
           };
-          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style with rich details and layered depth  - NO black outlines or contour lines' : 'Vibrant cartoon illustration, saturated colors, layered depth  - NO black outlines, NO contour lines around elements');
+          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. NO black outlines, NO contour lines around elements  - seamless blending using color and shadow. Premium souvenir product design quality  - NOT cheap AI collage, NOT watercolor, NOT painterly, NOT 3D render.');
         })()}
 COMPOSITION:
 - [Hero element position, size %, and POSE/ACTION described vividly]
@@ -452,14 +454,13 @@ ELEMENTS (4-8 items  - ONLY elements that directly relate to the subject/destina
 - [Element 6]
 - [Element 7]
 - [Element 8]
-- [Element 9]
 DECORATION: ${params.decorationLevel || 6}/10  - Add decorative details ONLY where they enhance the design. Do NOT stuff every gap with filler. Let the main subject breathe. Quality over quantity.
-COLORS: [6-8 BOLD saturated color names  - describe specific shades that create visual IMPACT and contrast]
+COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
-• Primary: "${params.destination || 'DESTINATION'}" - [placement: must be BOLD and PROMINENT], [size: 18-25% height], [style: described vividly  - dimensional, shadowed, decorated, integrated into design]
-• Secondary: "[State Name, México]" - [placement: below primary text], [size: 6-8% height]. ONLY the state name + "México" — NO taglines, slogans, cultural phrases, or descriptions.
-EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line around the design.
-BACKGROUND: Clean white/transparent  - the design floats as an irregular shape, NOT inside any frame, border, or circular badge
+• Primary: "${params.destination || 'DESTINATION'}" - [placement: INTEGRATED into the illustration, not floating separately], [size: 18-25% height], [style: use 1-2 COLORS ONLY for the text  - NEVER rainbow or multicolor letters. Text should feel like part of the artwork, with same shadows/depth as the illustration elements]
+• Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. ONLY the state name + "México" — NO taglines, slogans, cultural phrases, or descriptions.
+EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line, NO white border around the design.
+BACKGROUND: PURE WHITE  - absolutely NO dark backgrounds, NO black, NO grey, NO gradients, NO textures, NO colored backgrounds. The design floats as an irregular shape on CLEAN WHITE, NOT inside any frame, border, or circular badge.
 CREATE DESIGN
 
 ---
@@ -468,17 +469,19 @@ ${params.destination ? `DESTINATION (MANDATORY — must appear as primary title 
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-CRITICAL DESIGN RULES:
-1. PROFESSIONAL QUALITY: Must look like it was designed by a professional graphic designer. Clean, polished, intentional. NOT cheap-looking AI collage.
-2. ONE CLEAR HERO: The main subject must be significantly larger (50-70%) than everything else. No equal-size elements competing for attention.
-3. STYLE CONSISTENCY: ALL elements MUST share the SAME rendering style. No mixing. No 3D/plush/felt textures.
-4. FLAT DESIGN: Flat, front-facing product design. NOT a 3D object or photograph.
-5. COHESIVE COLOR PALETTE: Use 3-4 dominant colors that complement each other. NOT every color of the rainbow.
-6. TEXT HIERARCHY: Title text must STAND OUT with clear contrast. Use 1-2 colors for text, NEVER rainbow/multicolor letters.
-7. NO CHEAP FILLER: No random sparkles, water drops, hearts, gems, confetti. No floating decorative items.
-8. BREATHING ROOM: Elements need spacing. NOT everything crammed together. The design floats on white as an irregular shape.
-9. NO OUTLINES: No black outlines, no white sticker-edge contour around the design.
-10. ONLY RELEVANT ELEMENTS: 4-8 supporting elements that relate to the subject. No generic tropical filler.
+CRITICAL DESIGN RULES (YOUR PROMPT MUST FOLLOW ALL OF THESE):
+1. PURE WHITE BACKGROUND: The prompt MUST say "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, or gradient backgrounds. This is NON-NEGOTIABLE.
+2. PROFESSIONAL QUALITY: Must look like it was designed by a professional graphic designer. Clean, polished, intentional. NOT cheap-looking AI collage or watercolor mess.
+3. ONE CLEAR HERO: The main subject must be significantly larger (50-70%) than everything else. No equal-size elements competing for attention.
+4. STYLE CONSISTENCY: ALL elements MUST share the SAME clean illustration style. No mixing watercolor with vector. No 3D/plush/felt textures. No painterly/watercolor effects.
+5. FLAT DESIGN: Flat, front-facing product design. NOT a 3D object, NOT a photograph, NOT a scene.
+6. COHESIVE COLOR PALETTE: Use 3-4 dominant colors that complement each other. NOT every color of the rainbow.
+7. TEXT: Use 1-2 colors ONLY for title text. NEVER rainbow or multicolor letters where each letter is a different color. Text must be INTEGRATED into the composition, not a separate floating label.
+8. NO CHEAP FILLER: No random sparkles, water drops, hearts, gems, confetti. No floating decorative items.
+9. BREATHING ROOM: Elements need spacing. NOT everything crammed together.
+10. NO OUTLINES OR BORDERS: No black outlines, no white sticker-edge contour, no frame around the design.
+11. NO WATERCOLOR/PAINTERLY: Do NOT use watercolor washes, paint splatters, ink bleeds, or painterly textures. Clean crisp edges only.
+12. NO 3D MOCKUP: Do NOT describe the design as a physical object (plastic, rubber, embossed). It's a flat graphic design.
 RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
       }
     }
