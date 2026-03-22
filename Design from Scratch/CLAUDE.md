@@ -96,7 +96,7 @@ Pick ONE framework — ALL must produce an ISOLATED SHAPE on white, NOT a landsc
 11. **Flat Design**: This is a flat printed product — NOT a 3D object, NOT a photo of a physical item.
 12. **No Outlines**: NO black outlines, NO contour lines, NO sticker-edge borders around elements or the design.
 13. **PURE WHITE BACKGROUND**: The prompt MUST specify "on a pure white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY.
-14. **No Watercolor/Painterly**: NO watercolor washes, paint splatters, ink bleeds, or painterly textures. Clean crisp edges ONLY.
+14. **No Watercolor/Painterly/Sketch**: NO watercolor, NO ink illustration, NO hand-drawn, NO sketch, NO crosshatching, NO pen-and-ink, NO linework, NO painterly textures. Use ONLY clean flat vector style language: "flat illustration", "clean crisp edges", "smooth gradients", "cel-shading".
 15. **Text Colors**: Use 1-2 colors ONLY for title text. NEVER rainbow or multicolor letters where each letter is a different color.
 16. **Text Integration**: Text must feel like an INTEGRAL PART of the illustration, not a separate floating label. Weave text INTO the composition.
 17. **Architectural Faithfulness**: When depicting real buildings, monuments, churches, or landmarks, preserve the EXACT structural details. Stylize the rendering but NEVER alter the architecture.

@@ -105,7 +105,7 @@ Use the exact structure from **PROMPT_TEMPLATE.md**:
 11. **Ending**: Always end with "**CREATE DESIGN**"
 12. **No Outlines**: NO black outlines, NO contour borders on elements or the design.
 13. **PURE WHITE BACKGROUND**: The prompt MUST specify "on a pure white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds.
-14. **No Watercolor/Painterly**: NO watercolor washes, paint splatters, ink bleeds, or painterly textures. Clean crisp edges ONLY.
+14. **No Watercolor/Painterly/Sketch**: NO watercolor, NO ink illustration, NO hand-drawn, NO sketch, NO crosshatching, NO pen-and-ink, NO linework, NO painterly textures. Use ONLY clean flat vector style language: "flat illustration", "clean crisp edges", "smooth gradients", "cel-shading".
 15. **Text Colors**: Use 1-2 colors ONLY for title text. NEVER rainbow or multicolor letters.
 16. **Text Integration**: Text must feel INTEGRATED into the illustration, not a separate floating label.
 17. **Architectural Faithfulness**: When depicting real buildings/monuments, preserve exact structural details. Stylize rendering but never alter architecture.
