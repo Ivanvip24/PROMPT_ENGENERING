@@ -94,7 +94,7 @@ function sanitizePrompt(text) {
     .replace(/\bclouds?\b/gi, '')
     .replace(/\bwaves?\b/gi, '')
     .replace(/\bocean\b/gi, '')
-    .replace(/\bswirls?\b/gi, 'details')
+    .replace(/\bswirl(s|ing)?\b/gi, '')
     .replace(/  +/g, ' ').trim();
 }
 
@@ -522,8 +522,8 @@ CRITICAL DESIGN RULES (YOUR PROMPT MUST FOLLOW ALL OF THESE):
 5. FLAT DESIGN: Flat, front-facing product design. NOT a 3D object, NOT a photograph, NOT a scene.
 6. COHESIVE COLOR PALETTE: Use 3-4 dominant colors that complement each other. NOT every color of the rainbow.
 7. TEXT: Use 1-2 colors ONLY for title text. NEVER rainbow or multicolor letters where each letter is a different color. Text must be INTEGRATED into the composition, not a separate floating label.
-8. NO CHEAP FILLER: No random sparkles, water drops, hearts, gems, confetti. No floating decorative items.
-9. BREATHING ROOM: Elements need spacing. NOT everything crammed together.
+8. NO FLOATING ELEMENTS: EVERY element and text must PHYSICALLY TOUCH or OVERLAP the main design cluster. NOTHING, floating in empty space — no tiles hovering in corners, no flowers scattered independently, no text sitting below the design in a separate area. Everything is ONE connected piece.
+9. TEXT OVERLAPS THE HERO: The destination text must be ON TOP of or OVERLAPPING the illustration, not underneath it in a separate zone.
 10. NO OUTLINES OR BORDERS: No black outlines, no white sticker-edge contour, no frame around the design.
 11. NO WATERCOLOR/PAINTERLY: Do NOT use watercolor washes, paint splatters, ink bleeds, or painterly textures. Clean crisp edges only.
 12. NO 3D MOCKUP: Do NOT describe the design as a physical object (plastic, rubber, embossed). It's a flat graphic design.
