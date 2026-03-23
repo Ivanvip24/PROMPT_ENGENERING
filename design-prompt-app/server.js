@@ -85,6 +85,11 @@ function sanitizePrompt(text) {
     .replace(/\batmospher\w+\b/gi, '')
     .replace(/\bdesert floor\b/gi, '')
     .replace(/\bdesert sand\b/gi, '')
+    // Strip marigold/cempasuchil references (banned unless user asks)
+    .replace(/\bmarigold\w*\b/gi, 'bougainvillea')
+    .replace(/\bcempas[uú]chil\b/gi, 'bougainvillea')
+    .replace(/\borange flowers?\b/gi, 'pink flowers')
+    .replace(/\bgolden flowers?\b/gi, 'bright flowers')
     .replace(/  +/g, ' ').trim();
 }
 
