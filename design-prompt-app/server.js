@@ -90,6 +90,11 @@ function sanitizePrompt(text) {
     .replace(/\bcempas[uú]chil\b/gi, 'bougainvillea')
     .replace(/\borange flowers?\b/gi, 'pink flowers')
     .replace(/\bgolden flowers?\b/gi, 'bright flowers')
+    // Strip scene elements that shouldn't appear
+    .replace(/\bclouds?\b/gi, '')
+    .replace(/\bwaves?\b/gi, '')
+    .replace(/\bocean\b/gi, '')
+    .replace(/\bswirls?\b/gi, 'details')
     .replace(/  +/g, ' ').trim();
 }
 
@@ -497,7 +502,7 @@ Example of BAD description: "A heart in the center. A church in the upper right.
 Describe your design as ONE CONNECTED PIECE with 50-70 words. The hero is [main element], with 2-4 smaller elements PHYSICALLY OVERLAPPING it.]
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
-• Primary: "${params.destination || 'DESTINATION'}" - [placement: INTEGRATED into the illustration, not floating separately], [size: 18-25% height], [style: use 1-2 COLORS ONLY for the text  - NEVER rainbow or multicolor letters. Text should feel like part of the artwork, with same shadows/depth as the illustration elements]
+• Primary: "${(params.destination || 'DESTINATION').toUpperCase()}" in BOLD UPPERCASE LETTERS - [placement: OVERLAPPING the hero illustration, not below it], [size: 20-25% height — this must be BIG and DOMINANT], [style: 1-2 COLORS ONLY, bold block letters with depth/shadow, PART of the artwork not a label slapped on top]
 • Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. LITERALLY ONLY "State Name, México" (e.g., "Nuevo León, México", "Puebla, México"). NEVER add city nicknames like "La Sultana del Norte", "La Ciudad Blanca", "La Perla del Pacífico", "Angelópolis" etc. NEVER add taglines, slogans, or cultural phrases. Just "[State], México".
 EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line, NO white border around the design.
 BACKGROUND: PURE WHITE  - absolutely NO dark backgrounds, NO black, NO grey, NO gradients, NO textures, NO colored backgrounds. The design floats as an irregular shape on CLEAN WHITE, NOT inside any frame, border, or circular badge.
