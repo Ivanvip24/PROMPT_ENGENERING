@@ -479,7 +479,8 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
 [!!!] ABSOLUTE RULES (NON-NEGOTIABLE):
 1. BACKGROUND: "on a PURE WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY.
 2. PRODUCT NOT POSTER: This is a DIE-CUT SOUVENIR PRODUCT (like a sticker or magnet) floating on white — NOT a poster, NOT a landscape scene, NOT a full-bleed illustration. The design must have an IRREGULAR SILHOUETTE with white space around it. NEVER fill the entire square/rectangle.
-3. NO SCENES: NEVER use these words in your output: skyline, sunset, sunrise, horizon, panorama, vista, atmosphere, desert floor, golden sun, sun peeking. NEVER describe a sky, ground, or environment. Describe OBJECTS clustered together on white, like a vinyl sticker.
+3. NO SCENES: NEVER use these words: skyline, sunset, sunrise, horizon, panorama, vista, atmosphere, desert floor, golden sun, sun peeking. NEVER describe sky, ground, or environment. Describe OBJECTS clustered on white.
+4. REAL SPECIFIC ELEMENTS: When the user mentions a landmark, building, volcano, mountain, etc. — describe the REAL, SPECIFIC one from that destination with its distinctive features. "Volcano" for Puebla = Popocatépetl (snow-capped, distinctive cone with saddle shape). "Church" for Puebla = Catedral de Puebla (twin bell towers, blue/white talavera dome). NEVER use generic versions.
 
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
@@ -502,7 +503,7 @@ Example of BAD description: "A heart in the center. A church in the upper right.
 Describe your design as ONE CONNECTED PIECE with 50-70 words. The hero is [main element], with 2-4 smaller elements PHYSICALLY OVERLAPPING it.]
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
-• Primary: "${(params.destination || 'DESTINATION').toUpperCase()}" in BOLD UPPERCASE LETTERS - [placement: OVERLAPPING the hero illustration, not below it], [size: 20-25% height — this must be BIG and DOMINANT], [style: 1-2 COLORS ONLY, bold block letters with depth/shadow, PART of the artwork not a label slapped on top]
+• Primary: "${(params.destination || 'DESTINATION').toUpperCase()}" in BOLD UPPERCASE LETTERS - [placement: OVERLAPPING the hero illustration, not below it], [size: 20-25% height — BIG and DOMINANT], [style: each letter is ONE SOLID FLAT COLOR — no gradients, no effects, no textures within letters. Use 1-2 colors total for the text. Bold clean block letters, PART of the artwork not a label]
 • Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. LITERALLY ONLY "State Name, México" (e.g., "Nuevo León, México", "Puebla, México"). NEVER add city nicknames like "La Sultana del Norte", "La Ciudad Blanca", "La Perla del Pacífico", "Angelópolis" etc. NEVER add taglines, slogans, or cultural phrases. Just "[State], México".
 EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line, NO white border around the design.
 BACKGROUND: PURE WHITE  - absolutely NO dark backgrounds, NO black, NO grey, NO gradients, NO textures, NO colored backgrounds. The design floats as an irregular shape on CLEAN WHITE, NOT inside any frame, border, or circular badge.
