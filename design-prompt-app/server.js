@@ -47,6 +47,16 @@ function sanitizePrompt(text) {
     .replace(/\brounded eyes\b/gi, 'expressive eyes')
     .replace(/\bround eyes\b/gi, 'expressive eyes')
     .replace(/\bslopes?\b/gi, '')
+    // Strip city taglines/nicknames that shouldn't appear in designs
+    .replace(/\bLa Sultana del Norte\b/gi, '')
+    .replace(/\bLa Ciudad de la Eterna Primavera\b/gi, '')
+    .replace(/\bLa Perla del Pacifico\b/gi, '')
+    .replace(/\bLa Perla de Occidente\b/gi, '')
+    .replace(/\bLa Ciudad Blanca\b/gi, '')
+    .replace(/\bLa Heroica\b/gi, '')
+    // Strip percentage numbers that Gemini renders as text in the image
+    .replace(/\b\d{1,3}%\s*(of\s+)?(the\s+)?(design|total|height|width|size|area|composition|space)?\b/gi, '')
+    .replace(/\bat\s+\d{1,3}%\s*(size|scale)?\b/gi, '')
     // Strip style words that produce ugly results in Gemini
     .replace(/\bcrosshatch(ing|ed)?\b/gi, 'detailed')
     .replace(/\bhand[- ]drawn\b/gi, 'clean')
@@ -473,7 +483,7 @@ DECORATION: ${params.decorationLevel || 6}/10  - Decorative details should FRAME
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
 • Primary: "${params.destination || 'DESTINATION'}" - [placement: INTEGRATED into the illustration, not floating separately], [size: 18-25% height], [style: use 1-2 COLORS ONLY for the text  - NEVER rainbow or multicolor letters. Text should feel like part of the artwork, with same shadows/depth as the illustration elements]
-• Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. ONLY the state name + "México" — NO taglines, slogans, cultural phrases, or descriptions.
+• Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. LITERALLY ONLY "State Name, México" (e.g., "Nuevo León, México", "Puebla, México"). NEVER add city nicknames like "La Sultana del Norte", "La Ciudad Blanca", "La Perla del Pacífico", "Angelópolis" etc. NEVER add taglines, slogans, or cultural phrases. Just "[State], México".
 EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line, NO white border around the design.
 BACKGROUND: PURE WHITE  - absolutely NO dark backgrounds, NO black, NO grey, NO gradients, NO textures, NO colored backgrounds. The design floats as an irregular shape on CLEAN WHITE, NOT inside any frame, border, or circular badge.
 CREATE DESIGN
