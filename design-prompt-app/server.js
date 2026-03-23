@@ -73,6 +73,18 @@ function sanitizePrompt(text) {
     .replace(/(?<!NO |NOT |no |not )\bpaint splatter(s|ed)?\b/gi, '')
     .replace(/(?<!NO |NOT |no |not )\bink bleed(s|ing)?\b/gi, '')
     .replace(/\bartisanal\b/gi, 'professional')
+    // Strip scene/atmosphere words that make image AIs produce landscapes/paintings
+    .replace(/\bskyline\b/gi, 'landmark')
+    .replace(/\bsunset\b/gi, 'warm')
+    .replace(/\bsunrise\b/gi, 'warm')
+    .replace(/\bgolden sun\b/gi, '')
+    .replace(/\bsun peek\w*\b/gi, '')
+    .replace(/\bhorizon\b/gi, '')
+    .replace(/\bpanoram\w+\b/gi, '')
+    .replace(/\bvista\b/gi, '')
+    .replace(/\batmospher\w+\b/gi, '')
+    .replace(/\bdesert floor\b/gi, '')
+    .replace(/\bdesert sand\b/gi, '')
     .replace(/  +/g, ' ').trim();
 }
 
@@ -457,7 +469,7 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
 [!!!] ABSOLUTE RULES (NON-NEGOTIABLE):
 1. BACKGROUND: "on a PURE WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY.
 2. PRODUCT NOT POSTER: This is a DIE-CUT SOUVENIR PRODUCT (like a sticker or magnet) floating on white — NOT a poster, NOT a landscape scene, NOT a full-bleed illustration. The design must have an IRREGULAR SILHOUETTE with white space around it. NEVER fill the entire square/rectangle.
-3. NO SCENES: NEVER describe a sky, horizon, ground, desert floor, or environment. Describe OBJECTS clustered together on white, like a vinyl sticker.
+3. NO SCENES: NEVER use these words in your output: skyline, sunset, sunrise, horizon, panorama, vista, atmosphere, desert floor, golden sun, sun peeking. NEVER describe a sky, ground, or environment. Describe OBJECTS clustered together on white, like a vinyl sticker.
 
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
