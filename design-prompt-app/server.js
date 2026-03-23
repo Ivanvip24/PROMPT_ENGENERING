@@ -58,22 +58,20 @@ function sanitizePrompt(text) {
     .replace(/\d{1,3}[-–]\d{1,3}%/g, '')
     .replace(/\d{1,3}%/g, '')
     // Strip style words that produce ugly results in Gemini
-    .replace(/\bcrosshatch(ing|ed)?\b/gi, 'detailed')
-    .replace(/\bhand[- ]drawn\b/gi, 'clean')
-    .replace(/\bink (illustration|drawing|style|sketch)\b/gi, 'flat illustration')
-    .replace(/\bpen[- ]and[- ]ink\b/gi, 'flat vector')
-    .replace(/\bpen[- ]stroke\b/gi, 'clean')
-    .replace(/\bsketchy\b/gi, 'clean')
-    .replace(/\bsketch(ed|ing)?\b/gi, 'clean')
-    .replace(/\blinework\b/gi, 'edges')
-    .replace(/\bline ?work\b/gi, 'edges')
-    .replace(/\bink[- ]line\b/gi, 'clean')
-    .replace(/\bwatercolor\b/gi, 'flat color')
-    .replace(/\bwatercolour\b/gi, 'flat color')
-    .replace(/\bgouache\b/gi, 'flat color')
-    .replace(/\bpainterly\b/gi, 'clean')
-    .replace(/\bpaint splatter(s|ed)?\b/gi, '')
-    .replace(/\bink bleed(s|ing)?\b/gi, '')
+    // Only strip when NOT preceded by "NO " or "NOT " (preserve negation context)
+    .replace(/(?<!NO |NOT |no |not )\bcrosshatch(ing|ed)?\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bhand[- ]drawn\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bink (illustration|drawing|style|sketch)\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bpen[- ]and[- ]ink\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bpen[- ]stroke\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bsketchy\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bsketch(ed|ing)?\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\blinework\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bline ?work\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bink[- ]line\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bgouache\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bpaint splatter(s|ed)?\b/gi, '')
+    .replace(/(?<!NO |NOT |no |not )\bink bleed(s|ing)?\b/gi, '')
     .replace(/\bartisanal\b/gi, 'professional')
     .replace(/  +/g, ' ').trim();
 }
@@ -276,6 +274,8 @@ async function fixImageExtension(filePath) {
 // ═══════════════════════════════════════════════════════════════
 function enforceImageQuality(promptText) {
   if (!promptText || promptText.length < 50) return promptText;
+  // Prevent double-application
+  if (promptText.includes('[MANDATORY IMAGE QUALITY')) return promptText;
 
   const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product photography quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nBackground: PURE WHITE background - absolutely NO dark, black, grey, textured, gradient, or colored backgrounds. The design floats on CLEAN WHITE.\nText: Title text uses 1-2 colors ONLY - NEVER rainbow or multicolor letters. Text is INTEGRATED into the artwork, not a separate floating label.\nStyle: NO watercolor, NO painterly effects, NO paint splatters, NO ink bleeds. Clean crisp edges only. NO 3D mockup or physical product appearance.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
 
@@ -454,7 +454,10 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DI
         // DEFAULT: Cartoon/Collage/Other styles  - original sticker-style template
         turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
 
-[!!!] ABSOLUTE BACKGROUND RULE: The output prompt MUST specify "on a PURE WHITE background" or "on a CLEAN WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
+[!!!] ABSOLUTE RULES (NON-NEGOTIABLE):
+1. BACKGROUND: "on a PURE WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY.
+2. PRODUCT NOT POSTER: This is a DIE-CUT SOUVENIR PRODUCT (like a sticker or magnet) floating on white — NOT a poster, NOT a landscape scene, NOT a full-bleed illustration. The design must have an IRREGULAR SILHOUETTE with white space around it. NEVER fill the entire square/rectangle.
+3. NO SCENES: NEVER describe a sky, horizon, ground, desert floor, or environment. Describe OBJECTS clustered together on white, like a vinyl sticker.
 
 OUTPUT EXACTLY THIS FORMAT (250-400 words):
 
