@@ -487,19 +487,14 @@ STYLE: ${(() => {
           };
           return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. NO black outlines, NO contour lines around elements  - seamless blending using color and shadow. Premium souvenir product design quality  - NOT cheap AI collage, NOT watercolor, NOT painterly, NOT 3D render.');
         })()}
-COMPOSITION:
-- [Hero element dominates the CENTER of the design at 50-70% of the total area  - this is the ANCHOR that everything else orbits around]
-- [Supporting elements are SMALLER (10-20% each) and arranged AROUND the hero, not competing with it]
-- [Visual flow: eye goes to the HERO first, then explores the smaller supporting details]
-- [This is NOT a collage of equal-size objects  - it's a CENTERED HERO with supporting accents]
-PROTAGONIST: [The SINGLE MAIN element  - 50 words: describe it BIG, DOMINANT, CENTERED. It should take up 50-70% of the design. Describe its specific appearance, colors, textures, and details. This element is MUCH LARGER than everything else. The viewer's eye should go HERE first.]
-SUPPORTING ELEMENTS (3-5 SMALL items  - these are ACCENTS, not co-stars. Each should be 10-20% the size of the hero):
-- [Element 1  - SMALL, positioned to complement the hero, not compete with it]
-- [Element 2  - SMALL accent element]
-- [Element 3  - SMALL accent element]
-- [Element 4  - optional, only if needed]
-- [Element 5  - optional, only if needed]
-DECORATION: ${params.decorationLevel || 6}/10  - Decorative details should FRAME or ACCENT the hero, not overwhelm it. The hero must remain the clear focal point.
+HERO + UNIFIED COMPOSITION (THIS IS THE MOST IMPORTANT SECTION):
+[Describe ONE unified cluster where everything OVERLAPS and CONNECTS into a single cohesive shape. The hero element is the LARGEST piece (50-70% of design). Supporting elements grow FROM, wrap AROUND, cascade DOWN, or nestle INTO the hero — they are NOT floating separately. Everything touches or overlaps something else. Think of it as ONE connected object, not separate pieces placed near each other.
+
+Example of GOOD description: "A massive talavera heart dominates the center, with bougainvillea cascading down its left side, a small church dome peeking from behind the upper right, and decorative swirls extending from the bottom — all overlapping into one unified cluster."
+
+Example of BAD description: "A heart in the center. A church in the upper right. Flowers on the left. Tiles at the bottom." — This produces disconnected floating objects.
+
+Describe your design as ONE CONNECTED PIECE with 50-70 words. The hero is [main element], with 2-4 smaller elements PHYSICALLY OVERLAPPING it.]
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
 TEXT:
 • Primary: "${params.destination || 'DESTINATION'}" - [placement: INTEGRATED into the illustration, not floating separately], [size: 18-25% height], [style: use 1-2 COLORS ONLY for the text  - NEVER rainbow or multicolor letters. Text should feel like part of the artwork, with same shadows/depth as the illustration elements]
