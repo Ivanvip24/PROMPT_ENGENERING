@@ -55,8 +55,8 @@ function sanitizePrompt(text) {
     .replace(/\bLa Ciudad Blanca\b/gi, '')
     .replace(/\bLa Heroica\b/gi, '')
     // Strip percentage numbers that Gemini renders as text in the image
-    .replace(/\b\d{1,3}%\s*(of\s+)?(the\s+)?(design|total|height|width|size|area|composition|space)?\b/gi, '')
-    .replace(/\bat\s+\d{1,3}%\s*(size|scale)?\b/gi, '')
+    .replace(/\d{1,3}[-–]\d{1,3}%/g, '')
+    .replace(/\d{1,3}%/g, '')
     // Strip style words that produce ugly results in Gemini
     .replace(/\bcrosshatch(ing|ed)?\b/gi, 'detailed')
     .replace(/\bhand[- ]drawn\b/gi, 'clean')
@@ -687,7 +687,7 @@ THEN: ${turboPrompt}`;
       claude.kill();
       await cleanupTurbo();
       if (output && output.length > 50) {
-        resolve(enforceImageQuality(output));
+        resolve(sanitizePrompt(enforceImageQuality(output)));
       } else {
         reject(new Error('Turbo timeout - try again'));
       }
@@ -1487,7 +1487,7 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
 
       if (output && output.length > 50) {
         console.log('[!]  Timeout reached, returning partial output');
-        resolve(enforceImageQuality(output));
+        resolve(sanitizePrompt(enforceImageQuality(output)));
       } else if (hasReceivedOutput) {
         reject(new Error(`Claude Code stalled after ${Math.round(timeSinceLastOutput/1000)}s with no new output. The generation may be incomplete.`));
       } else {
@@ -1555,7 +1555,7 @@ Keep decoration MINIMAL (2-3/10). Each letter must show a DIFFERENT, SPECIFIC, I
         resolve(enforceImageQuality(filteredOutput));
       } else if (output && output.length > 100) {
         // Fallback to full output if filtering didn't work
-        resolve(enforceImageQuality(output));
+        resolve(sanitizePrompt(enforceImageQuality(output)));
       } else {
         reject(new Error(`Claude Code failed to generate output: ${errorOutput || 'No substantial output received'}`));
       }
@@ -2012,7 +2012,7 @@ app.post('/api/quick-generate', express.json(), async (req, res) => {
       const result = turboMode
         ? await invokeClaudeTurbo(instructions, params)
         : await invokeClaude(projectType, instructions, params);
-      prompts.push(result);
+      prompts.push(sanitizePrompt(enforceImageQuality(result)));
     } else {
       // Multiple — run sequentially (parallel would overload Claude CLI)
       const styleList = distributeStyles(parsedStyles, count);
@@ -2022,7 +2022,7 @@ app.post('/api/quick-generate', express.json(), async (req, res) => {
           const result = turboMode
             ? await invokeClaudeTurbo(instructions, variationParams)
             : await invokeClaude(projectType, instructions, variationParams);
-          prompts.push(result);
+          prompts.push(sanitizePrompt(enforceImageQuality(result)));
           console.log(`  ✓ Variation ${i + 1}/${count} done`);
         } catch (err) {
           prompts.push(`[ERROR] Variation ${i + 1} failed: ${err.message}`);
