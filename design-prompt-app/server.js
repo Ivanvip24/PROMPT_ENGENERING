@@ -73,28 +73,11 @@ function sanitizePrompt(text) {
     .replace(/(?<!NO |NOT |no |not )\bpaint splatter(s|ed)?\b/gi, '')
     .replace(/(?<!NO |NOT |no |not )\bink bleed(s|ing)?\b/gi, '')
     .replace(/\bartisanal\b/gi, 'professional')
-    // Strip scene/atmosphere words that make image AIs produce landscapes/paintings
-    .replace(/\bskyline\b/gi, 'landmark')
-    .replace(/\bsunset\b/gi, 'warm')
-    .replace(/\bsunrise\b/gi, 'warm')
-    .replace(/\bgolden sun\b/gi, '')
-    .replace(/\bsun peek\w*\b/gi, '')
-    .replace(/\bhorizon\b/gi, '')
-    .replace(/\bpanoram\w+\b/gi, '')
-    .replace(/\bvista\b/gi, '')
-    .replace(/\batmospher\w+\b/gi, '')
-    .replace(/\bdesert floor\b/gi, '')
-    .replace(/\bdesert sand\b/gi, '')
     // Strip marigold/cempasuchil references (banned unless user asks)
     .replace(/\bmarigold\w*\b/gi, 'bougainvillea')
     .replace(/\bcempas[uú]chil\b/gi, 'bougainvillea')
     .replace(/\borange flowers?\b/gi, 'pink flowers')
     .replace(/\bgolden flowers?\b/gi, 'bright flowers')
-    // Strip scene elements that shouldn't appear
-    .replace(/\bclouds?\b/gi, '')
-    .replace(/\bwaves?\b/gi, '')
-    .replace(/\bocean\b/gi, '')
-    .replace(/\bswirl(s|ing)?\b/gi, '')
     .replace(/  +/g, ' ').trim();
 }
 
@@ -299,7 +282,7 @@ function enforceImageQuality(promptText) {
   // Prevent double-application
   if (promptText.includes('[MANDATORY IMAGE QUALITY')) return promptText;
 
-  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product photography quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nBackground: PURE WHITE background - absolutely NO dark, black, grey, textured, gradient, or colored backgrounds. The design floats on CLEAN WHITE.\nText: Title text uses 1-2 colors ONLY - NEVER rainbow or multicolor letters. Text is INTEGRATED into the artwork, not a separate floating label.\nStyle: NO watercolor, NO painterly effects, NO paint splatters, NO ink bleeds. Clean crisp edges only. NO 3D mockup or physical product appearance.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
+  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product design quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nBackground: PURE WHITE background - absolutely NO dark, black, grey, textured, gradient, or colored backgrounds. The design floats on CLEAN WHITE.\nText: Title text uses 1-2 colors ONLY - NEVER rainbow or multicolor letters. Text is INTEGRATED into the artwork, not a separate floating label.\nStyle: NO watercolor, NO painterly effects, NO paint splatters, NO ink bleeds. Clean crisp edges only. NO 3D mockup or physical product appearance.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
 
   // Check if prompt already ends with CREATE DESIGN
   const createDesignIdx = promptText.lastIndexOf('CREATE DESIGN');
@@ -488,17 +471,15 @@ FORMAT: ${params.ratio || '1:1'}
 SUBJECT: [Describe main element + destination in ONE vivid sentence  - make it EXCITING]
 STYLE: ${(() => {
           const turboStyleMap = {
-            'cartoon': 'Clean, professional flat vector illustration. Bold saturated colors with smooth gradients and cel-shading. NO black outlines, NO contour lines  - elements blend seamlessly using color contrast and shadows. Crisp sharp edges on every shape. Think: premium souvenir design by a professional graphic designer, NOT cheap AI-generated art.',
+            'cartoon': 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. Elements blend seamlessly using color contrast and shadows.',
             'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece. On PURE WHITE background.'
           };
-          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. NO black outlines, NO contour lines around elements  - seamless blending using color and shadow. Premium souvenir product design quality  - NOT cheap AI collage, NOT watercolor, NOT painterly, NOT 3D render.');
+          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges, no outlines.');
         })()}
 HERO + UNIFIED COMPOSITION (THIS IS THE MOST IMPORTANT SECTION):
 [Describe ONE unified cluster where everything OVERLAPS and CONNECTS into a single cohesive shape. The hero element is the LARGEST piece (50-70% of design). Supporting elements grow FROM, wrap AROUND, cascade DOWN, or nestle INTO the hero — they are NOT floating separately. Everything touches or overlaps something else. Think of it as ONE connected object, not separate pieces placed near each other.
 
 Example of GOOD description: "A massive talavera heart dominates the center, with bougainvillea cascading down its left side, a small church dome peeking from behind the upper right, and decorative swirls extending from the bottom — all overlapping into one unified cluster."
-
-Example of BAD description: "A heart in the center. A church in the upper right. Flowers on the left. Tiles at the bottom." — This produces disconnected floating objects.
 
 Describe your design as ONE CONNECTED PIECE with 50-70 words. The hero is [main element], with 2-4 smaller elements PHYSICALLY OVERLAPPING it.]
 COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
@@ -592,7 +573,7 @@ The VERY FIRST LINE of your output (before FORMAT:) MUST be:
 - NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
 - The viewer sees the design STRAIGHT ON from directly above/in front - completely flat
 - Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
-- The design MUST feature COLORFUL, BIG, BOLD title/text letters as the main visual element - vibrant multi-colored typography is essential
+- The design MUST feature BIG, BOLD title/text letters as the main visual element - text uses 1-2 colors only, never rainbow or multicolor letters
 - Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
 
 BANNED WORDS/PHRASES in your output: "product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo"
@@ -1093,7 +1074,7 @@ MANDATORY FLAT VIEW RULES:
 6. NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
 7. The viewer sees the design STRAIGHT ON from directly in front - completely flat
 8. Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
-9. The design MUST feature COLORFUL, BIG, BOLD title/text letters as the main visual element - vibrant multi-colored typography is essential
+9. The design MUST feature BIG, BOLD title/text letters as the main visual element - text uses 1-2 colors only, never rainbow or multicolor letters
 10. Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
 
 BANNED WORDS/PHRASES in your output prompt (DO NOT USE ANY OF THESE):
