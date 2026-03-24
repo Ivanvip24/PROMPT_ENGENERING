@@ -17,30 +17,24 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 
 **PROTAGONIST ELEMENT:** [Hero element with key visual features, size %, position. If character: pose/action. If landmark: defining features. 30-50 words.]
 
-**SUPPORTING ELEMENTS (Regional/Cultural) — 10-15 items:**
+**SUPPORTING ELEMENTS (Regional/Cultural) — 4-8 items:**
 • [Element 1 - SPECIFIC name, color, position, interaction with neighbors]
 • [Element 2 - SPECIFIC name, position, role]
 • [Element 3 - SPECIFIC name, position, role]
 • [Element 4 - SPECIFIC name, position, role]
-• [Element 5 - SPECIFIC name, position, role]
-• [Element 6]
-• [Element 7]
-• [Element 8]
-• [Element 9]
-• [Element 10]
-• [Elements 11-15 as needed — MORE details = RICHER design]
+• [Element 5-8 as needed — quality over quantity, every element must relate to the subject]
 
 **DECORATIVE LAYER:** [Decoration density 8-10/10. Describe SPECIFICALLY what fills every gap: scattered petals, cultural micro-patterns, sparkles, confetti, tiny cultural motifs. NO large empty areas.]
 
 **TEXT INTEGRATION:**
 • Primary: "[DESTINATION NAME]" - [placement: arcing top/bottom banner/integrated], [size: 15-25% height], [style: bold hand-lettered/vintage/modern/etc.]
-• Secondary: "[Subtitle/Region]" - [placement], [size: 6-8% height]
+• Secondary: "[State Name, México]" - [placement], [size: 6-8% height]. ALWAYS use the format "State, México" — NO taglines, slogans, or cultural phrases.
 
 **STYLE & AESTHETIC:** [Copy-paste from STYLE_DESCRIPTORS.md with 0-2 minor customizations. 2-3 sentences maximum. Include mood/tone.]
 
-**COLOR PALETTE:** [List 6-8 BOLD saturated color names that create visual IMPACT: "Vivid hot pink bougainvillea, deep cobalt blue sky, bright golden marigolds, rich emerald jungle green, fiery sunset orange, warm terracotta clay." NO CMYK.]
+**COLOR PALETTE:** [List 6-8 BOLD saturated color names that create visual IMPACT: "Vivid hot pink bougainvillea, deep cobalt blue sky, bright golden sunflower yellow, rich emerald jungle green, fiery sunset orange, warm terracotta clay." NO CMYK.]
 
-**EDGE TREATMENT:** [Organic irregular shape following natural contours / Perfect circle / Specific format requirement. Default = organic irregular.]
+**EDGE TREATMENT:** [Organic irregular silhouette floating on white — NOT a landscape, NOT a scene. NO sky, NO sunset, NO horizon. Design is a die-cut SHAPE on white, like a sticker. NO black outlines.]
 
 **PRODUCTION:** [All elements structurally connected for laser-cut MDF / High-resolution full-color print / Both. One sentence only.]
 
@@ -85,7 +79,7 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 **Formula:** [Framework name] with [hero placement and %]. [Supporting element arrangement]. [Visual flow description]. [Balance type].
 
 **Example:**
-"Environmental integration composition with sea turtle positioned center-right occupying 35% swimming through coral reef setting. Reef landscape fills left and bottom 40%, open ocean water fills background. Eye enters through foreground coral, finds turtle in midground, explores background depth. Balanced natural layering."
+"Centered hero composition with sea turtle dominating center occupying 55%. Coral, tropical fish, and seaweed cluster around it forming an organic irregular shape. Text arcs across top. All elements float as a cohesive cluster on white background — NO ocean background, NO underwater scene."
 
 **Keys:**
 - Name the framework (from COMPOSITION_FRAMEWORKS.md)
@@ -94,17 +88,14 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 - Explain visual flow (where eye travels)
 - 2-3 sentences
 
-**Quick reference frameworks:**
+**Quick reference frameworks (ALL produce isolated shapes on white, NOT landscapes):**
 1. Centered Hero
-2. Environmental Integration
-3. Diagonal Journey
+2. Clustered Elements
+3. Diagonal Flow
 4. Radial Mandala
-5. Narrative Scene
-6. Layered Depth
-7. Frame-Within-Frame
-8. Asymmetric Balance
-9. Vertical Stacking
-10. Horizontal Spread
+5. Stacked Vertical
+6. Frame-Within-Frame
+7. Asymmetric Balance
 
 ---
 
@@ -135,7 +126,7 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 • Multiple mushroom species in reds, browns, whites growing around base
 • Pine and oak tree silhouettes creating forest background
 • Lush ferns and vegetation framing sides
-• Wildflowers scattered - marigolds, purple flowers
+• Wildflowers scattered - bougainvillea, purple flowers
 • Stone pathway leading to doorway
 • Glowing fireflies throughout scene
 • Mazatec geometric patterns in border
@@ -181,15 +172,15 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 ### TEXT INTEGRATION (20-30 words)
 **Formula:**
 • Primary: "[TEXT]" - [placement], [size %], [style]
-• Secondary: "[TEXT]" - [placement], [size %]
+• Secondary: "[State, México]" - [placement], [size %]
 
 **Examples:**
 
 "• Primary: "HUAUTLA" arcing across top in multi-colored bold hand-lettered style, 18% height
-• Secondary: "Oaxaca" at bottom in warm brown, 7% height"
+• Secondary: "Oaxaca, México" at bottom in warm brown, 7% height"
 
 "• Primary: "COZUMEL" centered below turtle in vintage travel poster lettering, 20% height
-• Secondary: "México" on bottom banner, 6% height"
+• Secondary: "Quintana Roo, México" on bottom banner, 6% height"
 
 **Primary text requirements:**
 - 15-25% of design height (never smaller!)
@@ -199,7 +190,8 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 
 **Secondary text:**
 - 6-8% height
-- Supporting information (region, state, subtitle)
+- ALWAYS format as "State Name, México" — nothing else
+- NO taglines, slogans, cultural phrases, or descriptions
 - Placement noted
 
 **Keys:**
@@ -264,22 +256,20 @@ Use this exact structure for every design prompt. Fill in bracketed sections.
 ---
 
 ### EDGE TREATMENT (1 sentence)
-**Formula:** [Organic irregular / Circle / Rectangle / Custom] following [natural contours of elements]
+**Formula:** Organic irregular silhouette on white — describe what forms the edge
 
 **Examples:**
 
-"Organic irregular border following mushroom caps and forest foliage - no straight edges or rectangles."
+"Organic irregular silhouette formed by mushroom caps and foliage edges floating on white background — die-cut sticker shape."
 
-"Perfect circular mandala edge with soft mushroom cap extensions creating natural outer boundary."
+"Organic irregular shape formed by extending botanical elements and text outward — no sky, no scene, just the shape on white."
 
-"Organic irregular shape formed by extending botanical elements and text outward - asymmetric natural contours."
-
-**Default = Organic irregular**
+**Default = Organic irregular on white**
 
 **Keys:**
 - Default to organic irregular unless format requires specific shape
 - Describe what creates the edge (follows element contours)
-- No straight edges or 90° corners preferred
+- ALWAYS on white background — NEVER a landscape/scene/sky
 - One sentence
 
 ---
@@ -332,7 +322,7 @@ Here's a filled template (342 words):
 • Multiple smaller mushrooms in reds, browns, whites, golds growing around house
 • Pine and oak tree silhouettes in background creating cloud forest
 • Lush ferns and forest vegetation framing composition
-• Wildflowers scattered - marigolds, purple flowers
+• Wildflowers scattered - bougainvillea, purple flowers
 • Moss covering ground in bright greens
 • Stone pathway leading to door
 • Glowing fireflies and magic sparkles throughout
@@ -342,7 +332,7 @@ Here's a filled template (342 words):
 
 **TEXT INTEGRATION:**
 • Primary: "HUAUTLA" arcing across top in multi-colored bold hand-lettered style, 15% height
-• Secondary: "Oaxaca" at bottom in warm brown, 7% height
+• Secondary: "Oaxaca, México" at bottom in warm brown, 7% height
 
 **STYLE & AESTHETIC:** Whimsical cartoon illustration with bold black outlines and flat vibrant colors matching doll's playful original style. Magical welcoming fairytale mood celebrating mushroom culture through family-friendly fantasy lens.
 
@@ -451,12 +441,12 @@ Before submitting, verify:
 - Text usually arcs top or bottom
 
 ### Vertical Portrait (4:5, 2:3)
-- Use: Vertical Stacking, Centered Hero, Layered Depth
+- Use: Stacked Vertical, Centered Hero, Asymmetric Balance
 - Text at top or bottom banner
 - Vertical emphasis
 
 ### Horizontal Landscape (5:4, 3:2)
-- Use: Horizontal Spread, Diagonal Journey, Narrative Scene
+- Use: Clustered Elements, Diagonal Flow, Asymmetric Balance
 - Text as banner across design
 - Left-right flow
 

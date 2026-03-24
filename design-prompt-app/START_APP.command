@@ -275,41 +275,8 @@ kill_server
 # Install the hotkey service (one-time)
 install_hotkey_service
 
-# Create the reboot script
-cat > "$APP_DIR/REBOOT_APP.command" << 'REBOOT_SCRIPT'
-#!/bin/bash
-APP_DIR="$(cd "$(dirname "$0")" && pwd)"
-PID_FILE="$APP_DIR/.server.pid"
-LOG_FILE="$APP_DIR/.server.log"
-PORT=3001
-
-cd "$APP_DIR"
-
-# Kill existing server
-if [ -f "$PID_FILE" ]; then
-    pid=$(cat "$PID_FILE")
-    kill "$pid" 2>/dev/null
-    sleep 0.5
-    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
-    rm -f "$PID_FILE"
-fi
-lsof -ti :$PORT 2>/dev/null | xargs kill -9 2>/dev/null
-sleep 0.3
-
-# Restart server
-node server.js > "$LOG_FILE" 2>&1 &
-NEW_PID=$!
-echo "$NEW_PID" > "$PID_FILE"
-
-sleep 1.5
-if kill -0 "$NEW_PID" 2>/dev/null; then
-    osascript -e 'display notification "Server rebooted on port 3001" with title "Design Prompt Generator" subtitle "✓ Ready"'
-    open "http://localhost:3001"
-else
-    osascript -e 'display notification "Server failed to start!" with title "Design Prompt Generator" subtitle "✗ Error"'
-fi
-REBOOT_SCRIPT
-chmod +x "$APP_DIR/REBOOT_APP.command"
+# Ensure REBOOT_APP.command is executable (but don't overwrite it — it's maintained separately)
+chmod +x "$APP_DIR/REBOOT_APP.command" 2>/dev/null
 
 # Start the server
 start_server

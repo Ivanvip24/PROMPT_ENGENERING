@@ -33,6 +33,7 @@ rm -f "$LOCK_FILE"
 sleep 1.5
 if kill -0 "$NEW_PID" 2>/dev/null; then
     osascript -e 'display notification "Server rebooted on port 3001 — your work is preserved" with title "Design Prompt Generator" subtitle "✓ Ready"'
+    open "http://localhost:3001"
 else
     osascript -e 'display notification "Server failed to start!" with title "Design Prompt Generator" subtitle "✗ Error"'
 fi

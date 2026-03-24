@@ -1569,6 +1569,51 @@
             transform: scale(1.05);
         }
 
+        /* ═══ RANDOM BUTTON ═══ */
+        .random-btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, #e72a88, #f39223, #8ab73b, #09adc2, #e72a88);
+            background-size: 300% 300%;
+            animation: randomShimmer 4s ease infinite;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            text-shadow: 0 0 6px rgba(255,255,255,0.3);
+            box-shadow:
+                0 0 10px rgba(231,42,136,0.4),
+                0 0 25px rgba(243,146,35,0.2),
+                inset 0 1px 1px rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .random-btn:hover {
+            box-shadow:
+                0 0 14px rgba(231,42,136,0.6),
+                0 0 35px rgba(243,146,35,0.4),
+                0 0 55px rgba(138,183,59,0.2),
+                inset 0 1px 2px rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+        .random-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .random-btn .spin-icon {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes randomShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
         /* ═══ MODAL ═══ */
         .modal {
             position: fixed;
@@ -1942,9 +1987,15 @@
                             onscroll="syncBackdropScroll()"
                         ></textarea>
                     </div>
-                    <div class="form-help">
-                        <span>💡</span>
-                        <span data-translate="instructionsCard.help">Be as specific as possible about what you want to change or create</span>
+                    <div class="form-help" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="display:flex;align-items:center;gap:4px;">
+                            <span>💡</span>
+                            <span data-translate="instructionsCard.help">Be as specific as possible about what you want to change or create</span>
+                        </span>
+                        <button class="random-btn" id="randomBtn" onclick="randomFill()" style="padding:6px 16px;font-size:12px;">
+                            <span id="randomBtnIcon">🎲</span>
+                            <span id="randomBtnText">Random</span>
+                        </button>
                     </div>
                 </div>
                 <div class="form-field field-destino" id="field-destination" style="display:none">
@@ -2279,6 +2330,14 @@
     </div>
 
     <script>
+        // ═══ UTILITIES ═══
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // ═══ STATE ═══
         let currentProject = null;
         let selectedImages = [];
@@ -2980,7 +3039,10 @@
             }
             // Style dropdown - update "no style" option
             const noStyle = document.getElementById('noStyleOption');
-            if (noStyle) noStyle.textContent = '🚫 ' + t.styleCard.noStyle;
+            if (noStyle) {
+                const span = noStyle.querySelector('span');
+                if (span) span.textContent = '🚫 ' + t.styleCard.noStyle;
+            }
         }
 
 
@@ -3538,9 +3600,17 @@
 
         // ═══ GENERATE PROMPTS ═══
         async function generatePrompts() {
+            const genBtn = document.getElementById('generateBtn');
+            if (genBtn.disabled) return; // Prevent double-click
             if (!currentProject) { alert(translations[currentLanguage].alerts.selectProject); return; }
             const instructions = document.getElementById('instructions').value;
             if (!instructions.trim()) { alert(translations[currentLanguage].alerts.provideInstructions); return; }
+
+            // Disable button during generation
+            genBtn.disabled = true;
+            genBtn.style.opacity = '0.6';
+            genBtn.style.pointerEvents = 'none';
+            const restoreBtn = () => { genBtn.disabled = false; genBtn.style.opacity = ''; genBtn.style.pointerEvents = ''; };
             let variationCount = parseInt(document.getElementById('variationCount').value) || 1;
             if (variationCount < 1 || variationCount > 1000) { alert(translations[currentLanguage].alerts.variationRange); return; }
 
@@ -3665,7 +3735,8 @@
 
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
-                            const data = JSON.parse(line.slice(6));
+                            let data;
+                            try { data = JSON.parse(line.slice(6)); } catch (e) { console.warn('Malformed SSE data:', line); continue; }
                             if (data.type === 'start') {
                                 totalCount = data.total;
                                 const statusDiv = document.getElementById('streamingStatus');
@@ -3696,7 +3767,9 @@
                     }
                 }
             } catch (error) {
-                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--rojo);">Error: ${error.message}</div></div>`;
+                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--rojo);">Error: ${escapeHtml(error.message)}</div></div>`;
+            } finally {
+                restoreBtn();
             }
         }
 
@@ -3788,7 +3861,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="prompt-output" id="prompt-${index}">${variation.prompt}</div>
+                <div class="prompt-output" id="prompt-${index}">${escapeHtml(variation.prompt)}</div>
             `;
             container.appendChild(card);
         }
@@ -3858,8 +3931,11 @@
         }
 
         async function sendToGemini(index) {
-            const text = document.getElementById(`prompt-${index}`).textContent;
             const btn = document.getElementById(`gemini-btn-${index}`);
+            if (btn.disabled) return;
+            btn.disabled = true;
+            setTimeout(() => { btn.disabled = false; }, 3000);
+            const text = document.getElementById(`prompt-${index}`).textContent;
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending...';
             btn.classList.add('sent');
@@ -4084,6 +4160,95 @@
         // ═══ SETTINGS ═══
         function openSettings() { document.getElementById('settingsModal').classList.add('visible'); const k = localStorage.getItem('claudeApiKey'); if (k) document.getElementById('apiKey').value = k; }
         function closeSettings() { document.getElementById('settingsModal').classList.remove('visible'); }
+
+        // Close modals on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const settings = document.getElementById('settingsModal');
+                if (settings && settings.classList.contains('visible')) { closeSettings(); return; }
+                const history = document.getElementById('historySidebar');
+                if (history && history.classList.contains('open')) { toggleHistory(); }
+            }
+        });
+        // ═══ RANDOM FILL ═══
+        let _randomAbort = null;       // AbortController for in-flight request
+        let _randomState = 'idle';     // idle | generating | cancelling
+
+        async function randomFill() {
+            const btn = document.getElementById('randomBtn');
+            const iconEl = document.getElementById('randomBtnIcon');
+            const textEl = document.getElementById('randomBtnText');
+
+            // STATE: generating → cancel it
+            if (_randomState === 'generating') {
+                _randomState = 'cancelling';
+                if (_randomAbort) _randomAbort.abort();
+                iconEl.textContent = '✕';
+                textEl.textContent = 'Cancelling...';
+                return;
+            }
+
+            // STATE: cancelling → ignore clicks until abort completes
+            if (_randomState === 'cancelling') return;
+
+            // STATE: idle → start generating
+            _randomState = 'generating';
+            _randomAbort = new AbortController();
+            iconEl.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+            textEl.textContent = 'Thinking...';
+
+            try {
+                const hint = document.getElementById('instructions').value.trim();
+                const resp = await fetch('/api/random-fill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hint, currentProject: currentProject }),
+                    signal: _randomAbort.signal
+                });
+                const result = await resp.json();
+
+                if (result.success && result.data) {
+                    const d = result.data;
+                    if (d.instructions) { document.getElementById('instructions').value = d.instructions; updateInstructionsHighlight(); }
+                    const destInput = document.getElementById('destination');
+                    if (destInput && d.destination) destInput.value = d.destination;
+                    const themeInput = document.getElementById('theme');
+                    if (themeInput && d.theme) themeInput.value = d.theme;
+                    if (d.style) {
+                        document.querySelectorAll('#styleMultiOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+                        const matchCb = document.querySelector(`#styleMultiOptions input[value="${d.style}"]`);
+                        if (matchCb) { matchCb.checked = true; toggleStyleOption(matchCb); }
+                    }
+                    if (d.ratio) { const ratioDD = document.getElementById('ratioDropdown'); if (ratioDD) ratioDD.value = d.ratio; }
+                    if (d.productType) { const prodDD = document.getElementById('productDropdown'); if (prodDD) { prodDD.value = d.productType; if (typeof onProductChange === 'function') onProductChange(d.productType); } }
+                    if (d.variationCount) { const vc = Math.min(Math.max(parseInt(d.variationCount) || 1, 1), 10); document.getElementById('variationCount').value = vc; document.getElementById('variationDisplay').textContent = vc; }
+                    if (d.level) { const s = document.getElementById('level'); if (s) { s.value = d.level; updateSlider('level', 'levelValue'); } }
+                    if (d.decorationLevel) { const s = document.getElementById('decoration'); if (s) { s.value = d.decorationLevel; updateSlider('decoration', 'decorationValue'); } }
+
+                    iconEl.textContent = '✓';
+                    textEl.textContent = 'Filled!';
+                    setTimeout(() => { iconEl.textContent = '🎲'; textEl.textContent = 'Random'; }, 1500);
+                } else {
+                    iconEl.textContent = '✗';
+                    textEl.textContent = 'Retry';
+                    setTimeout(() => { iconEl.textContent = '🎲'; textEl.textContent = 'Random'; }, 2000);
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    // Cancelled by user — reset to idle
+                    iconEl.textContent = '🎲';
+                    textEl.textContent = 'Random';
+                } else {
+                    console.error('Random fill error:', err);
+                    iconEl.textContent = '🎲';
+                    textEl.textContent = 'Random';
+                }
+            } finally {
+                _randomState = 'idle';
+                _randomAbort = null;
+            }
+        }
+
         function saveSettings() {
             const k = document.getElementById('apiKey').value;
             if (k) { localStorage.setItem('claudeApiKey', k); alert(translations[currentLanguage].alerts.settingsSaved); }
@@ -4185,10 +4350,10 @@
                             <div class="history-item-date">${timeAgo}</div>
                         </div>
                         <div class="history-item-summary">
-                            ${item.destination ? `<span class="dest-tag">📍 ${item.destination}</span>` : ''}
-                            <span>${summary || 'Design prompt'}</span>
+                            ${item.destination ? `<span class="dest-tag">📍 ${escapeHtml(item.destination)}</span>` : ''}
+                            <span>${escapeHtml(summary) || 'Design prompt'}</span>
                         </div>
-                        ${chips.length > 0 ? `<div class="history-item-chips">${chips.map(c => `<span class="history-chip">${c}</span>`).join('')}</div>` : ''}
+                        ${chips.length > 0 ? `<div class="history-item-chips">${chips.map(c => `<span class="history-chip">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
                         <div class="history-item-actions">
                             <button class="history-action-btn copy" onclick="copyFromHistory(${item.id})">${translations[currentLanguage].history.copy}</button>
                             <button class="history-action-btn gemini-hist" onclick="geminiFromHistory(${item.id})">Gemini</button>
@@ -4247,8 +4412,10 @@
 
                 // Dropdowns
                 if (item.style) {
-                    const dd = document.getElementById('styleDropdown');
-                    if (dd) { dd.value = item.style; onStyleChange(item.style); }
+                    // Uncheck all style checkboxes first, then check the matching one
+                    document.querySelectorAll('#styleMultiOptions input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+                    const matchCb = document.querySelector(`#styleMultiOptions input[value="${item.style}"]`);
+                    if (matchCb) { matchCb.checked = true; toggleStyleOption(matchCb); }
                 }
                 if (item.ratio) {
                     const dd = document.getElementById('ratioDropdown');
@@ -4380,9 +4547,11 @@
             } catch(e) { console.warn('Session restore failed:', e.message); }
         }
 
-        // Auto-save
-        document.addEventListener('input', () => setTimeout(saveSession, 300));
-        document.addEventListener('click', () => setTimeout(saveSession, 300));
+        // Auto-save (debounced)
+        let _saveTimer = null;
+        function debouncedSave() { clearTimeout(_saveTimer); _saveTimer = setTimeout(saveSession, 1500); }
+        document.addEventListener('input', debouncedSave);
+        document.addEventListener('click', debouncedSave);
 
         const _origDisplayVariation = displayVariation;
         displayVariation = function(variation, index) {
@@ -4399,6 +4568,173 @@
             const savedLang = localStorage.getItem('language');
             if (savedLang) setLanguage(savedLang);
             updateHistoryBadge();
+
+            // Auto-fill from URL params (sent by AXKAN admin dashboard)
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('destination') || params.has('theme') || params.has('instructions')) {
+                // Small delay to ensure form is fully initialized
+                setTimeout(() => {
+                    const dest = params.get('destination');
+                    const theme = params.get('theme');
+                    const instructions = params.get('instructions');
+                    const product = params.get('product');
+                    const quantity = params.get('quantity');
+                    const client = params.get('client');
+
+                    // Fill destination via default keys system
+                    if (dest) {
+                        const destInput = document.getElementById('destination');
+                        if (destInput) destInput.value = dest;
+                        // Also try to set it as a default key
+                        const dk = typeof defaultKeys !== 'undefined' && defaultKeys.find(k => k.name === 'DESTINATION');
+                        if (dk) { dk.values = dest; if (typeof renderKeys === 'function') renderKeys(); }
+                    }
+
+                    // Fill theme
+                    if (theme) {
+                        const themeInput = document.getElementById('theme');
+                        if (themeInput) themeInput.value = theme;
+                    }
+
+                    // Fill instructions
+                    if (instructions) {
+                        const instrInput = document.getElementById('instructions');
+                        if (instrInput) {
+                            instrInput.value = instructions;
+                            if (typeof updateInstructionsHighlight === 'function') updateInstructionsHighlight();
+                        }
+                    }
+
+                    // Select product type
+                    if (product) {
+                        const prodDD = document.getElementById('productDropdown');
+                        if (prodDD) { prodDD.value = product; if (typeof onProductChange === 'function') onProductChange(product); }
+                    }
+
+                    // Fill variations count
+                    var variations = params.get('variations');
+                    if (variations) {
+                        var vc = Math.min(Math.max(parseInt(variations) || 1, 1), 10);
+                        var vcInput = document.getElementById('variationCount');
+                        var vcDisplay = document.getElementById('variationDisplay');
+                        if (vcInput) vcInput.value = vc;
+                        if (vcDisplay) vcDisplay.textContent = vc;
+                    }
+
+                    // Fill crazymeter
+                    var crazymeter = params.get('crazymeter');
+                    if (crazymeter) {
+                        var cmSlider = document.getElementById('crazymeter');
+                        if (cmSlider) { cmSlider.value = crazymeter; cmSlider.dispatchEvent(new Event('input')); }
+                        // Show crazymeter slider if hidden
+                        var cmGroup = document.getElementById('slider-crazymeter');
+                        if (cmGroup) cmGroup.classList.remove('hidden');
+                    }
+
+                    // Fill level (detail)
+                    var level = params.get('level');
+                    if (level) {
+                        var lvSlider = document.getElementById('level');
+                        if (lvSlider) { lvSlider.value = level; if (typeof updateSlider === 'function') updateSlider('level', 'levelValue'); }
+                    }
+
+                    // Fill decoration
+                    var decoration = params.get('decoration');
+                    if (decoration) {
+                        var decSlider = document.getElementById('decoration');
+                        if (decSlider) { decSlider.value = decoration; if (typeof updateSlider === 'function') updateSlider('decoration', 'decorationValue'); }
+                    }
+
+                    // Fill ratio
+                    var ratio = params.get('ratio');
+                    if (ratio) {
+                        var ratioDD = document.getElementById('ratioDropdown');
+                        if (ratioDD) { ratioDD.value = ratio; if (typeof onRatioChange === 'function') onRatioChange(ratio); }
+                    }
+
+                    // Fill DESTINATION key
+                    var keysDest = params.get('keys_destination');
+                    if (keysDest && typeof defaultKeys !== 'undefined') {
+                        var dk = defaultKeys.find(function(k) { return k.name === 'DESTINATION'; });
+                        if (dk) { dk.values = keysDest; }
+                    }
+
+                    // Fill DESIGN ELEMENTS as additional keys
+                    var keysElements = params.get('keys_elements');
+                    if (keysElements && typeof defaultKeys !== 'undefined') {
+                        // Add a new key for design elements if it doesn't exist
+                        var existingKey = defaultKeys.find(function(k) { return k.name === 'ELEMENTS'; });
+                        if (!existingKey) {
+                            defaultKeys.push({ name: 'ELEMENTS', values: keysElements });
+                        } else {
+                            existingKey.values = keysElements;
+                        }
+                    }
+
+                    // Render keys and update permutations
+                    if (typeof renderKeys === 'function') renderKeys();
+                    if (typeof updatePermutationInfo === 'function') updatePermutationInfo();
+
+                    // Load reference images from client WhatsApp messages
+                    var imagesParam = params.get('images');
+                    if (imagesParam) {
+                        var imageUrls = imagesParam.split(',').filter(function(u) { return u.trim(); });
+                        if (imageUrls.length > 0) {
+                            // Show image upload section
+                            var imgSection = document.getElementById('imageUploadSection');
+                            if (imgSection) imgSection.style.display = '';
+
+                            // Add each image URL as a reference image
+                            imageUrls.forEach(function(url, idx) {
+                                if (typeof imageDataUrls !== 'undefined') {
+                                    imageDataUrls.push(url);
+                                }
+                                if (typeof addImageToPreview === 'function') {
+                                    addImageToPreview(url, idx, true);
+                                }
+                            });
+
+                            // Update image count badge
+                            var countDisplay = document.getElementById('imageCountDisplay');
+                            var countEl = document.getElementById('imageCount');
+                            if (countDisplay && countEl) {
+                                countDisplay.style.display = '';
+                                countEl.textContent = imageUrls.length;
+                            }
+                        }
+                    }
+
+                    // Show controls row if hidden
+                    var controlsRow = document.getElementById('controlsRow');
+                    if (controlsRow) controlsRow.style.display = '';
+
+                    // Show a notification that data was received from AXKAN dashboard
+                    var banner = document.createElement('div');
+                    banner.style.cssText = 'position:fixed;top:12px;right:12px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease;';
+                    banner.textContent = '\uD83C\uDFA8 Datos recibidos de AXKAN' + (client ? ' — Cliente: ' + client : '');
+                    document.body.appendChild(banner);
+                    setTimeout(function() { banner.remove(); }, 4000);
+
+                    // Show the main form if hidden
+                    var mainForm = document.getElementById('mainForm');
+                    if (mainForm) mainForm.style.display = '';
+
+                    // Auto-click generate after a short delay to let form settle
+                    var autoGenerate = params.get('auto') !== 'false';
+                    if (autoGenerate) {
+                        setTimeout(function() {
+                            var genBtn = document.getElementById('generateBtn');
+                            if (genBtn && typeof generatePrompts === 'function') {
+                                banner.textContent = '\u2699\uFE0F Generando prompts automaticamente...';
+                                generatePrompts();
+                            }
+                        }, 1000);
+                    }
+
+                    // Clean URL params without reloading
+                    window.history.replaceState({}, '', window.location.pathname);
+                }, 500);
+            }
         });
     </script>
 </body>

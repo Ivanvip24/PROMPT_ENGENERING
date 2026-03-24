@@ -3,10 +3,12 @@
 # Design Prompt Generator - Automated Launcher
 # Runs via LaunchAgent daily at 8:50 AM
 
-APP_DIR="$(dirname "$0")"
+export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 
 LOG_FILE="$APP_DIR/auto_start.log"
+PID_FILE="$APP_DIR/.server.pid"
 
 echo "$(date): Starting Design Prompt Generator..." >> "$LOG_FILE"
 
@@ -18,6 +20,8 @@ if [ -n "$EXISTING_PID" ]; then
     sleep 2
 fi
 
-/usr/local/bin/npm start >> "$LOG_FILE" 2>&1 &
+node server.js >> "$LOG_FILE" 2>&1 &
+NEW_PID=$!
+echo "$NEW_PID" > "$PID_FILE"
 
-echo "$(date): Server started (PID: $!)" >> "$LOG_FILE"
+echo "$(date): Server started (PID: $NEW_PID)" >> "$LOG_FILE"

@@ -5,21 +5,21 @@ Pre-designed compositional structures to choose from instead of inventing layout
 
 **Usage:** Pick ONE framework per design, adapt to specific elements.
 
+⚠️ **CRITICAL RULE:** ALL frameworks produce an ISOLATED SHAPE floating on WHITE BACKGROUND — like a die-cut sticker or souvenir magnet. NEVER a landscape scene, travel poster, or postcard. NO skies, NO sunsets, NO horizons, NO atmospheric backgrounds. The design is an OBJECT, not a window into a world.
+
 ---
 
 ## Framework 1: Centered Hero
 
 ### Structure
 ```
-┌────────────────────────────┐
-│    [TEXT - Top Arc]        │
-│                            │
-│   [Small]  [HERO]  [Small] │
-│   [Accent] [60-80%][Accent]│
-│            [Center]        │
-│                            │
-│   [Decorative Border]      │
-└────────────────────────────┘
+        [TEXT - Top Arc]
+
+   [Small]  [HERO]  [Small]
+   [Accent] [60-80%][Accent]
+            [Center]
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
@@ -33,97 +33,93 @@ Pre-designed compositional structures to choose from instead of inventing layout
 - Strong recognizable landmarks (towers, monuments, statues)
 - Iconic character mascots
 - Formal commemorative designs
-- Badge/medallion styles
 - When hero IS the entire story
 
 ### Prompt Language
-"Centered composition with [HERO] dominating center occupying 70% of design. Supporting [elements] frame left and right edges symmetrically. [TEXT] arcs across top. Balanced radial decoration fills corners."
+"Centered composition with [HERO] dominating center occupying 70% of design. Supporting [elements] frame left and right edges symmetrically. [TEXT] arcs across top. Organic irregular silhouette on white background."
 
 ### Examples
-- Angel of Independence statue centered
-- Axolotl character front-facing centered
-- Cathedral dominating center with decorative border
-- Character portrait with botanical frame
+- Angel of Independence statue centered with flowers around it
+- Axolotl character front-facing centered with botanical frame
+- Cathedral dominating center with decorative elements
+- Character portrait with botanical wreath frame
 
 ---
 
-## Framework 2: Environmental Integration
+## Framework 2: Clustered Elements
 
 ### Structure
 ```
-┌────────────────────────────┐
-│  [Sky/Background Elements] │
-│                            │
-│[Landscape] [HERO]  [Flora] │
-│  [Left]   [35-40%][Right]  │
-│           [In Setting]     │
-│  [Foreground Ground Layer] │
-│     [Text Integrated]      │
-└────────────────────────────┘
+            [TEXT Arc]
+          ↗  ↑  ↖
+    [Elem] [HERO] [Elem]
+      ↗   [50-60%]  ↖
+    [Elem]  [Elem] [Elem]
+         ↗  ↑  ↖
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
-- **Hero placement:** Center or off-center, 35-40% of design
-- **Environment:** Equally important 40-50%, creates habitat/setting
-- **Layers:** Clear foreground/midground/background depth
-- **Integration:** Hero appears IN environment, not just ON it
-- **Visual flow:** Eye enters through foreground, finds hero in midground, explores background
+- **Hero placement:** Center or slightly above center, 50-60%
+- **Supporting elements:** Clustered tightly around hero in organic arrangement
+- **Shape:** Irregular organic silhouette formed by element arrangement
+- **No layers:** Elements exist as objects on white, NOT in an environment
+- **Visual flow:** Eye finds hero, then explores surrounding cluster
 
 ### Best For
-- Animals in natural habitat
-- Cultural scenes with context
-- Landscape-focused designs
-- Nature/wildlife themes
-- When environment tells story equally
+- Object-centric designs (vases, instruments, food items)
+- Designs with many small supporting elements
+- When you want a rich, dense cluster of related items
+- Souvenir-style product designs
 
 ### Prompt Language
-"Environmental integration composition with [HERO] positioned center-right occupying 35% within [SETTING]. [Background landscape] fills upper third, [foreground elements] anchor bottom. Layered depth with atmospheric [environmental details]."
+"Clustered composition with [HERO] at center occupying 55%. Supporting [elements] arranged organically around it forming an irregular silhouette. All elements float together as a cohesive cluster on white background."
 
 ### Examples
-- Sea turtle swimming through coral reef environment
-- Character in market scene surrounded by stalls
-- Desert animal among cacti and rocks
-- Bird in forest canopy with layered vegetation
+- Talavera vase surrounded by tiles, flowers, and cultural items
+- Guitar surrounded by musical notes, flowers, and regional food
+- Traditional mask with feathers, flowers, and cultural objects clustered around
+- Regional food dish with ingredients and cultural items surrounding it
 
 ---
 
-## Framework 3: Diagonal Journey
+## Framework 3: Diagonal Flow
 
 ### Structure
 ```
-┌────────────────────────────┐
-│  [Start]                   │
-│    ↘                       │
-│      [PATH]                │
-│        ↘  [HERO]           │
-│          ↘  [30-40%]       │
-│            ↘  [On Path]    │
-│   [TEXT]     ↘  [Goal]     │
-└────────────────────────────┘
+    [Elem]
+      ↘
+        [HERO]
+          ↘  [TEXT]
+            [Elem]
+              ↘
+                [Elem]
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
-- **Hero placement:** Mid-journey on diagonal path, 30-40%
-- **Path/Trail:** Cuts diagonally (usually lower-left to upper-right)
-- **Movement:** Implied direction/travel/exploration
+- **Hero placement:** Mid-diagonal, 40-50%
+- **Flow:** Elements arranged along a diagonal line
+- **Movement:** Implied direction without environment
 - **Asymmetric:** Dynamic off-balance energy
-- **Visual flow:** Eye follows path from start through hero to destination
+- **Visual flow:** Eye follows diagonal from element to element
 
 ### Best For
-- Adventure/exploration themes
-- Hiking/trail designs
-- Journey narratives
-- Pilgrimage/travel concepts
-- When movement is key story element
+- Dynamic, energetic designs
+- When you want movement without a landscape
+- Cascading/flowing arrangements
+- When breaking from centered symmetry
 
 ### Prompt Language
-"Diagonal journey composition with stone trail cutting from lower left to upper right. [HERO] positioned mid-trail occupying 35% suggesting exploration. [Starting elements] at origin, [destination elements] at terminus. Horizontal dynamic flow."
+"Diagonal flow composition with elements arranged from upper-left to lower-right. [HERO] positioned mid-diagonal occupying 45%. Supporting [elements] cascade along the diagonal. Organic irregular silhouette on white background."
 
 ### Examples
-- Hiker on mountain trail discovering viewpoint
-- Character walking through forest path
-- River winding diagonally through landscape
-- Road trip scene with diagonal highway
+- Bird in flight with flowers cascading diagonally below
+- Waterfall element with fish and flowers flowing diagonally
+- Musical instrument with notes and flowers flowing along diagonal
+- Dancer with flowing dress and scattered petals in diagonal arrangement
 
 ---
 
@@ -131,148 +127,99 @@ Pre-designed compositional structures to choose from instead of inventing layout
 
 ### Structure
 ```
-┌────────────────────────────┐
-│  [Text Curve Top]          │
-│                            │
-│    ◉◉◉ [Ring 3] ◉◉◉        │
-│   ◉◉◉◉◉◉◉◉◉◉◉◉◉◉           │
-│   ◉◉ [Ring 2] ◉◉           │
-│   ◉◉◉ [HERO] ◉◉◉           │
-│   ◉◉ [25-35%] ◉◉           │
-│   ◉◉◉◉◉◉◉◉◉◉◉◉◉◉           │
-│  [Text Curve Bottom]       │
-└────────────────────────────┘
+        [TEXT Curve Top]
+
+      ◉◉◉ [Ring 2] ◉◉◉
+     ◉◉ [Ring 1] ◉◉
+     ◉◉ [HERO]  ◉◉
+     ◉◉ [25-35%]◉◉
+      ◉◉◉◉◉◉◉◉◉◉◉
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
 - **Hero placement:** Absolute center, 25-35%
-- **Radial rings:** Concentric circles radiating outward
-- **Symmetry:** Perfect circular balance
-- **Sacred geometry:** Mathematical precision
+- **Radial rings:** Concentric circles of elements radiating outward
+- **Symmetry:** Circular balance
+- **Shape:** Round/circular silhouette on white
 - **Visual flow:** Eye centers, then spirals outward through rings
 
 ### Best For
 - Spiritual/meditative themes
 - Sacred cultural designs
 - Symmetrical beauty focus
-- Formal ceremonial concepts
 - When circular format works
+- Mandala or wreath-like compositions
 
 ### Prompt Language
-"Radial mandala composition with [HERO] at absolute center occupying 30% in [meditative pose]. Inner ring of [8 elements] creates first circle, middle ring of [12 elements] forms second layer, outer ring of [16 elements] creates frame. Perfect circular symmetry with [decorative patterns] connecting rings."
+"Radial mandala composition with [HERO] at absolute center occupying 30%. Inner ring of [elements] creates first circle, outer ring of [elements] forms second layer. Circular silhouette on white background."
 
 ### Examples
-- Character meditating surrounded by mushroom circles
-- Flower with petal layers radiating outward
-- Sun with cultural symbols in concentric rings
-- Spiritual figure with sacred geometry
+- Character surrounded by concentric rings of flowers
+- Sun/cultural symbol with radiating cultural elements
+- Animal centered within botanical wreath
+- Cultural object with surrounding pattern rings
 
 ---
 
-## Framework 5: Narrative Scene
+## Framework 5: Stacked Vertical
 
 ### Structure
 ```
-┌────────────────────────────┐
-│   [Text on Banner/Sign]    │
-│                            │
-│  [HERO]      [Interacting] │
-│  [40%]       [With Props]  │
-│  [Performing] [Cultural]   │
-│  [Activity]   [Objects]    │
-│  [Supporting Scene Elements]│
-└────────────────────────────┘
+      [TEXT Banner]
+      [Upper Element]
+      [  HERO 40%  ]
+      [Lower Elements]
+      [  Base Items  ]
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
-- **Hero placement:** Left or right third, 35-45%
-- **Action focus:** Hero doing something specific
-- **Props/objects:** Support the activity/narrative
-- **Story-driven:** Clear "what's happening" moment
-- **Visual flow:** Eye finds hero, then understands action through props/context
+- **Hero placement:** Center vertical band, 35-45%
+- **Stacked elements:** Clear top-to-bottom arrangement of OBJECTS (not landscape layers)
+- **Portrait format:** Works best in vertical rectangles
+- **NO sky or ground:** Elements stacked as objects, not as a landscape with sky/ground
+- **Visual flow:** Eye reads top to bottom through stacked elements
 
 ### Best For
-- Cultural activities (cooking, weaving, dancing)
-- Festival/celebration scenes
-- Character interactions
-- Market/vendor designs
-- When activity tells the story
+- Portrait/vertical formats
+- Tower/vertical monuments
+- When vertical emphasis needed
+- Tall product shapes (bottle openers)
 
 ### Prompt Language
-"Narrative scene composition with [HERO] positioned left occupying 40% [performing ACTIVITY]. [Props/objects] on right side support story. [Background elements] set scene context. Clear storytelling focus with [cultural details]."
+"Vertical stacking composition with [TEXT] across top, [upper element] below, [HERO] occupying center 40%, [supporting elements] stacked below. All elements arranged as objects on white background — NO sky, NO ground."
 
 ### Examples
-- Character sorting mushrooms at market
-- Person weaving traditional textiles
-- Festival celebration with dancers and decorations
-- Artisan crafting pottery with tools displayed
+- Tower monument with text above, cultural elements stacked below
+- Character with decorative banner top and cultural items below
+- Vertical arrangement of cultural objects with hero largest in center
+- Totem-style composition with elements stacked vertically
 
 ---
 
-## Framework 6: Layered Depth
+## Framework 6: Frame-Within-Frame
 
 ### Structure
 ```
-┌────────────────────────────┐
-│ [Far Background 30%]       │
-│  [Mountains/Sky]           │
-│                            │
-│ [Midground 40%]            │
-│   [HERO Element]           │
-│                            │
-│ [Foreground 20%]           │
-│  [Close Details]           │
-│ [Text Layer]               │
-└────────────────────────────┘
-```
+    ╔══════════════════╗
+    ║ [Border Pattern] ║
+    ║                  ║
+    ║     [HERO]       ║
+    ║     [35-40%]     ║
+    ║                  ║
+    ║ [Border Pattern] ║
+    ╚══════════════════╝
 
-### Key Characteristics
-- **Hero placement:** Midground layer, 35-45%
-- **Three planes:** Clear foreground (20%), midground (40%), background (30-40%)
-- **Atmospheric depth:** Fog, mist, or atmospheric perspective
-- **Spatial separation:** Each layer distinct
-- **Visual flow:** Eye moves through depth planes like looking into scene
-
-### Best For
-- Landscape-heavy designs
-- Atmospheric/moody scenes
-- Mountain/valley compositions
-- Scenes requiring depth and scale
-- When environment scale matters
-
-### Prompt Language
-"Layered depth composition with clear spatial planes. Background [mountains/sky] fills upper 30%, midground [HERO] occupies center 40%, foreground [details] anchors bottom 20%. Atmospheric [fog/mist] creates separation between layers."
-
-### Examples
-- Mountain landscape with village in middle ground
-- Character in misty forest with layered trees
-- Waterfall with rocks in foreground, falls in middle, mountains behind
-- Desert scene with cacti at different depths
-
----
-
-## Framework 7: Frame-Within-Frame
-
-### Structure
-```
-┌────────────────────────────┐
-│╔══════════════════════════╗│
-│║ [Decorative Border]      ║│
-│║  [Pattern/Cultural]      ║│
-│║                          ║│
-│║      [HERO]              ║│
-│║      [35-40%]            ║│
-│║      [Centered]          ║│
-│║                          ║│
-│║ [Border Pattern Cont.]   ║│
-│╚══════════════════════════╝│
-└────────────────────────────┘
+      ★ white background ★
 ```
 
 ### Key Characteristics
 - **Hero placement:** Centered within frame, 35-40%
 - **Border emphasis:** Thick decorative frame tells secondary story
-- **Contained:** Hero medallion/icon within architectural or decorative frame
+- **Contained:** Hero within decorative or cultural frame
 - **Ornamental:** Border is major design element (20-30%)
 - **Visual flow:** Border draws eye inward to centered hero
 
@@ -281,33 +228,31 @@ Pre-designed compositional structures to choose from instead of inventing layout
 - Badge/seal/medallion styles
 - When border patterns tell cultural story
 - Ornamental approaches
-- Gift/souvenir presentation emphasis
 
 ### Prompt Language
-"Frame-within-frame composition with [HERO] centered within decorative frame occupying 40% of interior space. Thick ornamental border (25% of design) features [cultural patterns/motifs] creating architectural frame. Text integrated into border elements."
+"Frame-within-frame composition with [HERO] centered within decorative frame occupying 40% of interior space. Thick ornamental border (25% of design) features [cultural patterns]. Frame shape creates irregular silhouette on white background."
 
 ### Examples
-- Character portrait within Mazatec geometric border
+- Character portrait within geometric cultural border
 - Landmark within decorative cultural pattern frame
 - Animal within botanical wreath frame
-- Scene contained within architectural arch
+- Cultural object within architectural arch frame
 
 ---
 
-## Framework 8: Asymmetric Balance
+## Framework 7: Asymmetric Balance
 
 ### Structure
 ```
-┌────────────────────────────┐
-│         [TEXT Top Right]   │
-│                            │
-│  [LARGE]              [Small]
-│  [HERO]               [Counter]
-│  [60%]                [Elements]
-│  [Left]               [Right]
-│                       [15%]
-│  [TEXT Bottom Left]        │
-└────────────────────────────┘
+            [TEXT Top Right]
+
+   [LARGE]              [Small]
+   [HERO]               [Counter]
+   [60%]                [Elements]
+   [Left]               [Right]
+                         [15%]
+
+      ★ white background ★
 ```
 
 ### Key Characteristics
@@ -321,98 +266,16 @@ Pre-designed compositional structures to choose from instead of inventing layout
 - Dynamic character poses
 - When hero has strong directionality
 - Modern contemporary aesthetics
-- Breaking traditional symmetry
 - When visual tension desired
 
 ### Prompt Language
-"Asymmetric balanced composition with [LARGE HERO] dominating left side occupying 65%. Smaller [counter-elements] balance right side at 20%. Dynamic off-center energy with intentional visual tension."
+"Asymmetric balanced composition with [LARGE HERO] dominating left side occupying 65%. Smaller [counter-elements] balance right side at 20%. Dynamic off-center energy. Organic irregular silhouette on white background."
 
 ### Examples
 - Character facing right with cultural elements counter-balancing left
 - Large flower left with smaller botanical specimens right
 - Monument on one side with text and decorative elements counter-balancing
-- Dynamic animal pose with environmental elements providing balance
-
----
-
-## Framework 9: Vertical Stacking
-
-### Structure
-```
-┌────────────────────────────┐
-│   [TEXT Banner Top 15%]    │
-├────────────────────────────┤
-│   [Upper Element 25%]      │
-│   [Sky/Background]         │
-├────────────────────────────┤
-│   [HERO Center 35%]        │
-│   [Main Focus]             │
-├────────────────────────────┤
-│   [Lower Element 25%]      │
-│   [Ground/Base]            │
-└────────────────────────────┘
-```
-
-### Key Characteristics
-- **Hero placement:** Center vertical band, 30-40%
-- **Stacked layers:** Clear horizontal divisions
-- **Top-to-bottom:** Natural reading direction
-- **Portrait format:** Works best in vertical rectangles
-- **Visual flow:** Eye reads top to bottom in distinct sections
-
-### Best For
-- Portrait/vertical formats
-- Tower/vertical monuments
-- Hierarchical information
-- Top-to-bottom narratives
-- When vertical emphasis needed
-
-### Prompt Language
-"Vertical stacking composition with [TEXT] banner across top 15%, [upper background] fills 25%, [HERO] occupies center band 35%, [ground/base] anchors bottom 25%. Clear horizontal layer divisions."
-
-### Examples
-- Tower monument with sky above and cityscape below
-- Character portrait with decorative banner top and cultural base bottom
-- Vertical waterfall with sky, falls, and rocks in stacked layers
-- Totem-style composition with elements stacked vertically
-
----
-
-## Framework 10: Horizontal Spread
-
-### Structure
-```
-┌─────────────────────────────────────┐
-│                                     │
-│ [Left Scene]→[HERO Center]→[Right] │
-│ [Element 25%] [35%] [Element 25%]  │
-│                                     │
-│ [TEXT Banner Bottom]                │
-└─────────────────────────────────────┘
-```
-
-### Key Characteristics
-- **Hero placement:** Center, 30-40%
-- **Left-right flow:** Narrative moves horizontally
-- **Landscape format:** Wide rectangular shape
-- **Panoramic:** Emphasizes width over height
-- **Visual flow:** Eye travels left to right like reading
-
-### Best For
-- Landscape/horizontal formats
-- Journey narratives (left to right)
-- Panoramic scenes
-- Before-and-after concepts
-- Wide scene compositions
-
-### Prompt Language
-"Horizontal spread composition in landscape format with [HERO] centered occupying 35%. [Left scene elements] fill left 25%, [right scene elements] balance right 25%. Panoramic horizontal flow with [TEXT] banner across bottom."
-
-### Examples
-- Mountain range panorama with central peak emphasized
-- Character centered with left and right activity scenes
-- Beach scene with ocean spreading horizontally
-- Market street scene reading left to right
+- Dynamic animal pose with supporting elements providing balance
 
 ---
 
@@ -423,46 +286,23 @@ Pre-designed compositional structures to choose from instead of inventing layout
 1. **Is hero THE ENTIRE focus with no competing elements?**
    → Framework 1: Centered Hero
 
-2. **Is environment/habitat equally important as hero?**
-   → Framework 2: Environmental Integration
+2. **Want a rich, dense cluster of objects around the hero?**
+   → Framework 2: Clustered Elements
 
-3. **Does design suggest movement/journey/path?**
-   → Framework 3: Diagonal Journey
+3. **Does design suggest movement/energy/flow?**
+   → Framework 3: Diagonal Flow
 
-4. **Is spiritual/meditative/circular symmetry desired?**
+4. **Is circular symmetry desired?**
    → Framework 4: Radial Mandala
 
-5. **Is hero performing specific activity/action?**
-   → Framework 5: Narrative Scene
+5. **Vertical portrait format with clear stacked sections?**
+   → Framework 5: Stacked Vertical
 
-6. **Do you need strong foreground/midground/background depth?**
-   → Framework 6: Layered Depth
+6. **Should decorative border be major element?**
+   → Framework 6: Frame-Within-Frame
 
-7. **Should decorative border be major element?**
-   → Framework 7: Frame-Within-Frame
-
-8. **Want dynamic modern asymmetric energy?**
-   → Framework 8: Asymmetric Balance
-
-9. **Vertical portrait format with clear sections?**
-   → Framework 9: Vertical Stacking
-
-10. **Horizontal landscape with left-right flow?**
-    → Framework 10: Horizontal Spread
-
----
-
-## Mixing Frameworks (Advanced)
-
-Can combine elements from multiple frameworks:
-
-**Example Combinations:**
-- **Centered Hero + Frame-Within-Frame:** Hero centered with thick decorative border
-- **Environmental Integration + Layered Depth:** Hero in environment with strong foreground/mid/background
-- **Narrative Scene + Asymmetric Balance:** Character performing activity with dynamic off-center placement
-- **Radial Mandala + Vertical Stacking:** Circular mandala in center band with text banners top/bottom
-
-**Rule:** Only mix complementary frameworks. Don't try to combine opposing structures (e.g., Centered Hero + Diagonal Journey conflicts).
+7. **Want dynamic modern asymmetric energy?**
+   → Framework 7: Asymmetric Balance
 
 ---
 
@@ -472,25 +312,6 @@ Each framework is a **starting point**, adapt to specific elements:
 
 - **Scale hero** based on importance (30-80% range)
 - **Adjust symmetry** based on hero's directionality
-- **Modify layers** based on available elements
 - **Change text placement** based on composition flow
 - **Adapt edge treatment** to follow framework's natural contours
-
-The frameworks provide structure—you provide creativity within that structure.
-
----
-
-## Success Metrics
-
-You're using frameworks correctly when:
-- ✅ Can choose framework in under 1 minute
-- ✅ Framework provides clear spatial structure
-- ✅ Don't need to invent composition from scratch
-- ✅ Visual hierarchy is clear and intentional
-- ✅ Elements fit naturally within framework
-- ✅ Can articulate framework choice in 1-2 sentences
-
----
-
-**FRAMEWORK LIBRARY COMPLETE**
-Reference this document during Step 1 of speed-optimized workflow.
+- **ALWAYS** ensure the result looks like an isolated product shape on white — NEVER a scenic landscape

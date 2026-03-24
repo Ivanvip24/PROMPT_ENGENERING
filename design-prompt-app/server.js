@@ -44,6 +44,7 @@ function sanitizePrompt(text) {
     // Remove banned words (case-insensitive, whole word)
     .replace(/\bpunta\b/gi, '')
     .replace(/\bsexo\b/gi, '')
+    .replace(/\bnecked\b/gi, '')
     .replace(/\brounded eyes\b/gi, 'expressive eyes')
     .replace(/\bround eyes\b/gi, 'expressive eyes')
     .replace(/\bslopes?\b/gi, '')
@@ -99,6 +100,7 @@ function sanitizeVideoPrompt(text) {
     // Remove banned words
     .replace(/\bpunta\b/gi, '')
     .replace(/\bsexo\b/gi, '')
+    .replace(/\bnecked\b/gi, '')
     .replace(/  +/g, ' ').trim();
 }
 
@@ -339,34 +341,43 @@ async function invokeClaudeTurbo(instruction, params) {
     const _effectiveStyle = _detectedHybridGlobal ? 'hybrid' : (params.style || '');
 
     if (isLetterFill) {
-      // LETTER-FILL TURBO TEMPLATE
+      // LETTER-FILL TURBO TEMPLATE - JSON FORMAT
       const destination = params.destination || 'DESTINATION';
       const letters = destination.toUpperCase().split('');
-      const letterList = letters.map((l, i) => `- ${l}: [Iconic ${destination} scene #${i + 1}]`).join('\n');
+      const letterFills = letters.map((l, i) => `"${l}": "[Iconic ${destination} scene #${i + 1} - be specific]"`).join(',\n      ');
 
-      turboPrompt = `> TURBO LETTER-FILL MAGNET GENERATOR >
+      turboPrompt = `> TURBO LETTER-FILL MAGNET GENERATOR - JSON OUTPUT >
 
-OUTPUT EXACTLY THIS FORMAT (80-150 words MAX):
+You are a design prompt generator. Output ONLY a valid JSON code block. Fill every bracketed placeholder with vivid, specific content.
 
-FORMAT: ${params.ratio || '2:1'}
-PRODUCT: Letter-fill souvenir magnet  - "${destination}"
-LETTER STYLE: Bold chunky 3D letters with natural wood material, slightly uneven heights for handcrafted feel
-LETTER ARRANGEMENT: "${destination}" spelled horizontally, each letter is a photo window
-PHOTO FILLS  - Each letter shows a DIFFERENT ${destination} scene:
-${letterList}
-MATERIAL: 3D letters with subtle texture. Vivid photos fill each letter edge-to-edge. NO external border or outline around the letters.
-BACKGROUND: Clean white or transparent, no frames or borders
-STYLE: Flat front-facing view of a souvenir magnet design. NO borders, NO outlines around the design.
+RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
 
-CREATE DESIGN
+\`\`\`json
+{
+  "format": "${params.ratio || '2:1'}",
+  "product_type": "Letter-fill souvenir magnet - ${destination}",
+  "letter_style": "Bold chunky 3D letters with natural wood material, slightly uneven heights for handcrafted feel",
+  "letter_arrangement": "${destination} spelled horizontally, each letter is a photo window",
+  "photo_fills": {
+      ${letterFills}
+  },
+  "material": "3D letters with subtle texture. Vivid photos fill each letter edge-to-edge. NO external border or outline around the letters",
+  "background": "Clean white or transparent, no frames or borders",
+  "style": "Flat front-facing view of a souvenir magnet design. NO borders, NO outlines around the design",
+  "rule": "Keep it SIMPLE. No decoration, no supporting elements, no text banners. Just photo-filled letters as a product",
+  "architectural_faithfulness": "Photo fills showing real buildings/landmarks must preserve EXACT structural details - recognizable as THAT specific building"
+}
+\`\`\`
 
 ---
 REQUEST: ${instruction}
 DESTINATION: ${destination}
 ---
 
-CRITICAL: Keep it SIMPLE. No decoration, no supporting elements, no text banners. Just photo-filled letters as a product.
-RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. START DIRECTLY WITH "FORMAT:"`;
+RULES:
+1. Output ONLY the filled JSON code block.
+2. Each letter MUST show a DIFFERENT iconic scene from ${destination}.
+3. Keep it simple - just photo-filled letters, no extra decoration.`;
 
     } else {
       // STANDARD TURBO TEMPLATE (visually rich version)
@@ -375,141 +386,212 @@ RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. START DIRECTLY WITH "FORMA
 
       // Branch template based on effective style
       if (_effectiveStyle === 'hybrid') {
-        turboPrompt = `> TURBO PROMPT GENERATOR - HYBRID REAL+CARTOON DESIGN >
+        turboPrompt = `> TURBO PROMPT GENERATOR - HYBRID REAL+CARTOON - JSON OUTPUT >
 
-[!] ABSOLUTE RULE: This prompt MUST produce a design that MIXES photorealistic and cartoon elements. If your output describes everything in ONE style (all cartoon OR all realistic), you have FAILED.
+You are a design prompt generator. Output ONLY a valid JSON code block describing a HYBRID design that MIXES photorealistic and cartoon elements. Fill every bracketed placeholder with vivid, specific content.
 
-OUTPUT EXACTLY THIS FORMAT (250-400 words):
+[!] ABSOLUTE RULE: The output MUST contain BOTH photorealistic AND cartoon elements. If everything is described in ONE style, you have FAILED.
 
-FORMAT: ${params.ratio || '1:1'}
-SUBJECT: [Describe main element + destination in ONE vivid sentence]
-STYLE: HYBRID Real+Cartoon composition  - this design MIXES two rendering styles in ONE image. Some elements are PHOTOREALISTIC (camera-quality, real textures, real lighting, as if photographed) and other elements are BOLD CARTOON ILLUSTRATIONS (thick outlines, flat vibrant colors, stylized). The contrast and coexistence of both styles is the defining visual feature. Think "Who Framed Roger Rabbit" aesthetic  - real and cartoon in the same frame.
-PHOTOREALISTIC ELEMENTS (these MUST look like real photographs  - camera quality, real textures, real lighting):
-- [Real element 1  - describe with photographic language: "actual photograph of...", "camera-captured...", "real feather/fur/stone texture...", "natural sunlight on..."]
-- [Real element 2  - landmark, animal, plant, or nature scene described as REAL]
-- [Real element 3  - use words: photorealistic, camera-quality, real depth of field, natural lighting]
-- [Add 2-4 more real elements]
-CARTOON ELEMENTS (these MUST look illustrated  - bold outlines, flat colors, stylized):
-- [Cartoon element 1  - describe with illustration language: "bold cartoon text...", "illustrated border...", "colorful cartoon flowers..."]
-- [Cartoon element 2  - decorative patterns, stylized characters, illustrated frames]
-- [Cartoon element 3  - use words: bold outlines, vibrant flat colors, cartoon style, illustrated]
-- [Add 2-4 more cartoon elements]
-COMPOSITION:
-- [How the real and cartoon elements INTERACT  - cartoon elements framing real photos, illustrated borders around photographic subjects, etc.]
-- [Visual flow and depth]
-PROTAGONIST: [Main subject  - 40 words. If the main subject should be REAL (animal, landmark), describe it as PHOTOREALISTIC with camera-quality detail. If cartoon, describe with illustration language.]
-COLORS: [6-8 colors  - real elements have natural/photographic colors, cartoon elements have bold saturated colors]
-TEXT: "${params.destination || 'DESTINATION'}" - [placement: BOLD and PROMINENT], [size: 18-25% height], [style: CARTOON/ILLUSTRATED  - bold colorful letters with outlines, shadows, 3D effect]
-DECORATION: ${params.decorationLevel || 7}/10  - Cartoon-style decorative fills (illustrated flowers, patterns, sparkles) around and between the photorealistic elements.
-EDGE: IRREGULAR silhouette  - cartoon/illustrated elements define the outer edges while photorealistic elements sit within.
-BACKGROUND: Clean white/transparent
-CREATE DESIGN
+RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
+
+\`\`\`json
+{
+  "format": "${params.ratio || '1:1'}",
+  "product_type": "die-cut souvenir product floating on white, irregular silhouette",
+  "subject": "[ONE vivid sentence: main element + destination]",
+  "style": "HYBRID Real+Cartoon - MIXES photorealistic camera-quality elements with bold cartoon illustrations in ONE image. Who Framed Roger Rabbit aesthetic.",
+  "photorealistic_elements": [
+    "[Real element 1 - describe as: actual photograph of..., camera-captured..., real texture...]",
+    "[Real element 2 - landmark, animal, or nature as REAL photo with natural lighting]",
+    "[Real element 3 - photorealistic, camera-quality, real depth of field]",
+    "[Add 2-4 more real elements]"
+  ],
+  "cartoon_elements": [
+    "[Cartoon element 1 - bold cartoon text, illustrated border, colorful cartoon flowers]",
+    "[Cartoon element 2 - decorative patterns, stylized characters, illustrated frames]",
+    "[Cartoon element 3 - bold outlines, vibrant flat colors, cartoon style]",
+    "[Add 2-4 more cartoon elements]"
+  ],
+  "composition": {
+    "interaction": "[How real and cartoon elements INTERACT - cartoon framing real photos, illustrated borders around photographic subjects]",
+    "flow": "[Visual flow and depth description]"
+  },
+  "protagonist": "[Main subject - 40 words. If REAL: photorealistic camera-quality detail. If cartoon: illustration language]",
+  "colors": {
+    "real": "[3-4 natural photographic colors for real elements]",
+    "cartoon": "[3-4 bold saturated colors for cartoon elements]"
+  },
+  "text": {
+    "primary": {
+      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
+      "placement": "BOLD and PROMINENT",
+      "size": "18-25% height",
+      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Bold chunky block letters integrated into artwork"
+    }
+  },
+  "decoration": "${params.decorationLevel || 7}/10 - Cartoon-style decorative fills around photorealistic elements",
+  "edge": "IRREGULAR silhouette - cartoon elements define outer edges, photorealistic elements sit within",
+  "background": "PURE WHITE",
+  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
+  "banned": ["all-one-style output", "skyline", "sunset", "watercolor", "necked", "slopes", "punta", "sexo"]
+}
+\`\`\`
 
 ---
 REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY — must appear as primary title text even if not mentioned in instructions): ${params.destination}` : ''}
+${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-CRITICAL QUALITY CHECK: Before outputting, verify your prompt contains BOTH "photorealistic/camera-quality/real photograph" AND "cartoon/illustrated/bold outlines" language. If ALL elements are described the same way, REWRITE to ensure the mix. The viewer must clearly see BOTH photographic and illustrated elements in the final image.
-RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+RULES:
+1. Output ONLY the filled JSON code block.
+2. MUST contain BOTH "photorealistic/camera-quality" AND "cartoon/illustrated/bold outlines" language.
+3. Every placeholder must be replaced with REAL, SPECIFIC content for the destination.`;
 
       } else if (_effectiveStyle === 'realistic' || _effectiveStyle === 'photography') {
-        turboPrompt = `> TURBO PROMPT GENERATOR - PHOTOREALISTIC DESIGN >
+        const realisticStyleDesc = _effectiveStyle === 'photography'
+          ? 'Photography-based design with REAL photo elements (actual photographic quality - NOT illustrated) integrated into decorative frames and cultural compositions'
+          : 'PHOTOREALISTIC - real-world photographic quality with camera-lens depth of field, natural lighting, real material textures. HIGH-END PHOTOGRAPH or cinema-quality photomanipulation';
 
-[!] ABSOLUTE RULE: This is NOT an illustration or cartoon. Every element must look PHOTOREALISTIC  - like a professional photograph or high-end photo composite.
+        turboPrompt = `> TURBO PROMPT GENERATOR - PHOTOREALISTIC - JSON OUTPUT >
 
-OUTPUT EXACTLY THIS FORMAT (250-400 words):
+You are a design prompt generator. Output ONLY a valid JSON code block describing a PHOTOREALISTIC design. Every element must look like a real photograph. NO illustration language.
 
-FORMAT: ${params.ratio || '1:1'}
-SUBJECT: [Describe main element + destination in ONE vivid sentence]
-STYLE: ${_effectiveStyle === 'photography' ? 'Photography-based design with REAL photo elements (actual photographic quality  - NOT illustrated) integrated into decorative frames and cultural compositions' : 'PHOTOREALISTIC  - real-world photographic quality with camera-lens depth of field, natural lighting, real material textures. This is NOT an illustration  - it must look like a HIGH-END PHOTOGRAPH or cinema-quality photomanipulation'}
-COMPOSITION:
-- [Composition described as a PHOTO COMPOSITE or PHOTOGRAPHIC SCENE  - not a sticker or illustration]
-- [Camera angle, lighting direction, depth of field]
-- [Real-world spatial relationships between elements]
-PROTAGONIST: [Main subject  - 40 words with PHOTOGRAPHIC language: real feather texture, natural light catching fur, actual stone grain, genuine fabric texture. NO illustration language.]
-ELEMENTS (8-12 items  - all PHOTOREALISTIC):
-- [Element 1  - described as a real photograph: "actual photo of...", "camera-captured...", "real texture of..."]
-- [Element 2  - natural colors, real lighting, genuine materials]
-- [Element 3]
-- [Element 4]
-- [Element 5]
-- [Element 6]
-- [Element 7]
-- [Element 8]
-- [Add more as needed  - all must look REAL, not illustrated]
-COLORS: [6-8 NATURAL photographic colors  - rich but realistic, not cartoon-saturated]
-TEXT: "${params.destination || 'DESTINATION'}" - [placement: BOLD], [size: 18-25% height], [style: elegant dimensional text that fits the photographic aesthetic  - metallic, embossed, or naturally integrated]
-DECORATION: ${params.decorationLevel || 6}/10  - Natural decorative elements (real flowers, real leaves, natural textures)  - NOT cartoon sparkles or illustrated confetti.
-EDGE: IRREGULAR organic outline shaped by the photographic elements  - NOT a sticker or badge look.
-BACKGROUND: Clean white/transparent
-CREATE DESIGN
+RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
+
+\`\`\`json
+{
+  "format": "${params.ratio || '1:1'}",
+  "product_type": "die-cut souvenir product floating on white, irregular organic silhouette",
+  "subject": "[ONE vivid sentence: main element + destination]",
+  "style": "${realisticStyleDesc}",
+  "composition": {
+    "layout": "[Described as PHOTO COMPOSITE or PHOTOGRAPHIC SCENE - not illustration]",
+    "camera": "[Camera angle, lighting direction, depth of field]",
+    "spatial": "[Real-world spatial relationships between elements]"
+  },
+  "protagonist": "[Main subject - 40 words with PHOTOGRAPHIC language: real feather texture, natural light catching fur, actual stone grain, genuine fabric texture. NO illustration language]",
+  "elements": [
+    "[Element 1 - actual photo of..., camera-captured..., real texture of...]",
+    "[Element 2 - natural colors, real lighting, genuine materials]",
+    "[Element 3 - photorealistic detail]",
+    "[Element 4]",
+    "[Element 5]",
+    "[Element 6]",
+    "[Element 7]",
+    "[Element 8]"
+  ],
+  "colors": ["[6-8 NATURAL photographic colors - rich but realistic, not cartoon-saturated]"],
+  "text": {
+    "primary": {
+      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
+      "placement": "BOLD",
+      "size": "18-25% height",
+      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Naturally integrated into photographic aesthetic"
+    }
+  },
+  "decoration": "${params.decorationLevel || 6}/10 - Natural decorative elements (real flowers, real leaves, natural textures) - NOT cartoon sparkles",
+  "edge": "IRREGULAR organic outline shaped by photographic elements - NOT sticker or badge look",
+  "background": "PURE WHITE",
+  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
+  "banned": ["cartoon", "illustrated", "bold outlines", "flat colors", "sticker", "vector", "skyline", "sunset", "necked", "slopes", "punta", "sexo"]
+}
+\`\`\`
 
 ---
 REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY — must appear as primary title text even if not mentioned in instructions): ${params.destination}` : ''}
+${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-CRITICAL: NO illustration language in your output. Do NOT use words like "cartoon", "illustrated", "bold outlines", "flat colors", "sticker", "vector". Use ONLY photographic language: "photorealistic", "camera-quality", "real texture", "natural lighting", "depth of field", "cinematic".
-RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+RULES:
+1. Output ONLY the filled JSON code block.
+2. NO illustration language. Use ONLY: photorealistic, camera-quality, real texture, natural lighting, depth of field, cinematic.
+3. Every placeholder must be replaced with REAL, SPECIFIC content for the destination.`;
 
       } else {
-        // DEFAULT: Cartoon/Collage/Other styles  - original sticker-style template
-        turboPrompt = `> TURBO PROMPT GENERATOR - MAXIMUM SPEED, MAXIMUM VISUAL IMPACT >
-
-[!!!] ABSOLUTE RULES (NON-NEGOTIABLE):
-1. BACKGROUND: "on a PURE WHITE background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY.
-2. PRODUCT NOT POSTER: This is a DIE-CUT SOUVENIR PRODUCT (like a sticker or magnet) floating on white — NOT a poster, NOT a landscape scene, NOT a full-bleed illustration. The design must have an IRREGULAR SILHOUETTE with white space around it. NEVER fill the entire square/rectangle.
-3. NO SCENES: NEVER use these words: skyline, sunset, sunrise, horizon, panorama, vista, atmosphere, desert floor, golden sun, sun peeking. NEVER describe sky, ground, or environment. Describe OBJECTS clustered on white.
-4. REAL SPECIFIC ELEMENTS: When the user mentions a landmark, building, volcano, mountain, etc. — describe the REAL, SPECIFIC one from that destination with its distinctive features. "Volcano" for Puebla = Popocatépetl (snow-capped, distinctive cone with saddle shape). "Church" for Puebla = Catedral de Puebla (twin bell towers, blue/white talavera dome). NEVER use generic versions.
-
-OUTPUT EXACTLY THIS FORMAT (250-400 words):
-
-FORMAT: ${params.ratio || '1:1'}
-SUBJECT: [Describe main element + destination in ONE vivid sentence  - make it EXCITING]
-STYLE: ${(() => {
+        // DEFAULT: Cartoon/Collage/Other styles  - JSON STRUCTURED TEMPLATE
+        // Inspired by Maguey Blanco quality: vibrant, dimensional, characterful, glossy text, rich details
+        const styleDesc = (() => {
           const turboStyleMap = {
-            'cartoon': 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges. Elements blend seamlessly using color contrast and shadows.',
-            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures (fabric, paper, photos, patterns), dimensional depth  - like a handcrafted art piece. On PURE WHITE background.'
+            'cartoon': 'Vibrant high-quality digital illustration with rich colors, dimensional shading, glossy highlights, smooth gradients, and professional depth. Like a premium animated movie poster - NOT a flat boring sticker',
+            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures, dimensional depth, handcrafted art piece feel'
           };
-          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Clean, professional, crisp edges. NO black outlines, NO contour lines. Premium product design quality.' : 'Clean, professional flat vector illustration with bold saturated colors, smooth gradients, cel-shading. Crisp sharp edges, no outlines.');
-        })()}
-HERO + UNIFIED COMPOSITION (THIS IS THE MOST IMPORTANT SECTION):
-[Describe ONE unified cluster where everything OVERLAPS and CONNECTS into a single cohesive shape. The hero element is the LARGEST piece (50-70% of design). Supporting elements grow FROM, wrap AROUND, cascade DOWN, or nestle INTO the hero — they are NOT floating separately. Everything touches or overlaps something else. Think of it as ONE connected object, not separate pieces placed near each other.
+          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Vibrant, rich, dimensional, premium product quality with depth and visual energy' : 'Vibrant high-quality digital illustration with rich colors, dimensional shading, glossy highlights, smooth gradients, and professional depth. Like a premium animated movie poster - NOT a flat boring sticker');
+        })();
 
-Example of GOOD description: "A massive talavera heart dominates the center, with bougainvillea cascading down its left side, a small church dome peeking from behind the upper right, and decorative swirls extending from the bottom — all overlapping into one unified cluster."
+        turboPrompt = `> TURBO PROMPT GENERATOR - JSON STRUCTURED OUTPUT >
 
-Describe your design as ONE CONNECTED PIECE with 50-70 words. The hero is [main element], with 2-4 smaller elements PHYSICALLY OVERLAPPING it.]
-COLORS: [4-6 BOLD saturated color names from a COHESIVE palette  - 3-4 dominant colors max, NOT rainbow, NOT every color]
-TEXT:
-• Primary: "${(params.destination || 'DESTINATION').toUpperCase()}" in BOLD UPPERCASE LETTERS - [placement: OVERLAPPING the hero illustration, not below it], [size: 20-25% height — BIG and DOMINANT], [style: each letter is ONE SOLID FLAT COLOR — no gradients, no effects, no textures within letters. Use 1-2 colors total for the text. Bold clean block letters, PART of the artwork not a label]
-• Secondary: "[State Name, México]" - [placement: near primary text], [size: 6-8% height]. LITERALLY ONLY "State Name, México" (e.g., "Nuevo León, México", "Puebla, México"). NEVER add city nicknames like "La Sultana del Norte", "La Ciudad Blanca", "La Perla del Pacífico", "Angelópolis" etc. NEVER add taglines, slogans, or cultural phrases. Just "[State], México".
-EDGE: The outer silhouette must be IRREGULAR and ASYMMETRIC, shaped by the design elements themselves (a palm tree poking out one side, waves flowing along the bottom, flowers extending beyond borders). The design fades naturally into the white background  - NO black outline, NO contour border, NO sticker-edge line, NO white border around the design.
-BACKGROUND: PURE WHITE  - absolutely NO dark backgrounds, NO black, NO grey, NO gradients, NO textures, NO colored backgrounds. The design floats as an irregular shape on CLEAN WHITE, NOT inside any frame, border, or circular badge.
-CREATE DESIGN
+You are a design prompt generator. Output ONLY a valid JSON code block describing a VIBRANT, RICH, HIGH-QUALITY souvenir product design. Think Maguey Blanco / Disney / Pixar quality - colorful, fun, dimensional, with glossy text effects and dynamic energy. NOT a flat boring clipart sticker.
+
+RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
+
+\`\`\`json
+{
+  "format": "${params.ratio || '1:1'}",
+  "product_type": "vibrant souvenir design on white background - premium quality like a theme park poster or animated movie promo art",
+  "subject": "[ONE vivid exciting sentence: main element + destination - make it POP with energy and fun]",
+  "style": "${styleDesc}",
+  "hero": {
+    "element": "[The single LARGEST element, 50-70% of design - describe with VIVID detail, personality, and CHARACTER. Not just what it is but how it FEELS - lively, majestic, playful, powerful]",
+    "scale": "dominant, 50-70% of total design area",
+    "details": "[40-50 words: rich textures, glossy highlights, dimensional shading, vibrant colors, distinctive features. Make it feel ALIVE and premium, not flat clipart]"
+  },
+  "composition": {
+    "layout": "ONE unified dynamic composition - everything connects with energy and flow, elements overlapping and interacting with depth and dimension",
+    "supporting_elements": [
+      "[Element 2 - vibrant accent with rich detail, physically overlapping the hero, 15-20% size. Specific to destination with personality]",
+      "[Element 3 - colorful accent with glossy detail, touching the cluster, 10-15% size]",
+      "[Element 4 - small dynamic detail adding energy - splashes, sparkles, petals, leaves with motion]"
+    ],
+    "connections": "[How elements DYNAMICALLY connect: splashing through, bursting out of, wrapping energetically around, cascading with motion and life]",
+    "energy": "[Describe the visual ENERGY: water splashes, flying petals, dynamic curves, swirling elements, motion lines - the design should feel ALIVE not static]"
+  },
+  "colors": {
+    "palette": ["[color 1 - VIVID dominant]", "[color 2 - RICH saturated]", "[color 3 - BRIGHT accent]", "[color 4 - PUNCHY highlight]", "[color 5 - complementary pop]"],
+    "rule": "VIVID, SATURATED, HIGH-CONTRAST colors that POP. Rich gradients and highlights. NOT flat or muted"
+  },
+  "text": {
+    "primary": {
+      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
+      "placement": "PROMINENT, integrated with the composition - overlapping elements for depth",
+      "size": "20-25% of design height, BIG BOLD and EYE-CATCHING",
+      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Bold chunky block letters that are BIG and DOMINANT - part of the artwork not a label"
+    },
+    "secondary": {
+      "content": "[Subtitle - state/region or theme descriptor]",
+      "placement": "below or near primary text, integrated into design",
+      "size": "8-10% height",
+      "style": "clean but styled text with subtle effects, complementing the primary text style"
+    }
+  },
+  "visual_quality": "PREMIUM illustration quality - rich saturated colors, dimensional shadows creating depth, smooth color transitions, professional digital art quality like a Disney/Pixar production. Every element should look polished and premium, NOT cheap flat clipart. IMPORTANT: Title text must be ONE SOLID FLAT COLOR per letter - NO gradients, NO glossy effects, NO 3D shine on text. Text colors are bold and vivid but FLAT and SOLID.",
+  "edge": "organic irregular silhouette shaped by the dynamic design elements - the design breathes and flows naturally into white space",
+  "background": "clean white background",
+  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
+  "banned": [
+    "flat boring sticker look", "cheap clipart style", "plain flat colors with no depth",
+    "black outlines around everything", "generic landmarks",
+    "skyline", "sunset", "sunrise", "horizon", "panorama",
+    "poster layout", "landscape scene",
+    "necked", "slopes", "punta", "sexo"
+  ]
+}
+\`\`\`
 
 ---
 REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY — must appear as primary title text even if not mentioned in instructions): ${params.destination}` : ''}
+${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-CRITICAL DESIGN RULES (YOUR PROMPT MUST FOLLOW ALL OF THESE):
-1. PURE WHITE BACKGROUND: The prompt MUST say "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, or gradient backgrounds. This is NON-NEGOTIABLE.
-2. PROFESSIONAL QUALITY: Must look like it was designed by a professional graphic designer. Clean, polished, intentional. NOT cheap-looking AI collage or watercolor mess.
-3. ONE CLEAR DOMINANT HERO (MOST IMPORTANT RULE): The main subject must occupy 50-70% of the design and be MUCH LARGER than everything else. This is NOT a collage of many equal-size objects. It's ONE BIG hero element with a few SMALL supporting accents around it. If the user says "talavera heart" then a GIANT talavera heart dominates the center. Supporting elements are tiny accents, not co-stars.
-4. STYLE CONSISTENCY: ALL elements MUST share the SAME clean illustration style. No mixing watercolor with vector. No 3D/plush/felt textures. No painterly/watercolor effects.
-5. FLAT DESIGN: Flat, front-facing product design. NOT a 3D object, NOT a photograph, NOT a scene.
-6. COHESIVE COLOR PALETTE: Use 3-4 dominant colors that complement each other. NOT every color of the rainbow.
-7. TEXT: Use 1-2 colors ONLY for title text. NEVER rainbow or multicolor letters where each letter is a different color. Text must be INTEGRATED into the composition, not a separate floating label.
-8. NO FLOATING ELEMENTS: EVERY element and text must PHYSICALLY TOUCH or OVERLAP the main design cluster. NOTHING, floating in empty space — no tiles hovering in corners, no flowers scattered independently, no text sitting below the design in a separate area. Everything is ONE connected piece.
-9. TEXT OVERLAPS THE HERO: The destination text must be ON TOP of or OVERLAPPING the illustration, not underneath it in a separate zone.
-10. NO OUTLINES OR BORDERS: No black outlines, no white sticker-edge contour, no frame around the design.
-11. NO WATERCOLOR/PAINTERLY: Do NOT use watercolor washes, paint splatters, ink bleeds, or painterly textures. Clean crisp edges only.
-12. NO 3D MOCKUP: Do NOT describe the design as a physical object (plastic, rubber, embossed). It's a flat graphic design.
-RESPOND WITH ONLY THE FILLED PROMPT. NO EXPLANATIONS. NO INTRODUCTIONS. START DIRECTLY WITH "FORMAT:"`;
+RULES:
+1. Output ONLY the filled JSON code block.
+2. Make every description VIVID, ENERGETIC, and RICH - not boring flat descriptions.
+3. Text MUST have glossy/3D/gradient effects - NEVER plain flat single-color text.
+4. The design should feel ALIVE with energy, motion, and premium quality.
+5. Landmarks must be REAL SPECIFIC ones from the destination.
+6. Think theme park quality, animated movie promo, premium souvenir - NOT cheap sticker.`;
       }
     }
 
@@ -576,7 +658,7 @@ The VERY FIRST LINE of your output (before FORMAT:) MUST be:
 - The design MUST feature BIG, BOLD title/text letters as the main visual element - text uses 1-2 colors only, never rainbow or multicolor letters
 - Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
 
-BANNED WORDS/PHRASES in your output: "product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo"
+BANNED WORDS/PHRASES in your output: "product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo", "necked", "slopes"
 
 NOW GENERATE THE PROMPT:
 
@@ -1078,7 +1160,7 @@ MANDATORY FLAT VIEW RULES:
 10. Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
 
 BANNED WORDS/PHRASES in your output prompt (DO NOT USE ANY OF THESE):
-"product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "physical depth", "weight", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo", "sunset sky", "orange sky", "sunset gradient", "dramatic sky", "sky above", "clouds above", "birds flying in the distance", "mountain range in the background", "panoramic view", "scenic vista", "horizon line", "atmospheric perspective", "environmental scene", "landscape background", "sepia toned", "vintage aged", "warm earth tones", "parchment texture", "aged paper", "antique finish", "muted palette", "faded colors"
+"product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "physical depth", "weight", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo", "necked", "slopes", "sunset sky", "orange sky", "sunset gradient", "dramatic sky", "sky above", "clouds above", "birds flying in the distance", "mountain range in the background", "panoramic view", "scenic vista", "horizon line", "atmospheric perspective", "environmental scene", "landscape background", "sepia toned", "vintage aged", "warm earth tones", "parchment texture", "aged paper", "antique finish", "muted palette", "faded colors"
 
 DO generate prompts that describe a FLAT DESIGN viewed STRAIGHT-ON on a WHITE BACKGROUND.
 ${'='.repeat(50)}`;
@@ -1120,8 +1202,24 @@ ${'!'.repeat(50)}`;
       }
     }
 
+    // ═══ MANDATORY JSON OUTPUT FORMAT FOR ALL NON-TURBO GENERATIONS ═══
+    fullInstruction += `\n\n${'='.repeat(50)}
+[!!!] MANDATORY OUTPUT FORMAT: JSON CODE BLOCK
+${'='.repeat(50)}
+
+Your output MUST be a valid JSON code block. Do NOT output plain text prompts.
+Start with \`\`\`json and end with \`\`\`.
+
+Structure your design prompt as a JSON object with descriptive keys like:
+"format", "product_type", "subject", "style", "hero", "composition", "elements", "colors", "text", "edge", "background", "banned"
+
+Each value should contain the vivid, specific design description content.
+The JSON structure makes the design spec clear and unambiguous.
+Do NOT include any text outside the JSON code block.
+${'='.repeat(50)}`;
+
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`🎨 INVOKING CLAUDE CODE`);
+    console.log(`> INVOKING CLAUDE CODE`);
     console.log(`Project: ${project.name}`);
     console.log(`Directory: ${projectPath}`);
     console.log(`Instruction: ${fullInstruction.substring(0, 200)}...`);
@@ -3566,10 +3664,9 @@ app.post('/api/send-bulk-image-to-video', async (req, res) => {
       bulkMarkers.push(`axkan_bulk_${Date.now()}_${i}`);
     }
 
-    // PHASE A: Open ALL ImageGen tabs, paste all image prompts, click Generate on each
+    // PHASE A: Open ALL ImageGen tabs, set prompts via JS (background, no tab switching)
     let script = `
 tell application "Google Chrome"
-  activate
   if (count of windows) is 0 then
     make new window
     delay 1.0
@@ -3602,23 +3699,25 @@ tell application "Google Chrome"
     script += `end tell
 `;
 
-    // For each tab: set Portrait, upload refs, paste prompt, Generate
+    // For each tab: upload refs, set Portrait, disable Auto style, set prompt via JS, Generate
     for (let i = 0; i < clipCount; i++) {
+      // Escape prompt for JS embedding
+      const imgPromptB64 = Buffer.from(await fs.readFile(imgPromptFiles[i], 'utf8')).toString('base64');
+
       script += `
--- === IMAGE TAB ${i + 1}/${clipCount} ===
+-- === IMAGE TAB ${i + 1}/${clipCount} (background) ===
 tell application "Google Chrome"
   set w to front window
   set tabTotal to count of tabs of w
   set myTab to (tabTotal - ${clipCount - 1 - i})
-  set active tab index of w to myTab
-  -- Wait for textarea
+  -- Wait for textarea (no tab switch needed)
   repeat 40 times
     set inputReady to (execute tab myTab of w javascript "var ta = document.querySelector('textarea'); ta ? '1' : '0';")
     if inputReady is "1" then exit repeat
     delay 0.2
   end repeat
   delay 0.3
-${i === 0 ? refUploadSection : ''}
+${refUploadSection}
   -- Select Portrait
   execute tab myTab of w javascript "
     (function(){
@@ -3636,32 +3735,36 @@ ${i === 0 ? refUploadSection : ''}
     })(); 'ok';
   "
   delay 0.5
-  -- Focus textarea
-  execute tab myTab of w javascript "var ta = document.querySelector('textarea'); if(ta){ta.focus();ta.select();} 'ok';"
-end tell
-do shell script "cat " & quoted form of "${imgPromptFiles[i]}" & " | pbcopy"
-tell application "Google Chrome"
-  set active tab index of front window to (count of tabs of front window) - ${clipCount - 1 - i}
-end tell
-tell application "System Events" to keystroke "v" using command down
-delay 0.5
--- React update + Generate
-tell application "Google Chrome"
-  set w to front window
-  set myTab to (count of tabs of w) - ${clipCount - 1 - i}
+  -- FORCE disable Auto style: always click it off (defaults to ON on fresh page)
+  execute tab myTab of w javascript "
+    (function(){
+      var btns = document.querySelectorAll('button');
+      for(var m=0;m<btns.length;m++){
+        var t = btns[m].textContent.trim();
+        if(t.includes('Auto style')){
+          btns[m].click();
+          return 'auto style toggled off';
+        }
+      }
+      return 'not found';
+    })();
+  "
+  delay 0.5
+  -- Set prompt via JS using base64 decode (no clipboard, no escaping issues)
   execute tab myTab of w javascript "
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
+      var decoded = atob('${imgPromptB64}');
       var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      ns.call(ta, ta.value);
+      ns.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
       ta.dispatchEvent(new Event('change', {bubbles:true}));
-      return 'ok';
+      return 'prompt set: ' + decoded.length;
     })();
   "
   delay 0.3
-  -- Tag all existing images before generating
+  -- Tag existing images + Generate
   execute tab myTab of w javascript "
     (function(){
       var imgs = document.querySelectorAll('img');
@@ -3694,12 +3797,13 @@ delay 0.3
 delay 28
 `;
 
-    // PHASE C: For each ImageGen tab, click image → Video → configure → paste video prompt → Generate
+    // PHASE C: For each ImageGen tab, click image → Video → configure → set video prompt via JS → Generate
     for (let i = 0; i < clipCount; i++) {
+      // Escape video prompt for JS embedding
+      const vidPromptB64 = Buffer.from(await fs.readFile(vidPromptFiles[i], 'utf8')).toString('base64');
       script += `
--- === VIDEO CONVERSION ${i + 1}/${clipCount} ===
+-- === VIDEO CONVERSION ${i + 1}/${clipCount} (background) ===
 tell application "Google Chrome"
-  activate
   set w to front window
   -- Find the ImageGen tab for clip ${i + 1} using session marker
   set foundImg to false
@@ -3805,39 +3909,17 @@ tell application "Google Chrome"
     delay 0.5
   end repeat
 
-  -- Close ALL existing video-gen tabs before clicking Video
-  repeat
-    set foundOldVid to false
-    repeat with winIdx from 1 to (count of windows)
-      repeat with tIdx from (count of tabs of window winIdx) to 1 by -1
-        if URL of tab tIdx of window winIdx contains "video-gen" then
-          close tab tIdx of window winIdx
-          set foundOldVid to true
-          exit repeat
-        end if
-      end repeat
-      if foundOldVid then exit repeat
-    end repeat
-    if not foundOldVid then exit repeat
-  end repeat
-  delay 0.3
-
-  -- Re-find our ImageGen tab by session marker (closing tabs shifted indices)
+  -- Mark existing video-gen tabs so we can find the NEW one after clicking Video
   repeat with winIdx from 1 to (count of windows)
     repeat with tIdx from 1 to (count of tabs of window winIdx)
-      if URL of tab tIdx of window winIdx contains "image-gen" then
+      if URL of tab tIdx of window winIdx contains "video-gen" then
         try
-          set mkVal to (execute tab tIdx of window winIdx javascript "window.__axkan_session || ''")
-          if mkVal is "${bulkMarkers[i]}" then
-            set w to window winIdx
-            set myTab to tIdx
-            set active tab index of w to myTab
-            exit repeat
-          end if
+          execute tab tIdx of window winIdx javascript "window.__axkan_old_vid=true;"
         end try
       end if
     end repeat
   end repeat
+  delay 0.2
 
   -- Click Video button (opens new tab)
   execute tab myTab of w javascript "
@@ -3852,17 +3934,29 @@ tell application "Google Chrome"
   "
   delay 3.0
 
-  -- Find the NEW video-gen tab (old ones were closed)
+  -- Find the NEW video-gen tab (skip ones marked __axkan_old_vid)
   set vidFound to false
   repeat 30 times
     repeat with winIdx from 1 to (count of windows)
       repeat with tIdx from 1 to (count of tabs of window winIdx)
         if URL of tab tIdx of window winIdx contains "video-gen" then
-          set w to window winIdx
-          set myTab to tIdx
-          set active tab index of w to myTab
-          set vidFound to true
-          exit repeat
+          try
+            set isOld to (execute tab tIdx of window winIdx javascript "window.__axkan_old_vid ? 'old' : 'new'")
+            if isOld is "new" then
+              set w to window winIdx
+              set myTab to tIdx
+              set active tab index of w to myTab
+              set vidFound to true
+              exit repeat
+            end if
+          on error
+            -- Tab may still be loading, treat as new
+            set w to window winIdx
+            set myTab to tIdx
+            set active tab index of w to myTab
+            set vidFound to true
+            exit repeat
+          end try
         end if
       end repeat
       if vidFound then exit repeat
@@ -3879,94 +3973,74 @@ tell application "Google Chrome"
   end repeat
   delay 0.5
 
-  -- Configure: 9:16, Sound, Speech
-  set active tab index of w to myTab
+  -- Configure: 9:16, Sound, Speech (all via background JS)
   execute tab myTab of w javascript "
     (function(){
       var btns = document.querySelectorAll('button');
       for(var j=0;j<btns.length;j++){
         var t = btns[j].textContent.trim();
-        var r = btns[j].getBoundingClientRect();
-        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+        if((t==='16:9' || t==='9:16' || t==='1:1') && btns[j].getBoundingClientRect().height>=40){
           btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
           break;
         }
       }
-    })();
-  "
-  delay 0.4
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var j=0;j<btns.length;j++){
-        if(btns[j].textContent.trim()==='9:16'){
-          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-          break;
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var k=0;k<all.length;k++){
+          if(all[k].textContent.trim()==='9:16'){
+            all[k].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            break;
+          }
         }
-      }
-    })();
-  "
-  delay 0.4
-  -- Settings: Sound + Speech
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var j=0;j<btns.length;j++){
-        var r = btns[j].getBoundingClientRect();
-        var t = btns[j].textContent.trim();
-        if(t==='' && !btns[j].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
-          if(btns[j].querySelector('svg')){ btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break; }
+      }, 300);
+      // Settings icon
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var k=0;k<all.length;k++){
+          var r = all[k].getBoundingClientRect();
+          var t = all[k].textContent.trim();
+          if(t==='' && !all[k].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60 && all[k].querySelector('svg')){
+            all[k].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            break;
+          }
         }
-      }
-    })();
-  "
-  delay 0.4
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var j=0;j<btns.length;j++){
-        if(btns[j].textContent.trim()==='Sound' && !btns[j].disabled){
-          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+      }, 600);
+      // Sound
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var k=0;k<all.length;k++){
+          if(all[k].textContent.trim()==='Sound' && !all[k].disabled){
+            all[k].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+          }
         }
-      }
-    })();
-  "
-  delay 0.3
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var j=0;j<btns.length;j++){
-        if(btns[j].textContent.trim()==='Speech' && !btns[j].disabled){
-          btns[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+      }, 1000);
+      // Speech
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var k=0;k<all.length;k++){
+          if(all[k].textContent.trim()==='Speech' && !all[k].disabled){
+            all[k].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); break;
+          }
         }
-      }
+      }, 1400);
+      // Close dropdown
+      setTimeout(function(){
+        document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+      }, 1700);
     })();
   "
-  delay 0.3
-  execute tab myTab of w javascript "document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); 'ok';"
-  delay 0.3
-  execute tab myTab of w javascript "var ta = document.querySelector('textarea'); if(ta){ta.focus();ta.select();} 'ok';"
-end tell
--- Paste video prompt
-do shell script "cat " & quoted form of "${vidPromptFiles[i]}" & " | pbcopy"
-tell application "Google Chrome"
-  activate
-  set active tab index of w to myTab
-end tell
-tell application "System Events" to keystroke "v" using command down
-delay 1.0
--- React update + Generate video
-tell application "Google Chrome"
-  set active tab index of w to myTab
+  delay 2.0
+  -- Set video prompt via JS using base64 decode
   execute tab myTab of w javascript "
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
+      var decoded = atob('${vidPromptB64}');
       var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      ns.call(ta, ta.value);
+      ns.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
       ta.dispatchEvent(new Event('change', {bubbles:true}));
-      return 'ok';
+      return 'prompt set: ' + decoded.length;
     })();
   "
   delay 0.3
@@ -4018,164 +4092,115 @@ app.post('/api/send-to-envato-video', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No prompt provided' });
     }
 
-    console.log(`\n🎬 Send to Envato Video Gen: prompt length=${prompt.length}, speech length=${(speech || '').length}`);
+    console.log(`\n🎬 Send to Envato Video Gen (background): prompt length=${prompt.length}, speech length=${(speech || '').length}`);
 
     const timestamp = Date.now();
     const tempDir = path.join(os.tmpdir(), `envato-video-${timestamp}`);
     await fs.mkdir(tempDir, { recursive: true });
 
-    // Combine prompt + speech into one text (Envato has only 1 textarea, Speech toggle = AI voiceover)
+    // Combine prompt + speech
     const hasSpeech = speech && speech.trim().length > 0;
     const combinedPrompt = hasSpeech
       ? `${prompt}\n\nVoiceover (Spanish): ${speech}`
       : prompt;
 
-    const promptFile = path.join(tempDir, 'prompt.txt');
-    await fs.writeFile(promptFile, sanitizeVideoPrompt(combinedPrompt), 'utf8');
+    // Escape the prompt for embedding in JS string
+    const vidPromptB64Single = Buffer.from(sanitizeVideoPrompt(combinedPrompt)).toString('base64');
 
-    // AppleScript: open Envato Video Gen, select 9:16, enable Sound+Speech, paste prompt
-    // DOM sequence verified via live browser inspection:
-    // 1. Click ratio button (text "16:9") to open dropdown -> click "9:16"
-    // 2. Click settings icon (empty 48x48 btn after ratio) to open Sound/Speech panel
-    // 3. Click Sound btn -> enables Speech btn
-    // 4. Click Speech btn
-    // 5. Close dropdown -> paste prompt -> Generate
+    // BACKGROUND AppleScript: no activate, no tab switching, no clipboard paste
+    // Everything done via "execute tab ... javascript" — user can keep working
     const appleScript = `
 tell application "Google Chrome"
-  activate
   set w to front window
   tell w to make new tab with properties {URL:"https://labs.envato.com/video-gen"}
   set myTab to (count of tabs of w)
 
-  -- Wait for page to load
+  -- Wait for page to load (no tab switch needed)
   repeat 60 times
     if not (loading of tab myTab of w) then exit repeat
     delay 0.15
   end repeat
-  delay 2.0
+  delay 2.5
 
-  -- Re-focus our tab
-  set active tab index of w to myTab
+  -- ALL STEPS via background JS execution (no tab switching, no keyboard)
 
-  -- STEP 1: Open aspect ratio dropdown
+  -- STEP 1: Select 9:16 aspect ratio
   execute tab myTab of w javascript "
     (function(){
       var btns = document.querySelectorAll('button');
       for(var i=0;i<btns.length;i++){
         var t = btns[i].textContent.trim();
-        var r = btns[i].getBoundingClientRect();
-        if((t==='16:9' || t==='9:16' || t==='1:1') && r.height>=40 && r.height<=60){
+        if((t==='16:9' || t==='9:16' || t==='1:1') && btns[i].getBoundingClientRect().height>=40){
           btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-          return 'opened ratio dropdown: ' + t;
+          break;
         }
       }
-      return 'ratio button not found';
-    })();
-  "
-  delay 0.5
-
-  -- STEP 2: Click 9:16
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var i=0;i<btns.length;i++){
-        if(btns[i].textContent.trim()==='9:16'){
-          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-          return 'selected 9:16';
-        }
-      }
-      return '9:16 not found';
-    })();
-  "
-  delay 0.5
-
-  -- STEP 3: Click settings icon
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var i=0;i<btns.length;i++){
-        var r = btns[i].getBoundingClientRect();
-        var t = btns[i].textContent.trim();
-        if(t==='' && !btns[i].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60){
-          if(btns[i].querySelector('svg')){
-            btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-            return 'opened settings';
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var j=0;j<all.length;j++){
+          if(all[j].textContent.trim()==='9:16'){
+            all[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            break;
           }
         }
-      }
-      return 'settings icon not found';
+      }, 300);
     })();
   "
-  delay 0.5
+  delay 1.0
 
-  -- STEP 4: Click Sound
+  -- STEP 2: Open settings, enable Sound + Speech
   execute tab myTab of w javascript "
     (function(){
       var btns = document.querySelectorAll('button');
       for(var i=0;i<btns.length;i++){
-        if(btns[i].textContent.trim()==='Sound' && !btns[i].disabled){
+        var r = btns[i].getBoundingClientRect();
+        var t = btns[i].textContent.trim();
+        if(t==='' && !btns[i].disabled && r.width>=40 && r.width<=60 && r.height>=40 && r.height<=60 && btns[i].querySelector('svg')){
           btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-          return 'sound clicked';
+          break;
         }
       }
-      return 'sound not found';
-    })();
-  "
-  delay 0.5
-
-  -- STEP 5: Click Speech
-  execute tab myTab of w javascript "
-    (function(){
-      var btns = document.querySelectorAll('button');
-      for(var i=0;i<btns.length;i++){
-        if(btns[i].textContent.trim()==='Speech' && !btns[i].disabled){
-          btns[i].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-          return 'speech clicked';
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var j=0;j<all.length;j++){
+          if(all[j].textContent.trim()==='Sound' && !all[j].disabled){
+            all[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            break;
+          }
         }
-      }
-      return 'speech not found or disabled';
+      }, 400);
+      setTimeout(function(){
+        var all = document.querySelectorAll('button');
+        for(var j=0;j<all.length;j++){
+          if(all[j].textContent.trim()==='Speech' && !all[j].disabled){
+            all[j].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            break;
+          }
+        }
+      }, 800);
+      setTimeout(function(){
+        document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+      }, 1100);
     })();
   "
-  delay 0.3
+  delay 1.5
 
-  -- STEP 6: Close the settings dropdown
-  execute tab myTab of w javascript "
-    document.body.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-    'closed dropdown';
-  "
-  delay 0.3
-
-  -- STEP 7: Focus textarea and select all
-  set active tab index of w to myTab
-  execute tab myTab of w javascript "
-    var ta = document.querySelector('textarea');
-    if(ta){ta.focus();ta.select();} 'ok';
-  "
-end tell
--- Paste prompt via clipboard (re-focus tab first)
-tell application "Google Chrome"
-  set active tab index of front window to myTab
-end tell
-do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
-tell application "System Events" to keystroke "v" using command down
-delay 1.5
--- STEP 8: Trigger React state update
-tell application "Google Chrome"
-  set w to front window
-  set active tab index of w to myTab
+  -- STEP 3: Set prompt text via JS using base64 decode
   execute tab myTab of w javascript "
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
+      var decoded = atob('${vidPromptB64Single}');
       var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      nativeSetter.call(ta, ta.value);
+      nativeSetter.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
       ta.dispatchEvent(new Event('change', {bubbles:true}));
-      return 'react update: ' + ta.value.length;
+      return 'prompt set: ' + decoded.length;
     })();
   "
-  delay 0.5
-  -- STEP 9: Click Generate (now enabled)
+  delay 0.8
+
+  -- STEP 4: Click Generate
   execute tab myTab of w javascript "
     (function(){
       var btns = document.querySelectorAll('button');
@@ -4199,10 +4224,10 @@ return "done"
     exec(`osascript "${scriptFile}"`, { timeout: 45000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
       if (error) console.error('  [X] Envato Video AppleScript error:', error.message);
-      else console.log('  [OK] Envato Video automation completed');
+      else console.log('  [OK] Envato Video background automation completed');
     });
 
-    res.json({ success: true, message: 'Sending to Envato Video Gen...' });
+    res.json({ success: true, message: 'Sending to Envato Video Gen (background)...' });
 
   } catch (error) {
     console.error('[X] Send to Envato Video error:', error);
