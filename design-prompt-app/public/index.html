@@ -219,21 +219,15 @@
         .textarea-wrapper {
             position: relative;
         }
-        .textarea-backdrop {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            padding: 16px;
-            border: 2px solid transparent;
-            border-radius: var(--radius-md);
-            font-family: var(--font-body);
-            font-size: 14px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow: hidden;
+        .form-textarea[contenteditable]:empty:before {
+            content: attr(data-placeholder);
+            color: #aaa;
             pointer-events: none;
-            color: transparent;
-            background: var(--bg-primary);
+        }
+        .form-textarea[contenteditable] .key-highlight {
+            background: rgba(231,42,136,0.18);
+            border-radius: 3px;
+            border-bottom: 2px solid var(--rosa);
         }
         .textarea-backdrop .key-highlight {
             background: rgba(231,42,136,0.18);
@@ -254,6 +248,11 @@
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
             background: transparent;
             position: relative;
+            box-sizing: border-box;
+            letter-spacing: normal;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            tab-size: 4;
         }
         .form-textarea:focus {
             outline: none;
@@ -1976,16 +1975,14 @@
                 <div class="form-field field-instructions">
                     <label class="form-label" data-translate="instructionsCard.title">What Would You Like to Create?</label>
                     <div class="textarea-wrapper">
-                        <div class="textarea-backdrop" id="instructionsBackdrop"></div>
-                        <textarea
+                        <div
                             id="instructions"
                             class="form-textarea"
-                            data-translate-placeholder="instructionsCard.placeholder"
-                            placeholder="Describe what you want..."
-                            style="min-height: 140px;"
+                            contenteditable="true"
+                            data-placeholder="Describe what you want..."
+                            style="min-height: 140px; outline: none;"
                             oninput="updateInstructionsHighlight()"
-                            onscroll="syncBackdropScroll()"
-                        ></textarea>
+                        ></div>
                     </div>
                     <div class="form-help" style="display:flex;align-items:center;justify-content:space-between;">
                         <span style="display:flex;align-items:center;gap:4px;">
@@ -2383,32 +2380,72 @@
             }
         }
 
-        // ─── Instructions ↔ Keys highlight ───
-        function updateInstructionsHighlight() {
-            const textarea = document.getElementById('instructions');
-            const backdrop = document.getElementById('instructionsBackdrop');
-            if (!textarea || !backdrop) return;
-            let text = textarea.value;
-            // Escape HTML
-            text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            // Find key names that exist in the text (case-insensitive)
-            const keyNames = promptKeys.filter(k => k.name).map(k => k.name);
-            if (keyNames.length > 0) {
-                const pattern = new RegExp(`(?:"?)(${keyNames.join('|')})(?:"?)`, 'gi');
-                text = text.replace(pattern, '<span class="key-highlight">$&</span>');
+        // ─── Contenteditable .value compatibility ───
+        (function() {
+            const el = document.getElementById('instructions');
+            if (el && !el.tagName.match(/textarea|input/i)) {
+                Object.defineProperty(el, 'value', {
+                    get() { return this.innerText || ''; },
+                    set(v) { this.innerText = v; updateInstructionsHighlight(); }
+                });
             }
-            // Trailing newline fix for backdrop height sync
-            if (text.endsWith('\n')) text += ' ';
-            backdrop.innerHTML = text;
-            syncBackdropScroll();
+        })();
+
+        // ─── Instructions ↔ Keys highlight (contenteditable) ───
+        let _highlightTimer = null;
+        function updateInstructionsHighlight() {
+            clearTimeout(_highlightTimer);
+            _highlightTimer = setTimeout(_applyHighlight, 300);
+        }
+        function _applyHighlight() {
+            const el = document.getElementById('instructions');
+            if (!el) return;
+            const text = el.innerText || el.textContent || '';
+            const keyNames = promptKeys.filter(k => k.name).map(k => k.name);
+            if (keyNames.length === 0) return;
+
+            // Save cursor position
+            const sel = window.getSelection();
+            let cursorOffset = 0;
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                const preRange = range.cloneRange();
+                preRange.selectNodeContents(el);
+                preRange.setEnd(range.startContainer, range.startOffset);
+                cursorOffset = preRange.toString().length;
+            }
+
+            // Build highlighted HTML
+            let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            for (const kn of keyNames) {
+                const escaped = kn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                html = html.replace(new RegExp(`\\b(${escaped})\\b`, 'g'), '<span class="key-highlight">$1</span>');
+            }
+            html = html.replace(/\n/g, '<br>');
+
+            if (el.innerHTML !== html) {
+                el.innerHTML = html;
+                // Restore cursor
+                try {
+                    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+                    let pos = 0, node;
+                    while (node = walker.nextNode()) {
+                        if (pos + node.length >= cursorOffset) {
+                            const newRange = document.createRange();
+                            newRange.setStart(node, cursorOffset - pos);
+                            newRange.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                            break;
+                        }
+                        pos += node.length;
+                    }
+                } catch(e) {}
+            }
         }
 
         function syncBackdropScroll() {
-            const textarea = document.getElementById('instructions');
-            const backdrop = document.getElementById('instructionsBackdrop');
-            if (textarea && backdrop) {
-                backdrop.scrollTop = textarea.scrollTop;
-            }
+            // No longer needed — contenteditable handles its own rendering
         }
 
         function addKey() {
@@ -2526,9 +2563,9 @@
             const permutedKeys = definedKeys.filter(k => k.permute);
             const staticKeys = definedKeys.filter(k => !k.permute);
             let baseText = instructionText;
-            // Case-insensitive match, with or without quotes around key name
+            // Case-sensitive match — only replaces exact key name (e.g. "OBJ" not "obj")
             for (const key of staticKeys) {
-                baseText = baseText.replace(new RegExp(`"?${key.name}"?`, 'gi'), key.values.trim());
+                baseText = baseText.replace(new RegExp(`\\b${key.name}\\b`, 'g'), key.values.trim());
             }
             if (permutedKeys.length === 0) return [baseText];
             const valueArrays = permutedKeys.map(k => parseKeyValues(k.values));
@@ -2540,7 +2577,7 @@
             return combinations.map(combo => {
                 let text = baseText;
                 permutedKeys.forEach((key, i) => {
-                    text = text.replace(new RegExp(`"?${key.name}"?`, 'gi'), combo[i]);
+                    text = text.replace(new RegExp(`\\b${key.name}\\b`, 'g'), combo[i]);
                 });
                 return text;
             });
