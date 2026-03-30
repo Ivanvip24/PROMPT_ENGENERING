@@ -2021,9 +2021,8 @@
                         <span id="keysPermText">Will generate 0 combinations</span>
                     </div>
                 </div>
-                <div class="form-field field-element hidden" id="field-elementDescription">
-                    <label class="form-label" for="elementDescription" data-translate="parametersCard.elementDescription">Previous Element Description</label>
-                    <input type="text" id="elementDescription" class="form-input" data-translate-placeholder="parametersCard.elementPlaceholder" placeholder="Describe the element to build from">
+                <div class="form-field field-element" id="field-elementDescription" style="display:none !important">
+                    <input type="hidden" id="elementDescription">
                 </div>
             </div>
         </div>
@@ -2092,6 +2091,8 @@
                     <option value="magnet" data-translate="productCard.magnet">Magnet</option>
                     <option value="keychain" disabled data-translate="productCard.keychain">Keychain</option>
                     <option value="bottle-opener" data-translate="productCard.bottleOpener">Bottle Opener</option>
+                    <option value="keyholder" data-translate="productCard.keyholder">Portallaves</option>
+                    <option value="portrait" data-translate="productCard.portrait">Retrato</option>
                 </select>
             </div>
             <div class="dropdown-group">
@@ -2173,22 +2174,35 @@
             </div>
         </div>
 
-        <!-- Shape Gallery (bottle-opener only) -->
+        <!-- Shape Gallery (products with shapes) -->
         <div class="shape-gallery" id="shapeGallery">
             <div class="shape-gallery-title">
                 <span>📐</span>
-                <span data-translate="productCard.shapeTitle">Select Bottle Opener Shape</span>
+                <span id="shapeGalleryTitle">Select Shape</span>
             </div>
-            <div class="shape-grid">
-                <div class="shape-option" onclick="toggleShapeSelection('shape-1')" id="shape-option-1">
+            <div class="shape-grid" id="shapeGrid">
+                <!-- Bottle opener shapes -->
+                <div class="shape-option shape-for-bottle-opener" onclick="toggleShapeSelection('shape-1')" id="shape-option-1">
                     <div class="shape-checkmark">✓</div>
                     <img src="/presets/bottle-opener-shape-1.png" alt="Vertical">
-                    <div class="shape-label" data-translate="productCard.verticalShape">Vertical Shape</div>
+                    <div class="shape-label">Vertical Shape</div>
                 </div>
-                <div class="shape-option" onclick="toggleShapeSelection('shape-2')" id="shape-option-2">
+                <div class="shape-option shape-for-bottle-opener" onclick="toggleShapeSelection('shape-2')" id="shape-option-2">
                     <div class="shape-checkmark">✓</div>
                     <img src="/presets/bottle-opener-shape-2.png" alt="Horizontal">
-                    <div class="shape-label" data-translate="productCard.horizontalShape">Horizontal Shape</div>
+                    <div class="shape-label">Horizontal Shape</div>
+                </div>
+                <!-- Keyholder shapes -->
+                <div class="shape-option shape-for-keyholder" onclick="toggleShapeSelection('shape-keyholder-1')" id="shape-option-keyholder-1" style="display:none;">
+                    <div class="shape-checkmark">✓</div>
+                    <img src="/presets/keyholder-shape-1.png" alt="Keyholder">
+                    <div class="shape-label">Portallaves Shape</div>
+                </div>
+                <!-- Portrait shapes -->
+                <div class="shape-option shape-for-portrait" onclick="toggleShapeSelection('shape-portrait-1')" id="shape-option-portrait-1" style="display:none;">
+                    <div class="shape-checkmark">✓</div>
+                    <img src="/presets/portrait-shape-1.png" alt="Portrait">
+                    <div class="shape-label">Retrato Shape</div>
                 </div>
             </div>
             <div class="form-help" style="margin-top: 12px;">
@@ -2242,8 +2256,10 @@
                 <span id="generateBtnIcon">✨</span>
                 <span data-translate="generateBtn.text" id="generateBtnText">Generate Design Prompts</span>
             </button>
-            <button class="envato-login-btn" id="envatoLoginBtn" onclick="envatoLogin()" title="One-time login to Envato for background automation" style="padding:8px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;color:#666;display:flex;align-items:center;gap:6px;">
-                <span>🔐</span> Setup Envato
+            <button class="btn-cancel" id="cancelBtn" onclick="cancelGeneration()" style="display:none; padding:12px 20px; border:2px solid #e72a88; border-radius:24px; background:white; color:#e72a88; font-weight:700; font-size:14px; cursor:pointer; font-family:var(--font-display);">
+                Cancel
+            </button>
+            <button class="envato-login-btn" id="envatoLoginBtn" onclick="envatoLogin()" style="display:none !important;">
             </button>
         </div>
 
@@ -3049,7 +3065,9 @@
         // ═══ SHAPE REFERENCES ═══
         const shapeReferences = {
             'shape-1': { path: '/presets/bottle-opener-shape-1.png', name: 'Vertical Bottle Opener Shape', type: 'shape-reference' },
-            'shape-2': { path: '/presets/bottle-opener-shape-2.png', name: 'Horizontal Bottle Opener Shape', type: 'shape-reference' }
+            'shape-2': { path: '/presets/bottle-opener-shape-2.png', name: 'Horizontal Bottle Opener Shape', type: 'shape-reference' },
+            'shape-keyholder-1': { path: '/presets/keyholder-shape-1.png', name: 'Keyholder Shape', type: 'shape-reference' },
+            'shape-portrait-1': { path: '/presets/portrait-shape-1.png', name: 'Portrait Shape', type: 'shape-reference' }
         };
 
         const stylePresets = [
@@ -3093,8 +3111,21 @@
         function onProductChange(value) {
             selectedProduct = value;
             const gallery = document.getElementById('shapeGallery');
-            if (value === 'bottle-opener') {
+            const hasShapes = ['bottle-opener', 'keyholder', 'portrait'].includes(value);
+
+            if (hasShapes) {
                 gallery.classList.add('visible');
+                // Show only shapes for this product, hide others
+                document.querySelectorAll('.shape-option').forEach(el => {
+                    el.style.display = el.classList.contains('shape-for-' + value) ? '' : 'none';
+                });
+                // Update title
+                const titles = {
+                    'bottle-opener': 'Select Bottle Opener Shape',
+                    'keyholder': 'Select Portallaves Shape',
+                    'portrait': 'Select Retrato Shape'
+                };
+                document.getElementById('shapeGalleryTitle').textContent = titles[value] || 'Select Shape';
             } else {
                 gallery.classList.remove('visible');
             }
@@ -3209,12 +3240,10 @@
 
                 setLanguage(currentLanguage);
 
-                // Restore session ONLY on refresh (not on new tab or duplicate tab)
-                const navType = (performance.getEntriesByType('navigation')[0] || {}).type;
-                const isRefresh = navType === 'reload';
+                // Restore session on any page load if session exists
                 const savedSession = localStorage.getItem('designPromptSession');
                 let hasSession = false;
-                try { hasSession = isRefresh && savedSession && JSON.parse(savedSession).currentProject; } catch(e) {}
+                try { hasSession = savedSession && JSON.parse(savedSession).currentProject; } catch(e) {}
                 if (hasSession) {
                     restoreSession();
                 } else {
@@ -3343,7 +3372,12 @@
             removeBtn.onclick = (e) => { e.stopPropagation(); removeShapeReference(shapeId); };
             container.appendChild(img);
             container.appendChild(removeBtn);
-            preview.appendChild(container);
+            // Shape references always go FIRST
+            if (preview.firstChild) {
+                preview.insertBefore(container, preview.firstChild);
+            } else {
+                preview.appendChild(container);
+            }
         }
 
         function removeShapeReference(shapeId) {
@@ -3599,6 +3633,20 @@
 
 
         // ═══ GENERATE PROMPTS ═══
+        let _abortController = null;
+        function cancelGeneration() {
+            if (_abortController) {
+                _abortController.abort();
+                _abortController = null;
+            }
+            const genBtn = document.getElementById('generateBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            genBtn.disabled = false; genBtn.style.opacity = ''; genBtn.style.pointerEvents = '';
+            cancelBtn.style.display = 'none';
+            const status = document.getElementById('streamingStatus');
+            if (status) status.innerHTML = '<div style="text-align:center;color:#e72a88;font-weight:600;">Generation cancelled.</div>';
+        }
+
         async function generatePrompts() {
             const genBtn = document.getElementById('generateBtn');
             if (genBtn.disabled) return; // Prevent double-click
@@ -3661,13 +3709,29 @@
             if (turboMode) formData.append('turboMode', 'true');
 
             // Get destination from the DESTINATION default key
+            // If permuted mode, don't send raw multi-value — each permuted instruction has the correct single destination
             const destKey = promptKeys.find(k => k.isDefault && k.name === 'DESTINATION');
             if (destKey && destKey.values.trim()) {
-                formData.append('destination', destKey.values.trim());
-                // Also sync to hidden field for compatibility
+                if (usePermutedMode && destKey.permute && destKey.values.includes(',')) {
+                    // Don't send destination param — it's already in each permuted instruction
+                    // Send empty so server doesn't inject all destinations at once
+                } else {
+                    formData.append('destination', destKey.values.trim());
+                }
                 const destEl = document.getElementById('destination');
                 if (destEl) destEl.value = destKey.values.trim();
             }
+            // Send ELEMENT key values as a separate field for server-side emphasis
+            // If permuted, don't send raw multi-value — it's already in each permuted instruction
+            const elemKey = promptKeys.find(k => k.name === 'ELEMENT' || k.name === 'ELEMENTS' || k.name === 'OBJ');
+            if (elemKey && elemKey.values.trim()) {
+                if (usePermutedMode && elemKey.permute && elemKey.values.includes(',')) {
+                    // Already baked into permuted instructions
+                } else {
+                    formData.append('elementKeyValues', elemKey.values.trim());
+                }
+            }
+
             ['theme', 'level', 'format', 'elementDescription', 'modificationType'].forEach(field => {
                 const el = document.getElementById(field);
                 if (el) formData.append(field, el.value);
@@ -3678,11 +3742,12 @@
             const crazyEl = document.getElementById('crazymeter');
             if (crazyEl) formData.append('crazymeter', crazyEl.value);
 
+            // Shapes go FIRST so they're the primary reference
+            selectedShapes.forEach(shape => formData.append('images', shape.file));
             selectedImages.forEach(file => formData.append('images', file));
             imageDataUrls.forEach((dataUrl, index) => {
                 formData.append('images', dataURLtoBlob(dataUrl), `pasted-image-${index}.${getExtFromDataUrl(dataUrl)}`);
             });
-            selectedShapes.forEach(shape => formData.append('images', shape.file));
 
             // Style reference image (separate from regular reference images)
             if (styleReferenceFile) {
@@ -3716,8 +3781,12 @@
                 promptKeys: promptKeys.length > 0 ? JSON.parse(JSON.stringify(promptKeys)) : []
             };
 
+            // Show cancel button
+            document.getElementById('cancelBtn').style.display = '';
+            _abortController = new AbortController();
+
             try {
-                const response = await fetch('/api/generate-prompt-stream', { method: 'POST', body: formData });
+                const response = await fetch('/api/generate-prompt-stream', { method: 'POST', body: formData, signal: _abortController.signal });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const reader = response.body.getReader();
@@ -3767,9 +3836,15 @@
                     }
                 }
             } catch (error) {
-                variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--rojo);">Error: ${escapeHtml(error.message)}</div></div>`;
+                if (error.name === 'AbortError') {
+                    // User cancelled — don't show error
+                } else {
+                    variationsContainer.innerHTML = `<div class="loading"><div class="loading-text" style="color: var(--rojo);">Error: ${escapeHtml(error.message)}</div></div>`;
+                }
             } finally {
                 restoreBtn();
+                document.getElementById('cancelBtn').style.display = 'none';
+                _abortController = null;
             }
         }
 
@@ -3894,16 +3969,18 @@
 
         async function collectAllImageData() {
             const images = [];
-            // Style reference is for Claude's style analysis only — NOT sent as reference to Envato/Gemini
-            for (let i = 0; i < selectedImages.length; i++) {
-                const dataUrl = await fileToDataUrl(selectedImages[i]);
-                images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.${getExtFromDataUrl(dataUrl)}` });
-            }
-            imageDataUrls.forEach((dataUrl, i) => images.push({ dataUrl, name: `pasted-${i}.${getExtFromDataUrl(dataUrl)}` }));
+            // Shapes go FIRST so they're pasted first in Gemini/Envato
             for (let i = 0; i < selectedShapes.length; i++) {
                 const dataUrl = await fileToDataUrl(selectedShapes[i].file);
                 images.push({ dataUrl, name: `shape-${selectedShapes[i].id}.${getExtFromDataUrl(dataUrl)}` });
             }
+            // Then uploaded files
+            for (let i = 0; i < selectedImages.length; i++) {
+                const dataUrl = await fileToDataUrl(selectedImages[i]);
+                images.push({ dataUrl, name: selectedImages[i].name || `upload-${i}.${getExtFromDataUrl(dataUrl)}` });
+            }
+            // Then pasted images
+            imageDataUrls.forEach((dataUrl, i) => images.push({ dataUrl, name: `pasted-${i}.${getExtFromDataUrl(dataUrl)}` }));
             return images;
         }
 
@@ -4162,8 +4239,28 @@
         function closeSettings() { document.getElementById('settingsModal').classList.remove('visible'); }
 
         // Close modals on Escape key
+        // ═══ DOUBLE-ESC EMERGENCY ABORT ═══
+        let _lastEscTime = 0;
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                const now = Date.now();
+                if (now - _lastEscTime < 500) {
+                    // Double ESC — abort all automation
+                    _lastEscTime = 0;
+                    console.log('DOUBLE ESC — aborting automation');
+                    fetch('/api/abort-automation', { method: 'POST' }).catch(() => {});
+                    // Also cancel generation if running
+                    if (_abortController) cancelGeneration();
+                    // Visual feedback
+                    const flash = document.createElement('div');
+                    flash.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:12px;background:#e72a88;color:white;text-align:center;font-weight:700;font-size:16px;z-index:99999;font-family:var(--font-display);';
+                    flash.textContent = 'ABORTED — All automation stopped';
+                    document.body.appendChild(flash);
+                    setTimeout(() => flash.remove(), 2000);
+                    return;
+                }
+                _lastEscTime = now;
+
                 const settings = document.getElementById('settingsModal');
                 if (settings && settings.classList.contains('visible')) { closeSettings(); return; }
                 const history = document.getElementById('historySidebar');
@@ -4438,11 +4535,39 @@
             }, 300);
         }
 
-        // ═══ SESSION PERSISTENCE ═══
+        // ═══ SESSION PERSISTENCE (IndexedDB for large data, localStorage for settings) ═══
         const SESSION_KEY = 'designPromptSession';
+        const IDB_NAME = 'designPromptDB';
+        const IDB_STORE = 'session';
+
+        function openIDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        function idbPut(key, value) {
+            return openIDB().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(value, key);
+                tx.oncomplete = () => { db.close(); resolve(); };
+                tx.onerror = () => { db.close(); reject(tx.error); };
+            }));
+        }
+        function idbGet(key) {
+            return openIDB().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const req = tx.objectStore(IDB_STORE).get(key);
+                req.onsuccess = () => { db.close(); resolve(req.result); };
+                req.onerror = () => { db.close(); reject(req.error); };
+            }));
+        }
 
         function saveSession() {
             try {
+                // Small settings go to localStorage
                 const session = {
                     currentProject, selectedStyle, selectedStyles: [...selectedStyles],
                     selectedRatio, selectedProduct, selectedPhotoStyle, turboMode,
@@ -4453,16 +4578,24 @@
                     decoration: document.getElementById('decoration')?.value || '',
                     crazymeter: document.getElementById('crazymeter')?.value || '',
                     level: document.getElementById('level')?.value || '',
-                    imageDataUrls: imageDataUrls,
-                    styleReferenceDataUrl: styleReferenceDataUrl || null,
                     promptKeys: promptKeys,
                     nextKeyId: nextKeyId,
-                    outputHTML: document.getElementById('variationsContainer')?.innerHTML || '',
                     outputVisible: document.getElementById('outputSection')?.classList.contains('visible') || false,
                     timestamp: Date.now()
                 };
                 localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-            } catch(e) { console.warn('Session save failed:', e.message); }
+            } catch(e) { console.warn('Session save (ls) failed:', e.message); }
+
+            // Large data goes to IndexedDB (async, fire-and-forget)
+            try {
+                const bigData = {
+                    imageDataUrls: imageDataUrls || [],
+                    styleReferenceDataUrl: styleReferenceDataUrl || null,
+                    outputHTML: document.getElementById('variationsContainer')?.innerHTML || '',
+                    timestamp: Date.now()
+                };
+                idbPut('bigData', bigData).catch(e => console.warn('Session save (idb) failed:', e.message));
+            } catch(e) { console.warn('Session save (idb) failed:', e.message); }
         }
 
         function restoreSession() {
@@ -4528,21 +4661,30 @@
                     renderKeys();
                     updatePermutationInfo();
 
-                    // Images
-                    if (s.imageDataUrls?.length > 0) { imageDataUrls = s.imageDataUrls; refreshImagePreviews(); }
+                    // Restore large data from IndexedDB
+                    idbGet('bigData').then(big => {
+                        if (!big) return;
+                        // Images
+                        if (big.imageDataUrls?.length > 0) { imageDataUrls = big.imageDataUrls; refreshImagePreviews(); }
+                        // Style reference
+                        if (big.styleReferenceDataUrl) {
+                            styleReferenceDataUrl = big.styleReferenceDataUrl;
+                            showStyleRefPreview(big.styleReferenceDataUrl, 'Restored reference');
+                        }
+                        // Output
+                        if (big.outputHTML && s.outputVisible) {
+                            const os = document.getElementById('outputSection');
+                            const vc = document.getElementById('variationsContainer');
+                            if (os && vc) { os.classList.add('visible'); vc.innerHTML = big.outputHTML; }
+                        }
+                    }).catch(e => console.warn('Session restore (idb) failed:', e.message));
 
-                    // Style reference
-                    if (s.styleReferenceDataUrl) {
-                        styleReferenceDataUrl = s.styleReferenceDataUrl;
-                        showStyleRefPreview(s.styleReferenceDataUrl, 'Restored reference');
-                    }
-
-                    // Output
-                    if (s.outputHTML && s.outputVisible) {
-                        const os = document.getElementById('outputSection');
-                        const vc = document.getElementById('variationsContainer');
-                        if (os && vc) { os.classList.add('visible'); vc.innerHTML = s.outputHTML; }
-                    }
+                    // Re-enforce field visibility after restore (prevents race conditions)
+                    setTimeout(() => {
+                        const isPrev = currentProject === 'previous-element';
+                        const elDesc = document.getElementById('field-elementDescription');
+                        if (elDesc) elDesc.classList.toggle('hidden', !isPrev);
+                    }, 100);
                 }, 400);
             } catch(e) { console.warn('Session restore failed:', e.message); }
         }

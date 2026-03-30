@@ -6,6 +6,93 @@ const { spawn, exec } = require('child_process');
 const app = express();
 const PORT = 3001;
 
+// ═══ AUTOMATION ABORT SYSTEM (sentinel file + process kill) ═══
+const ABORT_FILE = path.join(require('os').tmpdir(), 'axkan-abort-automation');
+let _activeAutomation = null;
+
+let _watchdogProc = null;
+function trackAutomation(proc, label) {
+  // Clear any stale abort file when starting new automation
+  try { require('fs').unlinkSync(ABORT_FILE); } catch(e) {}
+  _activeAutomation = { proc, label, startedAt: Date.now() };
+  proc.on('exit', () => {
+    if (_activeAutomation?.proc === proc) _activeAutomation = null;
+    // Kill watchdog when automation ends
+    if (_watchdogProc) { try { _watchdogProc.kill(); } catch(e) {} _watchdogProc = null; }
+  });
+
+  // Launch watchdog: a separate process that polls for abort file and kills the main osascript
+  const watchdogScript = `
+while true; do
+  if [ -f "${ABORT_FILE}" ]; then
+    killall -9 osascript 2>/dev/null
+    killall -9 "System Events" 2>/dev/null
+    pkill -9 -f clipboard_image 2>/dev/null
+    rm -f "${ABORT_FILE}"
+    exit 0
+  fi
+  sleep 0.3
+done`;
+  _watchdogProc = exec(`bash -c '${watchdogScript.replace(/'/g, "'\\''")}'`, () => {});
+}
+
+function killAutomation() {
+  const { execSync } = require('child_process');
+
+  // 1. Create sentinel file
+  try { require('fs').writeFileSync(ABORT_FILE, 'abort'); } catch(e) {}
+
+  // 2. Kill tracked process directly
+  if (_activeAutomation) {
+    try { _activeAutomation.proc.kill('SIGKILL'); } catch(e) {}
+    _activeAutomation = null;
+  }
+
+  // 3. Nuclear kill — synchronous, blocks until done
+  try { execSync('killall -9 osascript 2>/dev/null || true'); } catch(e) {}
+  try { execSync('killall -9 "System Events" 2>/dev/null || true'); } catch(e) {}
+  // Also kill any python clipboard helpers
+  try { execSync('pkill -9 -f clipboard_image 2>/dev/null || true'); } catch(e) {}
+
+  console.log('[!] ABORT: Killed osascript + System Events + clipboard helpers');
+
+  // 4. Notification (delayed so the kills above take effect first)
+  setTimeout(() => {
+    try { exec(`/usr/bin/osascript -e 'display notification "All automation stopped" with title "ABORTED"'`); } catch(e) {}
+  }, 500);
+
+  return true;
+}
+
+// Check if abort was requested (used by scripts via shell)
+app.get('/api/check-abort', (req, res) => {
+  const aborted = require('fs').existsSync(ABORT_FILE);
+  res.json({ aborted });
+});
+
+app.post('/api/abort-automation', (req, res) => {
+  killAutomation();
+  res.json({ success: true, killed: true });
+});
+
+// GET version — type localhost:3001/abort in URL bar
+app.get('/abort', (req, res) => {
+  killAutomation();
+  res.send(`<html><head><meta http-equiv="refresh" content="2;url=/"></head><body style="background:#e72a88;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:32px;font-weight:bold;">ABORTED — All automation stopped</body></html>`);
+});
+
+// ═══ GLOBAL ABORT WATCHER: polls for Caps Lock rapid toggle as abort signal ═══
+// Also watches for abort file created by any method
+setInterval(() => {
+  if (require('fs').existsSync(ABORT_FILE) && _activeAutomation) {
+    console.log('[!] ABORT WATCHER: Sentinel file detected, killing automation');
+    const { execSync } = require('child_process');
+    try { execSync('killall -9 osascript 2>/dev/null || true'); } catch(e) {}
+    try { _activeAutomation.proc.kill('SIGKILL'); } catch(e) {}
+    _activeAutomation = null;
+  }
+}, 500);
+
 // ═══ SANITIZE PROMPTS: Strip non-ASCII characters that garble in clipboard/Gemini ═══
 function sanitizePrompt(text) {
   if (!text) return text;
@@ -126,7 +213,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB max per file
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
@@ -279,22 +367,9 @@ async function fixImageExtension(filePath) {
 // Ensures all outputs produce crisp, sharp, high-quality images
 // regardless of reference image quality or style chosen.
 // ═══════════════════════════════════════════════════════════════
+// DISABLED: Quality block was making prompts too long. Short vivid prompts work better with Gemini.
 function enforceImageQuality(promptText) {
-  if (!promptText || promptText.length < 50) return promptText;
-  // Prevent double-application
-  if (promptText.includes('[MANDATORY IMAGE QUALITY')) return promptText;
-
-  const QUALITY_BLOCK = `\n\n[MANDATORY IMAGE QUALITY - NON-NEGOTIABLE]\nRendering: Crisp, razor-sharp edges on every element. Ultra-high resolution (4K+ detail level). Every line, shape, and color boundary must be pixel-perfect with zero blur or softness.\nClarity: No blur, no soft focus, no fuzzy edges, no compression artifacts, no watercolor bleeding, no airbrushed softness. Clean precise vector-quality edges even on organic shapes.\nColors: Vivid, fully saturated, punchy colors with high contrast. Rich deep blacks, pure bright whites, intense chromatic colors. No washed-out, muddy, or desaturated tones.\nDetails: Ultra-detailed at every zoom level - fine textures visible, intricate patterns crisp, small text perfectly legible. Professional product design quality.\nLighting: Clean, even studio lighting that reveals all details. No dark muddy shadows that hide elements.\nBackground: PURE WHITE background - absolutely NO dark, black, grey, textured, gradient, or colored backgrounds. The design floats on CLEAN WHITE.\nText: Title text uses 1-2 colors ONLY - NEVER rainbow or multicolor letters. Text is INTEGRATED into the artwork, not a separate floating label.\nStyle: NO watercolor, NO painterly effects, NO paint splatters, NO ink bleeds. Clean crisp edges only. NO 3D mockup or physical product appearance.\nIMPORTANT: If using reference images as inspiration, IGNORE their resolution/quality entirely. Generate as if creating a brand-new master-quality image from scratch.`;
-
-  // Check if prompt already ends with CREATE DESIGN
-  const createDesignIdx = promptText.lastIndexOf('CREATE DESIGN');
-  if (createDesignIdx > 0) {
-    // Insert quality block BEFORE "CREATE DESIGN"
-    return promptText.substring(0, createDesignIdx).trimEnd() + QUALITY_BLOCK + '\n\nCREATE DESIGN';
-  }
-
-  // Otherwise append at end
-  return promptText.trimEnd() + QUALITY_BLOCK;
+  return promptText;
 }
 
 const PROJECTS = {
@@ -346,253 +421,38 @@ async function invokeClaudeTurbo(instruction, params) {
       const letters = destination.toUpperCase().split('');
       const letterFills = letters.map((l, i) => `"${l}": "[Iconic ${destination} scene #${i + 1} - be specific]"`).join(',\n      ');
 
-      turboPrompt = `> TURBO LETTER-FILL MAGNET GENERATOR - JSON OUTPUT >
+      turboPrompt = `You are a design prompt generator. Output a SHORT natural language prompt (150 words MAX) for Gemini image AI.
 
-You are a design prompt generator. Output ONLY a valid JSON code block. Fill every bracketed placeholder with vivid, specific content.
+TYPE: Letter-fill magnet — each letter of "${destination}" is a photo window showing a different iconic scene.
 
-RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
-
-\`\`\`json
-{
-  "format": "${params.ratio || '2:1'}",
-  "product_type": "Letter-fill souvenir magnet - ${destination}",
-  "letter_style": "Bold chunky 3D letters with natural wood material, slightly uneven heights for handcrafted feel",
-  "letter_arrangement": "${destination} spelled horizontally, each letter is a photo window",
-  "photo_fills": {
-      ${letterFills}
-  },
-  "material": "3D letters with subtle texture. Vivid photos fill each letter edge-to-edge. NO external border or outline around the letters",
-  "background": "Clean white or transparent, no frames or borders",
-  "style": "Flat front-facing view of a souvenir magnet design. NO borders, NO outlines around the design",
-  "rule": "Keep it SIMPLE. No decoration, no supporting elements, no text banners. Just photo-filled letters as a product",
-  "architectural_faithfulness": "Photo fills showing real buildings/landmarks must preserve EXACT structural details - recognizable as THAT specific building"
-}
-\`\`\`
+GOOD EXAMPLE: "Create a letter-fill souvenir magnet. Bold chunky 3D letters spelling 'CANCUN' with natural wood texture and slightly uneven heights. Each letter is a photo window: C shows Chichen Itza pyramid, A shows turquoise Caribbean beach, N shows a colorful coral reef, C shows a cenote, U shows Isla Mujeres, N shows a whale shark. Vivid photos fill each letter edge-to-edge. Clean white background, no borders."
 
 ---
 REQUEST: ${instruction}
 DESTINATION: ${destination}
 ---
 
-RULES:
-1. Output ONLY the filled JSON code block.
-2. Each letter MUST show a DIFFERENT iconic scene from ${destination}.
-3. Keep it simple - just photo-filled letters, no extra decoration.`;
+Output ONLY the short natural language prompt. 150 words MAX. Each letter must show a DIFFERENT iconic scene from ${destination}.`;
 
     } else {
-      // STANDARD TURBO TEMPLATE (visually rich version)
-      // _effectiveStyle is hoisted above the if/else block
-      console.log(`> STYLE DEBUG: params.style="${params.style}", detected_hybrid=${_detectedHybridGlobal}, effective="${_effectiveStyle}", instruction="${instruction?.substring(0, 80)}..."`);
+      // UNIVERSAL TURBO TEMPLATE — style comes from the reference image, not hardcoded
+      turboPrompt = `You are a design prompt generator for Gemini image AI. Output a SHORT natural language prompt (150 words MAX).
 
-      // Branch template based on effective style
-      if (_effectiveStyle === 'hybrid') {
-        turboPrompt = `> TURBO PROMPT GENERATOR - HYBRID REAL+CARTOON - JSON OUTPUT >
+The STYLE comes from the reference image (if provided). Analyze it and match the rendering style in your prompt.
+${params.elementKeyValues ? `MANDATORY ELEMENTS: ${params.elementKeyValues}` : ''}
 
-You are a design prompt generator. Output ONLY a valid JSON code block describing a HYBRID design that MIXES photorealistic and cartoon elements. Fill every bracketed placeholder with vivid, specific content.
+GOOD EXAMPLES:
+"Create a cute cartoon souvenir magnet for Acapulco Mexico. A toucan with a huge colorful beak surrounded by hibiscus flowers and palm leaves. Bold glossy metallic emerald green letters spelling ACAPULCO with shiny lime chrome accents. Bright vivid colors, pure white background, irregular sticker-like silhouette shape."
 
-[!] ABSOLUTE RULE: The output MUST contain BOTH photorealistic AND cartoon elements. If everything is described in ONE style, you have FAILED.
-
-RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
-
-\`\`\`json
-{
-  "format": "${params.ratio || '1:1'}",
-  "product_type": "die-cut souvenir product floating on white, irregular silhouette",
-  "subject": "[ONE vivid sentence: main element + destination]",
-  "style": "HYBRID Real+Cartoon - MIXES photorealistic camera-quality elements with bold cartoon illustrations in ONE image. Who Framed Roger Rabbit aesthetic.",
-  "photorealistic_elements": [
-    "[Real element 1 - describe as: actual photograph of..., camera-captured..., real texture...]",
-    "[Real element 2 - landmark, animal, or nature as REAL photo with natural lighting]",
-    "[Real element 3 - photorealistic, camera-quality, real depth of field]",
-    "[Add 2-4 more real elements]"
-  ],
-  "cartoon_elements": [
-    "[Cartoon element 1 - bold cartoon text, illustrated border, colorful cartoon flowers]",
-    "[Cartoon element 2 - decorative patterns, stylized characters, illustrated frames]",
-    "[Cartoon element 3 - bold outlines, vibrant flat colors, cartoon style]",
-    "[Add 2-4 more cartoon elements]"
-  ],
-  "composition": {
-    "interaction": "[How real and cartoon elements INTERACT - cartoon framing real photos, illustrated borders around photographic subjects]",
-    "flow": "[Visual flow and depth description]"
-  },
-  "protagonist": "[Main subject - 40 words. If REAL: photorealistic camera-quality detail. If cartoon: illustration language]",
-  "colors": {
-    "real": "[3-4 natural photographic colors for real elements]",
-    "cartoon": "[3-4 bold saturated colors for cartoon elements]"
-  },
-  "text": {
-    "primary": {
-      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
-      "placement": "BOLD and PROMINENT",
-      "size": "18-25% height",
-      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Bold chunky block letters integrated into artwork"
-    }
-  },
-  "decoration": "${params.decorationLevel || 7}/10 - Cartoon-style decorative fills around photorealistic elements",
-  "edge": "IRREGULAR silhouette - cartoon elements define outer edges, photorealistic elements sit within",
-  "background": "PURE WHITE",
-  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
-  "banned": ["all-one-style output", "skyline", "sunset", "watercolor", "necked", "slopes", "punta", "sexo"]
-}
-\`\`\`
+"A massive great white shark with jaws wide open bursting through crashing turquoise ocean waves. Behind it a circular golden medallion frame with Acapulco hillside hotels on green hills. Beach scene with umbrella, surfer. Bold colorful 'Acapulco' text at bottom with splash accents. Vibrant cartoon sticker on white background."
 
 ---
 REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
+${params.destination ? `DESTINATION: ${params.destination}` : ''}
 ${params.theme ? `THEME: ${params.theme}` : ''}
 ---
 
-RULES:
-1. Output ONLY the filled JSON code block.
-2. MUST contain BOTH "photorealistic/camera-quality" AND "cartoon/illustrated/bold outlines" language.
-3. Every placeholder must be replaced with REAL, SPECIFIC content for the destination.`;
-
-      } else if (_effectiveStyle === 'realistic' || _effectiveStyle === 'photography') {
-        const realisticStyleDesc = _effectiveStyle === 'photography'
-          ? 'Photography-based design with REAL photo elements (actual photographic quality - NOT illustrated) integrated into decorative frames and cultural compositions'
-          : 'PHOTOREALISTIC - real-world photographic quality with camera-lens depth of field, natural lighting, real material textures. HIGH-END PHOTOGRAPH or cinema-quality photomanipulation';
-
-        turboPrompt = `> TURBO PROMPT GENERATOR - PHOTOREALISTIC - JSON OUTPUT >
-
-You are a design prompt generator. Output ONLY a valid JSON code block describing a PHOTOREALISTIC design. Every element must look like a real photograph. NO illustration language.
-
-RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
-
-\`\`\`json
-{
-  "format": "${params.ratio || '1:1'}",
-  "product_type": "die-cut souvenir product floating on white, irregular organic silhouette",
-  "subject": "[ONE vivid sentence: main element + destination]",
-  "style": "${realisticStyleDesc}",
-  "composition": {
-    "layout": "[Described as PHOTO COMPOSITE or PHOTOGRAPHIC SCENE - not illustration]",
-    "camera": "[Camera angle, lighting direction, depth of field]",
-    "spatial": "[Real-world spatial relationships between elements]"
-  },
-  "protagonist": "[Main subject - 40 words with PHOTOGRAPHIC language: real feather texture, natural light catching fur, actual stone grain, genuine fabric texture. NO illustration language]",
-  "elements": [
-    "[Element 1 - actual photo of..., camera-captured..., real texture of...]",
-    "[Element 2 - natural colors, real lighting, genuine materials]",
-    "[Element 3 - photorealistic detail]",
-    "[Element 4]",
-    "[Element 5]",
-    "[Element 6]",
-    "[Element 7]",
-    "[Element 8]"
-  ],
-  "colors": ["[6-8 NATURAL photographic colors - rich but realistic, not cartoon-saturated]"],
-  "text": {
-    "primary": {
-      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
-      "placement": "BOLD",
-      "size": "18-25% height",
-      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Naturally integrated into photographic aesthetic"
-    }
-  },
-  "decoration": "${params.decorationLevel || 6}/10 - Natural decorative elements (real flowers, real leaves, natural textures) - NOT cartoon sparkles",
-  "edge": "IRREGULAR organic outline shaped by photographic elements - NOT sticker or badge look",
-  "background": "PURE WHITE",
-  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
-  "banned": ["cartoon", "illustrated", "bold outlines", "flat colors", "sticker", "vector", "skyline", "sunset", "necked", "slopes", "punta", "sexo"]
-}
-\`\`\`
-
----
-REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
-${params.theme ? `THEME: ${params.theme}` : ''}
----
-
-RULES:
-1. Output ONLY the filled JSON code block.
-2. NO illustration language. Use ONLY: photorealistic, camera-quality, real texture, natural lighting, depth of field, cinematic.
-3. Every placeholder must be replaced with REAL, SPECIFIC content for the destination.`;
-
-      } else {
-        // DEFAULT: Cartoon/Collage/Other styles  - JSON STRUCTURED TEMPLATE
-        // Inspired by Maguey Blanco quality: vibrant, dimensional, characterful, glossy text, rich details
-        const styleDesc = (() => {
-          const turboStyleMap = {
-            'cartoon': 'Vibrant high-quality digital illustration with rich colors, dimensional shading, glossy highlights, smooth gradients, and professional depth. Like a premium animated movie poster - NOT a flat boring sticker',
-            'collage': 'Rich mixed media collage with layered cutouts, torn paper edges, overlapping textures, dimensional depth, handcrafted art piece feel'
-          };
-          return turboStyleMap[_effectiveStyle] || (_effectiveStyle ? _effectiveStyle.charAt(0).toUpperCase() + _effectiveStyle.slice(1) + ' style. Vibrant, rich, dimensional, premium product quality with depth and visual energy' : 'Vibrant high-quality digital illustration with rich colors, dimensional shading, glossy highlights, smooth gradients, and professional depth. Like a premium animated movie poster - NOT a flat boring sticker');
-        })();
-
-        turboPrompt = `> TURBO PROMPT GENERATOR - JSON STRUCTURED OUTPUT >
-
-You are a design prompt generator. Output ONLY a valid JSON code block describing a VIBRANT, RICH, HIGH-QUALITY souvenir product design. Think Maguey Blanco / Disney / Pixar quality - colorful, fun, dimensional, with glossy text effects and dynamic energy. NOT a flat boring clipart sticker.
-
-RESPOND WITH ONLY A JSON CODE BLOCK. No text before or after. Start with \`\`\`json and end with \`\`\`.
-
-\`\`\`json
-{
-  "format": "${params.ratio || '1:1'}",
-  "product_type": "vibrant souvenir design on white background - premium quality like a theme park poster or animated movie promo art",
-  "subject": "[ONE vivid exciting sentence: main element + destination - make it POP with energy and fun]",
-  "style": "${styleDesc}",
-  "hero": {
-    "element": "[The single LARGEST element, 50-70% of design - describe with VIVID detail, personality, and CHARACTER. Not just what it is but how it FEELS - lively, majestic, playful, powerful]",
-    "scale": "dominant, 50-70% of total design area",
-    "details": "[40-50 words: rich textures, glossy highlights, dimensional shading, vibrant colors, distinctive features. Make it feel ALIVE and premium, not flat clipart]"
-  },
-  "composition": {
-    "layout": "ONE unified dynamic composition - everything connects with energy and flow, elements overlapping and interacting with depth and dimension",
-    "supporting_elements": [
-      "[Element 2 - vibrant accent with rich detail, physically overlapping the hero, 15-20% size. Specific to destination with personality]",
-      "[Element 3 - colorful accent with glossy detail, touching the cluster, 10-15% size]",
-      "[Element 4 - small dynamic detail adding energy - splashes, sparkles, petals, leaves with motion]"
-    ],
-    "connections": "[How elements DYNAMICALLY connect: splashing through, bursting out of, wrapping energetically around, cascading with motion and life]",
-    "energy": "[Describe the visual ENERGY: water splashes, flying petals, dynamic curves, swirling elements, motion lines - the design should feel ALIVE not static]"
-  },
-  "colors": {
-    "palette": ["[color 1 - VIVID dominant]", "[color 2 - RICH saturated]", "[color 3 - BRIGHT accent]", "[color 4 - PUNCHY highlight]", "[color 5 - complementary pop]"],
-    "rule": "VIVID, SATURATED, HIGH-CONTRAST colors that POP. Rich gradients and highlights. NOT flat or muted"
-  },
-  "text": {
-    "primary": {
-      "content": "${(params.destination || 'DESTINATION').toUpperCase()}",
-      "placement": "PROMINENT, integrated with the composition - overlapping elements for depth",
-      "size": "20-25% of design height, BIG BOLD and EYE-CATCHING",
-      "style": "BOLD UPPERCASE, each letter is ONE SOLID FLAT COLOR but each letter uses a DIFFERENT color cycling through the brand palette (#e72a88 rosa, #09adc2 turquesa, #f39223 naranja, #8ab73b verde). NO gradients within any letter. Bold chunky block letters that are BIG and DOMINANT - part of the artwork not a label"
-    },
-    "secondary": {
-      "content": "[Subtitle - state/region or theme descriptor]",
-      "placement": "below or near primary text, integrated into design",
-      "size": "8-10% height",
-      "style": "clean but styled text with subtle effects, complementing the primary text style"
-    }
-  },
-  "visual_quality": "PREMIUM illustration quality - rich saturated colors, dimensional shadows creating depth, smooth color transitions, professional digital art quality like a Disney/Pixar production. Every element should look polished and premium, NOT cheap flat clipart. IMPORTANT: Title text must be ONE SOLID FLAT COLOR per letter - NO gradients, NO glossy effects, NO 3D shine on text. Text colors are bold and vivid but FLAT and SOLID.",
-  "edge": "organic irregular silhouette shaped by the dynamic design elements - the design breathes and flows naturally into white space",
-  "background": "clean white background",
-  "architectural_faithfulness": "When depicting real buildings, monuments, churches, or landmarks - preserve EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, proportions. Stylize the RENDERING but NEVER alter the architecture. The building must be recognizable as THAT specific building.",
-  "banned": [
-    "flat boring sticker look", "cheap clipart style", "plain flat colors with no depth",
-    "black outlines around everything", "generic landmarks",
-    "skyline", "sunset", "sunrise", "horizon", "panorama",
-    "poster layout", "landscape scene",
-    "necked", "slopes", "punta", "sexo"
-  ]
-}
-\`\`\`
-
----
-REQUEST: ${instruction}
-${params.destination ? `DESTINATION (MANDATORY - must appear as primary title text): ${params.destination}` : ''}
-${params.theme ? `THEME: ${params.theme}` : ''}
----
-
-RULES:
-1. Output ONLY the filled JSON code block.
-2. Make every description VIVID, ENERGETIC, and RICH - not boring flat descriptions.
-3. Text MUST have glossy/3D/gradient effects - NEVER plain flat single-color text.
-4. The design should feel ALIVE with energy, motion, and premium quality.
-5. Landmarks must be REAL SPECIFIC ones from the destination.
-6. Think theme park quality, animated movie promo, premium souvenir - NOT cheap sticker.`;
-      }
+Output ONLY the short natural language prompt. 150 words MAX. No rules, no bans, no labels, no bullet points.`;
     }
 
     console.log(`\n> TURBO MODE - Haiku 4.5 | max-turns 1 | 15s timeout`);
@@ -632,35 +492,15 @@ RULES:
     // INJECT PRODUCT PHOTOGRAPHY REALISM FOR ALL PRODUCT TYPES IN TURBO MODE
     if (params.productType) {
       const turboProductDescriptions = {
-        'bottle-opener': 'a flat, front-facing design for a bottle opener souvenir with a tall vertical shape and an arch opening at the top. The design has an organic irregular silhouette. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
-        'magnet': 'a flat, front-facing design for a souvenir magnet with an organic irregular silhouette shape (NOT a rectangle or circle - edges follow the design elements). NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
-        'keychain': 'a flat, front-facing design for a keychain souvenir with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.'
+        'bottle-opener': 'a flat, front-facing RECTANGULAR bottle opener souvenir with an arch/hole cutout at the top. ALL artwork CONTAINED WITHIN the rectangular shape — no elements extending outside. The illustration must FILL THE ENTIRE SURFACE with NO white/empty space — every inch covered with artwork, patterns, or colors.',
+        'magnet': 'a flat, front-facing design for a souvenir magnet with an organic irregular silhouette shape (edges follow the contour of the design elements - die-cut look). NO border, NO outline, NO frame around the design.',
+        'keychain': 'a flat, front-facing design for a keychain souvenir with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design.',
+        'keyholder': 'a flat, front-facing RECTANGULAR keyholder/key rack souvenir (approx 8x4 inches) with hook holes at the bottom. ALL artwork CONTAINED WITHIN the rectangular shape. The illustration fills the shape like a pattern printed on the surface.',
+        'portrait': 'a flat, front-facing RECTANGULAR portrait/frame souvenir design. ALL artwork CONTAINED WITHIN the rectangular frame shape. The illustration fills the frame like a decorative printed surface.'
       };
       const turboProductDesc = turboProductDescriptions[params.productType] || turboProductDescriptions['magnet'];
 
-      finalPrompt = `[!!!] CRITICAL: FLAT FRONT-FACING DESIGN VIEW (NON-NEGOTIABLE) [!!!]
-
-Your output prompt MUST describe a FLAT, FRONT-FACING design on a CLEAN WHITE BACKGROUND.
-This is NOT product photography. This is NOT a 3D object. There is NO depth, NO shadow, NO angle, NO perspective.
-
-The VERY FIRST LINE of your output (before FORMAT:) MUST be:
-"${turboProductDesc} On a clean white background."
-
-[!!!] MANDATORY VIEW RULES:
-- The design is shown PERFECTLY FLAT - as if it were a sticker laid flat on a scanner
-- PURE WHITE background - no shadows, no gradients, no textures behind the design
-- NO 3D perspective, NO angled view, NO tilting, NO depth effect
-- NO product photography language (no "studio lighting", no "85mm lens", no "f/2.8", no "drop shadow")
-- NO physical object descriptions (no "glossy film", no "MDF wood", no "you could pick up")
-- NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
-- The viewer sees the design STRAIGHT ON from directly above/in front - completely flat
-- Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
-- The design MUST feature BIG, BOLD title/text letters as the main visual element - text uses 1-2 colors only, never rainbow or multicolor letters
-- Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
-
-BANNED WORDS/PHRASES in your output: "product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo", "necked", "slopes"
-
-NOW GENERATE THE PROMPT:
+      finalPrompt = `CONTEXT (use to guide your thinking, do NOT include in output): This is ${turboProductDesc} Flat front-facing view on white background. No 3D, no mockup, no borders.
 
 ${finalPrompt}`;
     }
@@ -676,24 +516,49 @@ ${finalPrompt}`;
         ? `\n[!] STYLE CONSTRAINT: The user selected "${_effectiveStyle}" style. Do NOT extract a cartoon/illustration style from the reference image. Instead, extract ONLY the composition approach, color palette, and rendering technique. Do NOT extract any subjects, characters, or objects from the style reference. The RENDERING STYLE must remain ${_effectiveStyle === 'hybrid' ? 'a MIX of PHOTOREALISTIC elements and CARTOON elements (see STYLE field in the template below)' : 'PHOTOREALISTIC (see STYLE field in the template below)'}.`
         : '';
       finalPrompt = `FIRST: Read the STYLE REFERENCE image: ${turboStyleRef}
-After reading, extract ONLY the VISUAL STYLE: art style/rendering technique, color palette (saturation, temperature), composition approach (density, layering), and decoration level.${_styleOverrideNote}
-[!] CRITICAL: This is a STYLE REFERENCE ONLY. Do NOT include any specific objects, characters, subjects, or content elements from this image in your prompt. Extract ONLY the visual style, colors, rendering technique, textures, and composition approach. The actual content/subject of the design comes from the user's description below, NOT from this reference image. If the reference is low-res or blurry, IGNORE that.
-${_isRealisticStyle ? 'The STYLE/RENDERING must follow the STYLE field in the template below  - do NOT override it with the reference image style.' : 'Your generated prompt MUST begin with a 2-3 sentence STYLE BLOCK that precisely describes this visual style so the image AI can replicate it.'}
-ALSO include: "${_qualityKeywords}."
-${turboImages.length > 1 ? `\nALSO read these reference images: ${turboImages.filter(f => f !== turboStyleRef).join(', ')}` : ''}
+Extract ONLY the visual style (art style, colors, composition structure, rendering technique). Do NOT copy any subjects, characters, or objects from it — only HOW it looks.${_styleOverrideNote}
+${turboImages.length > 1 ? `ALSO read these reference images: ${turboImages.filter(f => f !== turboStyleRef).join(', ')}` : ''}
 
-THEN: ${turboPrompt}`;
+THEN generate a SHORT prompt (150 words max) that uses the reference's visual style but with the user's requested content. Your output must be SHORT and VIVID — no rules, no bans, no format labels.
+
+${turboPrompt}`;
     } else if (turboImages.length > 0) {
       if (params.projectType === 'variations') {
         // Turbo + variations + reference image: structured analysis
         const _varStyleNote = _isRealisticStyle
           ? `\n[!] STYLE CONSTRAINT: The user selected "${_effectiveStyle}" style. Extract the SUBJECT and COMPOSITION from the reference, but the rendering style must follow the STYLE field in the template below${_effectiveStyle === 'hybrid' ? ' (mix of PHOTOREALISTIC and CARTOON elements)' : ' (PHOTOREALISTIC rendering)'}.`
           : '\nKeep the same character, same destination, same style.';
+        // Build turbo transformation context
+        const _turboTLevel = parseInt(params.level) || 5;
+        const _turboTDesc = _turboTLevel <= 2
+          ? 'SUBTLE TWEAK — keep same pose, same layout, same elements in same positions. Only change tiny details (move a flower, shift a color). Design should look nearly identical to reference.'
+          : _turboTLevel <= 4
+          ? 'MODERATE — keep same character and elements from reference, but change the POSE/GESTURE and rearrange element positions. Same general composition style.'
+          : _turboTLevel <= 6
+          ? 'SIGNIFICANT — same character and element TYPES from reference but REBUILD the entire composition. New layout direction, new pose, new spatial arrangement. Different dish, same ingredients.'
+          : _turboTLevel <= 8
+          ? 'MAJOR REIMAGINING — same character identity from reference but in a COMPLETELY NEW context/action/scene. Add 2-3 NEW elements not in original. Remove/replace some original elements. Dramatically different composition. Write the character a new story.'
+          : 'RADICAL — only keep character identity + destination. Everything else is new: concept, composition, color mood, elements. Bold and unexpected.';
+        const _turboDLevel = parseInt(params.decorationLevel) || 5;
+        const _turboDDesc = _turboDLevel <= 2
+          ? 'MINIMAL — hero + text + only 1-2 tiny accents. Lots of white space. Strip away most reference elements.'
+          : _turboDLevel <= 4
+          ? 'LIGHT — hero + text + 3-5 elements only. Keep only the most important reference elements. Some white space visible.'
+          : _turboDLevel <= 6
+          ? 'MODERATE — hero + text + 5-8 elements. Half the space decorated, half breathing room.'
+          : _turboDLevel <= 8
+          ? 'ABUNDANT — hero + text + 10-15 elements. Fill most space. Add elements beyond what reference shows.'
+          : 'MAXIMAL — hero + text + 20+ elements. Every corner filled. Baroque ornamentation.';
+
         finalPrompt = `FIRST: Read image file(s): ${turboImages.join(', ')}
 
 IMPORTANT  - REFERENCE IMAGE VARIATION:
 After reading the image, identify: the PROTAGONIST (character/animal/element), their POSE, CLOTHING, SUPPORTING ELEMENTS, COLORS, and COMPOSITION.${_varStyleNote}
-Your generated prompt MUST describe the SAME protagonist and elements in a DIFFERENT pose/composition/context.
+
+TRANSFORMATION LEVEL: ${_turboTLevel}/10 — ${_turboTDesc}
+DECORATION LEVEL: ${_turboDLevel}/10 — ${_turboDDesc}
+
+Your generated prompt MUST describe the SAME protagonist and elements but transformed according to the TRANSFORMATION LEVEL above.
 Do NOT create a completely unrelated design. Keep the same character and destination.
 [!] If the reference image is low-quality/blurry  - IGNORE the quality, only extract the CONCEPT. Your prompt must produce a CRISP, SHARP result.
 [!] If the reference is a PHOTO of a physical product (on fabric, table, surface)  - IGNORE the photo background entirely. Extract ONLY the design concept. Your prompt MUST specify "clean pure white background" and describe a NEW flat graphic design, NOT a photo of a physical object.
@@ -900,204 +765,68 @@ async function invokeClaude(projectType, instruction, params) {
     }
     const _ntIsRealisticStyle = ['realistic', 'photography', 'hybrid'].includes(params.style);
 
-    // ═══ VISUAL RICHNESS PREAMBLE (for from-scratch and previous-element) ═══
-    // These modes were producing sparse, minimal designs. This injects a mandate
-    // for visual density, layered details, and attention-grabbing richness.
+    // ═══ UNIVERSAL DESIGN GUIDELINES (for from-scratch and previous-element) ═══
     if (projectType === 'from-scratch' || projectType === 'previous-element') {
-      if (_ntIsRealisticStyle) {
-        // HYBRID / REALISTIC / PHOTOGRAPHY preamble — no sticker/illustration language
-        fullInstruction += `\n\n${'='.repeat(50)}
-> MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
-${'='.repeat(50)}
-
-[!!!] PURE WHITE BACKGROUND (NON-NEGOTIABLE): Your output prompt MUST specify "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
-
-Your output prompt MUST produce a PROFESSIONAL, POLISHED product design.
-${params.style === 'hybrid' ? `
-[!!!] CRITICAL STYLE RULE  - HYBRID REAL+CARTOON:
-This design MIXES two rendering styles: photorealistic elements (camera-quality, real textures) and cartoon elements (flat colors, stylized). The contrast is the key visual feature.
-` : params.style === 'realistic' ? `
-[!!!] CRITICAL STYLE RULE  - PHOTOREALISTIC:
-Every element must look like a real photograph. Do NOT use "illustration", "cartoon", "outlines", "flat colors" in your output.
-` : params.style === 'photography' ? `
-[!!!] CRITICAL STYLE RULE  - PHOTOGRAPHY:
-This design uses REAL photo elements  - actual photographic quality, NOT illustrations.
-` : ''}
-DESIGN REQUIREMENTS:
-1. **ONE DOMINANT HERO (MOST IMPORTANT)**  - The main subject requested by the user MUST dominate 50-70% of the design. It should be MUCH LARGER than everything else. This is NOT a collage of equal-size objects. It's ONE BIG hero with small supporting accents around it.
-2. **3-5 SMALL SUPPORTING ELEMENTS**  - Supporting elements are ACCENTS (10-20% the size of the hero each), not co-stars. They orbit the hero, they don't compete with it. Quality over quantity.
-3. **VIVID MODERN COLORS**  - Bold, saturated, BRIGHT colors. NEVER default to vintage/sepia/warm brown/earth tone/muted palettes  - these make designs look OLD and CHEAP.
-4. **FLAT PRODUCT DESIGN**  - NOT a 3D object or photo of a physical item. Flat graphic design.
-5. **STYLE CONSISTENCY**  - ALL elements in the same rendering style. No mixing.${params.style === 'hybrid' ? ' Exception: hybrid intentionally mixes photo + cartoon.' : ''}
-6. **IRREGULAR SILHOUETTE ON WHITE**  - Design floats on white background, NOT a wallpaper filling the entire area.
-7. **TEXT SIZE HIERARCHY**  - Destination name (e.g., "PUEBLA") must be 2-3x LARGER than any subtitle. Clear hierarchy: BIG destination > medium subtitle > small location.
-8. **NO EXTERNAL DECORATION**  - No decorative ribbons, scattered tiles, confetti, swirls, or ornamental filler the user didn't ask for.
-9. **TEXT INTEGRATION (CRITICAL)**  - Text must feel like an INTEGRAL PART of the illustration, not a separate layer floating on top. Weave text INTO the composition: let illustrations overlap, wrap around, or interlock with the letters. Text and art should share colors, shadows, and visual weight so they read as ONE cohesive design, not "illustration + label slapped underneath."
-10. **ARCHITECTURAL FAITHFULNESS**  - When depicting real buildings, monuments, churches, temples, or landmarks from reference images or known locations, preserve the EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, and proportions. You may stylize the RENDERING (cartoon, flat, illustrated) but NEVER alter the architecture itself. The building must be recognizable as THAT specific building.
-
-[X] NEVER add random filler elements the user didn't ask for
-[X] NEVER mix rendering styles (unless hybrid)${params.style === 'hybrid' ? '' : `
-[X] NEVER use 3D/plush/felt/glossy textures  - flat design only`}
-[X] NEVER produce a flat, single-layer composition with no depth
-[X] NEVER create LANDSCAPE SCENES with skies, sunsets, horizons, clouds, or atmospheric backgrounds  - NO orange sunset gradients, NO mountain panoramas, NO scenic vistas. Background is ALWAYS white.
-[X] NEVER describe an environment or "scene"  - describe OBJECTS arranged in a shape on white, like a die-cut sticker product
-[X] NEVER default to vintage/sepia/muted/earth tone colors  - use BRIGHT VIVID MODERN colors
-[X] NEVER add decorative ribbons, scattered tiles, or ornamental filler not requested by the user
-[X] NEVER place text as a disconnected label below or above the art  - text must be visually woven INTO the composition
-[X] NEVER alter the architectural details of real buildings/monuments  - stylize the rendering, preserve the structure
-[X] NEVER use watercolor washes, paint splatters, ink bleeds, or painterly textures  - clean crisp edges ONLY
-[X] NEVER use dark, black, grey, or colored backgrounds  - ALWAYS pure white background
-[X] NEVER use rainbow/multicolor text where each letter is a different color  - use 1-2 colors max for ALL text
-[X] NEVER describe the design as a physical 3D object (plastic, rubber, embossed, sticker on surface)  - it is a FLAT graphic design
-[OK] ALWAYS describe photorealistic elements with camera/photo language
-[OK] ALWAYS describe cartoon elements with illustration/outline language
-${'='.repeat(50)}`;
-      } else {
-        // CARTOON / COLLAGE / DEFAULT preamble — original sticker language
-        fullInstruction += `\n\n${'='.repeat(50)}
-> MANDATORY VISUAL RICHNESS RULES (NON-NEGOTIABLE)
-${'='.repeat(50)}
-
-[!!!] PURE WHITE BACKGROUND (NON-NEGOTIABLE): Your output prompt MUST specify "on a pure white background" or "on a clean white background". NEVER dark, black, grey, textured, gradient, or colored backgrounds. WHITE ONLY. NO EXCEPTIONS.
-
-Your output prompt MUST produce a PROFESSIONAL, POLISHED souvenir product design.
-
-DESIGN QUALITY REQUIREMENTS:
-1. **ONE DOMINANT HERO (MOST IMPORTANT)**  - The user's requested subject is the HERO. It MUST dominate 50-70% of the design and be MUCH LARGER than everything else. This is NOT a collage of many equal-size objects  - it's ONE BIG central element with small accents around it. If the user says "talavera heart" then a GIANT talavera heart is the center of the design. If they say "iglesias" then ONE prominent church dominates.
-2. **3-5 SMALL SUPPORTING ACCENTS**  - Supporting elements should be 10-20% the size of the hero each. They ORBIT the hero, they don't COMPETE with it. Do NOT clutter the design with many equal-size objects. Quality over quantity.
-3. **STYLE CONSISTENCY (CRITICAL)**  - ALL elements MUST share the EXACT SAME rendering style. If cartoon: EVERYTHING is cartoon (same line weight, same shading, same proportions). If realistic: EVERYTHING is realistic. NEVER mix styles. No 3D/plush/felt textures mixed with flat illustrations. No photorealistic water mixed with cartoon characters. The design must look like ONE artist created the ENTIRE thing.
-4. **FLAT PRODUCT DESIGN**  - This is a FLAT, FRONT-FACING graphic design printed on a product  - NOT a 3D object, NOT a photograph, NOT a scene with camera perspective. Think: professional vector illustration. No depth-of-field blur, no 3D shadows, no physical material textures (felt, plush, glossy plastic, embossed metal).
-5. **DESIGN WITH BREATHING ROOM**  - The design must NOT span the entire white area like a wallpaper. It must have a clear IRREGULAR SILHOUETTE that floats on white background with visible white space around it. The design is a SHAPE, not a full-bleed image.
-6. **ALL ELEMENTS FULLY VISIBLE**  - Every element 100% visible. Nothing cut off at edges.
-7. **VIVID SATURATED COLORS**  - BOLD, PUNCHY, MODERN colors that POP. No washed-out tones. NEVER default to vintage/sepia/warm brown/earth tone/muted palettes  - these make designs look OLD and CHEAP. Use BRIGHT, CONTEMPORARY colors unless the user specifically asks for vintage.
-8. **TEXT SIZE HIERARCHY (CRITICAL)**  - The destination name (e.g., "PUEBLA") must be the BIGGEST, BOLDEST text  - at least 2-3x larger than any subtitle. It should DOMINATE the text area. Secondary text like "Angelópolis" should be noticeably smaller. Tertiary text like "Puebla, Mexico" should be the smallest. Clear visual hierarchy: BIG destination > medium subtitle > small location.
-9. **NO EXTERNAL DECORATION**  - Do NOT add decorative ribbons, scattered tiles, confetti, sparkles, swirls, or ornamental filler around the design. Only include elements that the user asked for or that directly represent the destination. Every element must have a PURPOSE.
-10. **PREMIUM PRODUCT LOOK**  - Must look like a professionally designed product for mass production. Clean, polished, intentional.
-11. **TEXT INTEGRATION (CRITICAL)**  - Text must feel like an INTEGRAL PART of the illustration, not a separate layer floating on top. Weave text INTO the composition: let illustrations overlap, wrap around, or interlock with the letters. Text and art should share colors, shadows, and visual weight so they read as ONE cohesive design, not "illustration + label slapped underneath."
-12. **ARCHITECTURAL FAITHFULNESS**  - When depicting real buildings, monuments, churches, temples, or landmarks from reference images or known locations, preserve the EXACT structural details: number of towers, dome shapes, window patterns, facade elements, arches, and proportions. You may stylize the RENDERING (cartoon, flat, illustrated) but NEVER alter the architecture itself. The building must be recognizable as THAT specific building.
-
-[X] NEVER add elements the user didn't ask for just to fill space  - if user asks for a butterfly, the design is ABOUT the butterfly with minimal supporting elements
-[X] NEVER produce wallpaper-like designs that fill the entire rectangular area  - the design must be an irregular shape floating on white
-[X] NEVER create LANDSCAPE SCENES with skies, sunsets, horizons, clouds, atmospheric gradients, or environmental backgrounds  - this produces travel postcards, NOT souvenir products
-[X] NEVER describe a "sky" or "sunset" or "horizon" or "clouds" or "birds flying in the distance" in the background  - the background is ALWAYS pure white
-[X] NEVER mix rendering styles (felt + cartoon, realistic + illustration, 3D + flat)
-[X] NEVER produce 3D objects or photographs of physical items  - flat graphic design only
-[X] NEVER add black outlines, contour lines, or sticker-edge borders
-[X] NEVER default to marigolds/cempasúchil unless explicitly requested
-[X] NEVER use generic filler (random toucans, suns, limes, ferns, gems) that don't relate to the user's specific request
-[X] NEVER default to vintage, sepia, warm brown, earth tone, or muted color palettes  - these make designs look old, cheap, and unimpressive. Use BRIGHT VIVID MODERN colors.
-[X] NEVER add decorative ribbons, scattered tiles, confetti, swirls, or ornamental filler that the user didn't ask for
-[X] NEVER place text as a disconnected label below or above the art  - text must be visually woven INTO the composition
-[X] NEVER alter the architectural details of real buildings/monuments  - stylize the rendering, preserve the structure
-[X] NEVER use watercolor washes, paint splatters, ink bleeds, or painterly textures  - clean crisp edges ONLY
-[X] NEVER use dark, black, grey, or colored backgrounds  - ALWAYS pure white background
-[X] NEVER use rainbow/multicolor text where each letter is a different color  - use 1-2 colors max for ALL text
-[X] NEVER describe the design as a physical 3D object (plastic, rubber, embossed, sticker on surface)  - it is a FLAT graphic design
-[OK] ALWAYS make the main subject the dominant focus of the design
-[OK] ALWAYS maintain one consistent rendering style throughout
-[OK] ALWAYS create an organic irregular silhouette shape on white background
-[OK] ALWAYS make ONE element the clear dominant HERO — it should be significantly larger than everything else
-[OK] ALWAYS use a cohesive color palette (3-4 dominant colors max) — not every color of the rainbow
-
-ANTI-PATTERNS TO AVOID (these produce cheap, unprofessional results):
-[X] Rainbow/multicolor text where each letter is a different color — use 1-2 colors max for text
-[X] Floating sparkles, water drops, hearts, gems, confetti scattered randomly — these look cheap
-[X] Multiple elements of equal size competing for attention — ONE hero must dominate
-[X] White sticker-edge contour/outline around the design shape — NO outlines at all
-[X] Elements crammed together with no spacing — give elements room to breathe
-[X] Generic tropical filler (random monstera leaves, generic flowers, sparkles) unrelated to the destination
-[X] Text that blends into the design instead of standing out — text must have clear contrast and hierarchy
-[X] LANDSCAPE/SCENIC compositions — orange sunsets, mountain ranges, village panoramas, sky gradients, horizon lines. These make POSTCARDS not SOUVENIRS. The design must be an isolated cluster of elements on white, like a die-cut sticker.
-[X] Describing a "scene" or "environment" — describe OBJECTS and ELEMENTS arranged in a shape, not a window into a world
-[X] VINTAGE/SEPIA/MUTED aesthetic — warm browns, golden yellows, earth tones, parchment textures, aged paper looks. Unless user asks for vintage, use MODERN VIVID colors.
-[X] Decorative ribbons, scattered tiles, random ornamental filler — only include elements the user specifically asked for or that represent the destination
-[X] Text where destination name and subtitle are similar size — "PUEBLA" must be MUCH BIGGER than "Angelópolis"
-${hasImages ? `
-[!] REFERENCE IMAGES: The subjects in the reference photos are the PRIORITY. Describe them faithfully. Keep supporting elements to 4-6 maximum.` : ''}
-${'='.repeat(50)}`;
-      }
+      fullInstruction += `\n\nDESIGN GUIDELINES (use to guide your thinking, but keep your OUTPUT under 150 words):
+- ONE dominant hero element, destination-specific supporting elements
+- Vivid saturated colors, white background, irregular sticker silhouette
+- Bold destination text integrated into the composition
+- Style comes from the reference image (if provided) — match it exactly
+- Flat front-facing product design, not a 3D mockup or landscape scene`;
     }
 
     // ═══ STYLE REFERENCE IMAGE ANALYSIS ═══
     if (styleRefProjectPath) {
       const styleRefFilename = path.basename(styleRefProjectPath);
-      fullInstruction += `\n\n${'='.repeat(50)}
-[!] MANDATORY STYLE REFERENCE IMAGE (NON-NEGOTIABLE)
-${'='.repeat(50)}
-
-BEFORE generating any prompt, you MUST read and deeply analyze this STYLE REFERENCE IMAGE:
-File: ${styleRefFilename}
-
-Use the Read tool to read this image file. Then extract ONLY the VISUAL STYLE ATTRIBUTES listed below.
-
-[!] CRITICAL RULE: This is a STYLE REFERENCE ONLY. Do NOT include any specific objects, characters, subjects, figures, or content elements from this reference image in your generated prompt. The doll, animal, person, car, building, or ANY other subject you see in the reference image must be COMPLETELY IGNORED as content. Extract ONLY how it looks (the style), NOT what it shows (the content). The actual content/subject of the design comes ONLY from the user's description and project parameters below.
-
-A) ART STYLE (copy EXACTLY from reference):
-- Line style: thick/thin/no outlines? Black outlines? Line weight?
-- Shading approach: flat colors? gradients? cell-shading? watercolor? soft shadows?
-- Rendering: clean vector? hand-drawn? textured? digital painting? realistic?
-- Overall aesthetic: cute/kawaii? vintage? modern? folk art? sticker-art? premium?
-
-B) COLOR PALETTE (match EXACTLY from reference):
-- Identify the 6-8 dominant colors and their exact saturation/temperature
-- Note color relationships (complementary, analogous, triadic, etc.)
-- Your output prompt MUST use the SAME color family and saturation level as the reference
-
-C) COMPOSITION APPROACH (replicate from reference):
-- Layout pattern: centered? layered? radial? diagonal? scattered?
-- Element density: how packed/sparse is the reference?
-- Depth layering: how many visual layers? How do they overlap?
-- Negative space usage: minimal? balanced? generous?
-
-D) TEXTURE & DETAIL LEVEL (match from reference):
-- Surface textures: smooth? rough? embroidered? glossy? matte?
-- Detail density: minimal? moderate? intricate? maximal?
-- Decorative fills: what fills the gaps? patterns? petals? sparkles?
-
-E) MOOD & ENERGY (capture from reference):
-- Overall feeling: playful? sophisticated? festive? dramatic? warm?
-- Visual energy: calm? dynamic? explosive? whimsical?
-
-[!] REMINDER: Extract ONLY categories A-E above (the visual style). Do NOT extract or mention any specific subjects, characters, objects, or content from the reference image.
-
-YOUR OUTPUT PROMPT MUST:
-${_ntIsRealisticStyle ? `1. Begin with a 3-4 sentence STYLE BLOCK. ${params.style === 'hybrid' ? 'CRITICAL: The style is HYBRID  - your STYLE BLOCK must describe a MIX of photorealistic photo elements (camera-quality, real textures) AND cartoon illustrated elements (bold outlines, flat colors). Extract ONLY the COMPOSITION APPROACH and COLOR PALETTE from the reference  - do NOT extract any subjects, characters, or objects.' : 'CRITICAL: The style is PHOTOREALISTIC  - do NOT extract cartoon/illustration style from the reference. Extract only the composition approach and color palette  - NOT any subjects or objects.'}
-2. Use a color palette inspired by the reference
-3. Match the detail density and composition approach
-4. ${params.style === 'hybrid' ? 'Describe photorealistic elements as "real photograph of...", "camera-captured...", "photo cutout of..." and cartoon elements as "bold cartoon illustrated...", "colorful drawn..."' : 'Use ONLY photographic language: "photorealistic", "camera-quality", "real photograph", "natural lighting"'}
-5. Include these MANDATORY quality keywords: "Crisp, sharp, ultra-detailed. Clean precise edges, no blur, no artifacts, high-resolution professional quality."
-6. Do NOT include any subjects, characters, figures, or objects from the style reference image  - content comes ONLY from the user's description.
-
-[!] IMPORTANT: The user selected "${params.style}" style. ${params.style === 'hybrid' ? 'Extract ONLY the visual style and color approach from the reference  - NOT any subjects or content. The rendering style must be a MIX of real photographs and cartoon illustrations. Do NOT make everything one style.' : 'Do NOT convert photographic reference images into illustrations. Maintain photorealistic rendering.'} If the reference image is low-resolution or blurry, IGNORE the quality  - extract ONLY the style.
-
-${params.style === 'hybrid' ? 'The style is HYBRID  - this OVERRIDES any tendency to make everything cartoon or everything realistic. You MUST mix both.' : 'The rendering style must be ' + params.style + '.'}` : `1. Begin with a 3-4 sentence STYLE BLOCK that describes this EXACT visual style so the image AI can replicate it  - if the reference is a 3D render, describe a 3D render. If it's a soft/fluffy style, describe soft/fluffy. If it's a cartoon, describe cartoon. MATCH the rendering technique EXACTLY as you see it.
-2. Use the SAME color palette, saturation, and temperature as the reference
-3. Match the SAME level of detail density and decoration
-4. Replicate the SAME art style and rendering approach  - do NOT default to "cartoon illustration" if the reference is a different style (3D render, watercolor, realistic painting, etc.)
-5. Include quality keywords that MATCH the reference style. Do NOT hard-code "illustration"  - instead, describe the actual rendering: "soft 3D render" for 3D, "bold cartoon illustration with thick outlines" for cartoon, "watercolor painting" for watercolor, etc. Always add: "high-resolution, professional quality, no compression artifacts, detailed."
-
-[!] IMPORTANT: If the style reference image is low-resolution, blurry, or has compression artifacts  - COMPLETELY IGNORE the image quality. Extract ONLY the artistic style, color palette, and composition approach. Your prompt must produce a HIGH-QUALITY result in the SAME rendering style as the reference.
-
-This style reference OVERRIDES the style dropdown selection. The reference image IS the style.
-DO NOT deviate from this style. If the reference has SOFT edges, describe SOFT edges. If it has BOLD outlines, describe BOLD outlines. If it's a 3D render with volumetric lighting, describe a 3D render with volumetric lighting. MATCH the reference rendering EXACTLY  - do NOT default to any other style.`}
-${'='.repeat(50)}`;
+      fullInstruction += `\n\nSTYLE REFERENCE IMAGE: ${styleRefFilename}
+Read this image. Extract ONLY: art style, rendering technique, color palette, composition structure, and detail level.
+Do NOT copy any subjects, characters, or objects from it — only HOW it looks and HOW it's composed.
+The user's DESTINATION and ELEMENT keys define WHAT to draw. The reference defines HOW to draw it.
+Match the reference's rendering style exactly in your output prompt.`;
     }
 
     // Add context based on parameters
     if (params.destination) {
-      fullInstruction += `\n\n[!] MANDATORY DESTINATION (NON-NEGOTIABLE): "${params.destination}"
-The PRIMARY TEXT in the design MUST be "${params.destination}" — even if the user's instructions don't mention this name. This is the destination provided via the DESTINATION key field and it MUST appear prominently in the design as the main title text. Do NOT omit it. Do NOT replace it with anything else.`;
+      fullInstruction += `\n\n[!] MANDATORY DESTINATION: "${params.destination}"
+This is the ONLY destination name that should appear in the design. If the user's instruction mentions a different city or sub-location (like "Orizaba" when destination is "Veracruz"), use "${params.destination}" as the primary title text. The sub-location can appear as small secondary text only. Do NOT put two large destination names in the design.
+Design elements must be specific to ${params.destination}.`;
     }
+    // ═══ MANDATORY ELEMENT KEYS (shark, dolphin, etc.) ═══
+    if (params.elementKeyValues) {
+      fullInstruction += `\n\n[!] MANDATORY DESIGN ELEMENTS (NON-NEGOTIABLE): ${params.elementKeyValues}
+These elements were explicitly requested by the user via the ELEMENT key. They MUST appear prominently in the design as major visual elements — not as tiny background details. These elements OVERRIDE any subjects from a style reference image. If the style reference shows a woman with buildings, but the user requested "shark, dolphin" — the design MUST feature a shark and dolphin as the main visual subjects, NOT the woman or buildings from the reference. The style reference contributes ONLY visual rendering style (colors, line work, textures), while the ELEMENT key defines WHAT the design actually shows.`;
+    }
+
     if (params.theme) {
       fullInstruction += `\nTheme: ${params.theme}`;
     }
     // Only include Transformeter for 'variations' project type
     if (params.level && params.projectType === 'variations') {
-      fullInstruction += `\n\n**MANDATORY TRANSFORMETER LEVEL: ${params.level}/10** - You MUST use exactly this transformation level in your output. Do not default to any other value.`;
+      const tLevel = parseInt(params.level);
+      const tDesc = tLevel <= 2
+        ? `SUBTLE TWEAK: The output prompt must describe a design that is NEARLY IDENTICAL to the reference image. KEEP the same pose, same layout, same composition, same elements in the same positions. Only change tiny details: a flower moved slightly, a minor color shift, a butterfly repositioned. If someone saw both designs side by side, they should need to look closely to spot the difference. The reference image is your BLUEPRINT — follow it closely.`
+        : tLevel <= 4
+        ? `MODERATE VARIATION: The output prompt must describe the SAME character from the reference image with the SAME supporting elements, but change the character's POSE or GESTURE (e.g., if sitting→make them standing, if facing left→face right, if holding flowers→waving). Rearrange the supporting elements to different positions around the character. Keep the same general composition approach (if centered, stay centered). The reference image gives you the CHARACTER and ELEMENTS — rearrange them.`
+        : tLevel <= 6
+        ? `SIGNIFICANT TRANSFORMATION: The output prompt must keep the SAME character and element TYPES from the reference image, but COMPLETELY REBUILD the composition. New layout direction (if reference is centered→go diagonal, if horizontal→go vertical). Give the character a new pose AND a new action. Move ALL supporting elements to completely different positions. Change the spatial hierarchy (if element X was big, make it smaller; if Y was in background, bring it forward). The reference image gives you the INGREDIENTS — cook a different dish.`
+        : tLevel <= 8
+        ? `MAJOR REIMAGINING: The output prompt must keep the SAME character identity from the reference image (recognizable as the same character/vehicle/subject) but place them in a COMPLETELY DIFFERENT CONTEXT, SCENE, or ACTION. Examples: if the reference shows a VW Beetle parked → show it driving through the city, surfing on a wave, or being loaded onto a boat. Create a dramatically different composition and spatial layout. ADD 2-3 new supporting elements NOT in the original reference (new fruits, new animals, new cultural symbols). REMOVE or REPLACE some of the original supporting elements. The reference image gives you the MAIN CHARACTER — write them a new story.`
+        : `RADICAL REINVENTION: The output prompt keeps ONLY the character identity and destination name from the reference image. Everything else must be NEW and BOLD — new creative concept, new composition philosophy, new color mood, new supporting elements, new narrative. If the reference shows a cute sticker → your prompt could describe the character in an epic dramatic composition. The reference image is just a STARTING POINT — take it somewhere unexpected and daring.`;
+      fullInstruction += `\n\n**MANDATORY TRANSFORMETER LEVEL: ${tLevel}/10** — ${tDesc}`;
     }
     // Only include Decoration Level for 'variations' project type (the only one with that slider)
     if (params.decorationLevel && params.projectType === 'variations') {
-      fullInstruction += `\n**MANDATORY DECORATION LEVEL: ${params.decorationLevel}/10** - You MUST use exactly this decoration level in your output. Do not default to 8/10 or any other value.`;
+      const dLevel = parseInt(params.decorationLevel);
+      const dDesc = dLevel <= 2
+        ? `MINIMAL DECORATION: Your output prompt must describe ONLY the hero/protagonist + destination text + maximum 1-2 tiny accent elements (e.g., one small leaf, one tiny star). The design has LOTS of white/empty space around it. Strip away most of the supporting elements you see in the reference image — keep it clean, simple, and breathable. Think: clean logo, not busy sticker.`
+        : dLevel <= 4
+        ? `LIGHT DECORATION: Your output prompt must describe the hero/protagonist + destination text + only 3-5 small supporting elements. Include only the MOST IMPORTANT elements from the reference image (e.g., the main palm tree and one fruit, not every leaf and flower). Leave some negative/white space visible. The design should feel CLEAN but not empty.`
+        : dLevel <= 6
+        ? `MODERATE DECORATION: Your output prompt must describe the hero/protagonist + destination text + 5-8 supporting elements. About HALF the space around the hero should be filled with elements, half left as breathing room. Include the key elements from the reference image and maybe 1-2 new ones. Balanced between decorated and clean.`
+        : dLevel <= 8
+        ? `ABUNDANT DECORATION: Your output prompt must describe the hero/protagonist + destination text + 10-15 supporting elements filling MOST of the space around the hero. Include all the elements from the reference image plus ADD new ones: flowers, tropical leaves, fruits, small icons, patterns. Multiple types of decoration layered together. Rich, lush, detailed — very little empty space.`
+        : `MAXIMAL DECORATION: Your output prompt must describe an EXTREMELY ORNATE design. Hero + text + 20+ decorative elements packed into every corner. Every gap filled with flowers, leaves, patterns, tiny icons, cultural symbols. Layer decorations on top of decorations. The reference image's elements are just the starting point — add much more. Almost ZERO negative space. Think: baroque-level ornamentation.`;
+      fullInstruction += `\n**MANDATORY DECORATION LEVEL: ${dLevel}/10** — ${dDesc}`;
     }
     // Only include Crazymeter for 'from-scratch' and 'previous-element' project types
     if (params.crazymeter && (params.projectType === 'from-scratch' || params.projectType === 'previous-element')) {
@@ -1108,14 +837,8 @@ The PRIMARY TEXT in the design MUST be "${params.destination}" — even if the u
 You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 means ${params.crazymeter <= 3 ? 'keep designs traditional and safe' : params.crazymeter <= 6 ? 'add creative twists while staying grounded' : 'push boundaries with wild, unconventional ideas'}.`;
     }
     if (params.style) {
-      const styleNames = {
-        'cartoon': 'Cartoon - Playful cartoon style with vibrant saturated colors, dynamic shading, NO black outlines, NO contour lines around elements  - elements blend seamlessly without borders',
-        'realistic': 'Realistic - PHOTOREALISTIC rendering  - every element must look like a real photograph or high-end photo composite. Camera-quality depth of field, real material textures, natural lighting. This is NOT an illustration  - do NOT use words like illustration, cartoon, outlines, or sticker.',
-        'collage': 'Collage - CRITICAL: Create a true mixed media COLLAGE design with these specific requirements:\n  - Use layered cutout style with visible edges and overlapping elements\n  - Include varied textures (paper, fabric, photo fragments, patterns)\n  - Mix different art styles and media types (photos, illustrations, patterns, text)\n  - Create depth through overlapping layers with shadows/highlights\n  - Use irregular torn/cut edges on elements (NOT perfect vector shapes)\n  - Include decorative elements like tape, borders, stamps, or stitching effects\n  - Intentional composition that looks hand-assembled from multiple sources\n  - This should look like physical collage art, NOT a regular illustration',
-        'photography': 'Photography - Photography-based design with real photo elements integrated into the composition. Combine real photography with illustrated elements, decorative frames, or use photos as texture fills for regional shapes.',
-        'hybrid': 'Hybrid Real+Cartoon - CRITICAL MANDATORY STYLE:\n  [!!!] This design MUST contain TWO VISUALLY DISTINCT rendering styles in ONE image:\n  REAL PHOTO ELEMENTS: Describe key subjects (animals, landmarks, waterfalls, nature) as ACTUAL PHOTOGRAPHS  - use these exact words in your prompt: "real photograph of...", "photo cutout of...", "camera-captured image of...", "stock photo quality image of...". These elements must have real camera depth of field, real natural lighting, real fur/feather/stone textures  - as if cut from a real photo and placed into the design.\n  CARTOON ELEMENTS: Describe text, borders, decorative elements, patterns as BOLD CARTOON ILLUSTRATIONS  - use words: "cartoon illustrated...", "bold black outlines...", "flat vibrant colors...", "hand-drawn...".\n  The VISUAL CONTRAST between the real photo cutouts and the cartoon drawings is what makes this style unique. The viewer must CLEARLY see both a real photograph and a cartoon illustration in the same image.\n  Think: a real photo of a parrot physically cut out and placed on a cartoon-drawn jungle background with illustrated colorful text.\n  [!!!] QUALITY CHECK: If your output describes ALL elements with the same rendering language (all "illustration" or all "photograph"), you have FAILED. REWRITE until both styles are present.'
-      };
-      fullInstruction += `\nStyle: ${styleNames[params.style] || params.style}`;
+      // Style is kept minimal — the reference image defines the actual style
+      fullInstruction += `\nStyle hint: ${params.style} (but the reference image overrides this if provided)`;
     }
     if (params.ratio) {
       const ratioFormats = {
@@ -1126,96 +849,40 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
       fullInstruction += `\nFormat/Ratio: ${ratioFormats[params.ratio] || params.ratio}`;
     }
     if (params.productType) {
-      fullInstruction += `\nProduct Type: ${params.productType}`;
+      fullInstruction += `\nProduct: ${params.productType} (flat front-facing design on white background, irregular sticker silhouette)`;
 
-      // MANDATORY: Flat front-facing design view for ALL product types
-      const productDescriptions = {
-        'bottle-opener': 'a flat, front-facing design for a bottle opener souvenir (approximately 3" x 6") with a tall vertical shape, a rounded arch opening at the top, a narrow neck, and a wider rounded base. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
-        'magnet': 'a flat, front-facing design for a souvenir magnet (approximately 3.5" x 4") with an organic, irregular silhouette shape (NOT a rectangle or circle - edges follow the design elements). NO border, NO outline, NO frame around the design - the artwork goes edge to edge.',
-        'keychain': 'a flat, front-facing design for a keychain souvenir (approximately 1.5-2.5") with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design - the artwork goes edge to edge.'
-      };
-
-      const productDesc = productDescriptions[params.productType] || productDescriptions['magnet'];
-
-      fullInstruction += `\n\n${'='.repeat(50)}
-CRITICAL: FLAT FRONT-FACING DESIGN VIEW (NON-NEGOTIABLE)
-${'='.repeat(50)}
-
-Your generated prompt MUST describe a FLAT, FRONT-FACING design on a CLEAN WHITE BACKGROUND.
-This is NOT product photography. This is NOT a 3D object.
-
-The prompt you generate MUST START with:
-"${productDesc} On a clean white background."
-
-MANDATORY FLAT VIEW RULES:
-1. The design is shown PERFECTLY FLAT - as if it were a sticker laid flat on a scanner
-2. PURE WHITE background - no shadows, no gradients, no textures behind the design
-3. NO 3D perspective, NO angled view, NO tilting, NO depth effect whatsoever
-4. NO product photography language (no "studio lighting", no "85mm lens", no "f/2.8", no "drop shadow")
-5. NO physical object descriptions (no "glossy film", no "MDF wood", no "you could pick up", no "physical depth")
-6. NO borders, NO outlines, NO frames around the design - the artwork goes edge to edge with NO external border of any color
-7. The viewer sees the design STRAIGHT ON from directly in front - completely flat
-8. Think of it as a FLAT DIGITAL STICKER FILE viewed on screen, not a physical product photo
-9. The design MUST feature BIG, BOLD title/text letters as the main visual element - text uses 1-2 colors only, never rainbow or multicolor letters
-10. Title text should be LARGE, PROMINENT, and use VIVID COLORS (not plain white or plain black text)
-
-BANNED WORDS/PHRASES in your output prompt (DO NOT USE ANY OF THESE):
-"product photography", "studio lighting", "drop shadow", "glossy finish", "physical product", "MDF", "wood edge", "pick up", "floating angle", "45-degree", "f/2.8", "85mm lens", "catches light", "light reflections", "physical depth", "weight", "tan border", "beige border", "#D4A574", "brown border", "wood border", "border around", "outline around", "frame around", "punta", "sexo", "necked", "slopes", "sunset sky", "orange sky", "sunset gradient", "dramatic sky", "sky above", "clouds above", "birds flying in the distance", "mountain range in the background", "panoramic view", "scenic vista", "horizon line", "atmospheric perspective", "environmental scene", "landscape background", "sepia toned", "vintage aged", "warm earth tones", "parchment texture", "aged paper", "antique finish", "muted palette", "faded colors"
-
-DO generate prompts that describe a FLAT DESIGN viewed STRAIGHT-ON on a WHITE BACKGROUND.
-${'='.repeat(50)}`;
-
-      // Add shape constraints if this is a bottle opener AND user has uploaded shape references
-      if (params.productType === 'bottle-opener' && params.images && params.images.length > 0) {
-        fullInstruction += `\n\n${'!'.repeat(50)}
-MANDATORY PRODUCT SILHOUETTE SHAPE (THIS IS THE #1 PRIORITY - NON-NEGOTIABLE)
-${'!'.repeat(50)}
-
-Your FORMAT line MUST say: "Tall vertical product shape  - NOT a rectangle, NOT a circle, NOT a badge."
-
-The design MUST fit within this EXACT silhouette outline (describe this PRECISELY in your output prompt):
-
-SILHOUETTE DESCRIPTION (put this at the VERY START of your output prompt):
-"The entire design fits within a TALL VERTICAL custom silhouette shape: at the very top, there is a ROUNDED ARCH OPENING (like an upside-down U or horseshoe) which is a cutout/hole  - this is the most distinctive feature and MUST be clearly visible. Below the arch opening, the shape NARROWS into a slim neck section. Then the shape WIDENS into a large rounded base that contains the main artwork. The overall proportions are approximately 2:1 height-to-width ratio. Think of a guitar pick shape but taller, with an arch-shaped hole at the top."
-
-CRITICAL SHAPE RULES:
-1. The ARCH OPENING at the top is MANDATORY  - without it, the shape is wrong
-2. The shape must be VERTICAL (taller than wide)  - NOT horizontal, NOT square
-3. The neck must be NARROWER than the base
-4. The base is the WIDEST part and holds most of the design content
-5. One of the reference images shows this EXACT shape  - study it carefully
-6. Do NOT produce a rectangular badge, circular emblem, or generic rounded shape
-
-Your output prompt MUST begin the FORMAT/SHAPE section with this silhouette description. The AI image generator needs to understand this is a SPECIFIC PRODUCT SHAPE, not a standard rectangle.
-${'!'.repeat(50)}`;
-      }
-
-      // Count content reference images (exclude shape templates and style references)
-      if (params.images && params.images.length > 0) {
-        const contentImageCount = params.images.filter(img => {
-          const name = path.basename(img).toLowerCase();
-          return !name.includes('bottle-opener-shape') && !name.includes('vertical bottle opener') && !name.includes('horizontal bottle opener') && !name.includes('shape-ref') && !name.includes('style-ref');
-        }).length;
-        if (contentImageCount > 0) {
-          fullInstruction += `\n\n[!] REFERENCE IMAGE COUNT: There are ${contentImageCount} content reference images uploaded. Your generated prompt MUST describe and include ALL ${contentImageCount} of them in the design. Do NOT skip any reference image. Each one must appear as a visible element in the final design.`;
-        }
+      // Shape constraints for contained products
+      if (params.productType === 'bottle-opener') {
+        fullInstruction += ` Shape: tall vertical RECTANGULAR bottle opener with arch/hole cutout at top. ALL artwork must be CONTAINED WITHIN the rectangular shape — NO elements extending outside the edges. The illustration must FILL THE ENTIRE SURFACE with NO white/empty space — every square inch covered with artwork, patterns, colors, or design elements. No bare white areas visible.`;
+      } else if (params.productType === 'keyholder') {
+        fullInstruction += ` Shape: horizontal RECTANGULAR keyholder/key rack (wider than tall, approx 8x4 inches) with small hook holes along the bottom edge. ALL artwork must be CONTAINED WITHIN the rectangular shape — NO elements extending outside the edges. The illustration fills the shape like a pattern printed on the surface.`;
+      } else if (params.productType === 'portrait') {
+        fullInstruction += ` Shape: RECTANGULAR portrait/frame (can be vertical or horizontal). ALL artwork must be CONTAINED WITHIN the rectangular frame — NO elements extending outside the edges. The illustration fills the frame like a decorative printed surface.`;
       }
     }
 
-    // ═══ MANDATORY JSON OUTPUT FORMAT FOR ALL NON-TURBO GENERATIONS ═══
+    // ═══ MANDATORY OUTPUT FORMAT FOR ALL GENERATIONS ═══
     fullInstruction += `\n\n${'='.repeat(50)}
-[!!!] MANDATORY OUTPUT FORMAT: JSON CODE BLOCK
+[!!!] MANDATORY OUTPUT FORMAT: NATURAL LANGUAGE PROMPT (150 WORDS MAX)
 ${'='.repeat(50)}
 
-Your output MUST be a valid JSON code block. Do NOT output plain text prompts.
-Start with \`\`\`json and end with \`\`\`.
+YOUR OUTPUT MUST BE 150 WORDS MAXIMUM. This is the most important rule. Gemini produces BETTER images from SHORT, VIVID, NATURAL LANGUAGE prompts than from long rule-heavy ones.
 
-Structure your design prompt as a JSON object with descriptive keys like:
-"format", "product_type", "subject", "style", "hero", "composition", "elements", "colors", "text", "edge", "background", "banned"
+You MUST analyze all provided images (style references, material references) and use that analysis to INFORM your output — but your output itself must be SHORT.
 
-Each value should contain the vivid, specific design description content.
-The JSON structure makes the design spec clear and unambiguous.
-Do NOT include any text outside the JSON code block.
+Use all the rules and image analysis to guide your THINKING, but your OUTPUT is ONLY a short, vivid, natural language design description.
+
+GOOD EXAMPLES:
+
+"Create a cute cartoon souvenir magnet for Acapulco Mexico. A toucan with a huge colorful beak surrounded by hibiscus flowers and palm leaves. Bold glossy metallic emerald green letters spelling ACAPULCO with shiny lime chrome accents. Bright vivid colors, pure white background, irregular sticker-like silhouette shape."
+
+"A massive great white shark with jaws wide open bursting through crashing turquoise ocean waves, dominating the center. Behind it a circular golden medallion frame with Acapulco hillside hotels on green hills. Bold colorful 'Acapulco' text at bottom with splash accents. Vibrant cartoon sticker on white background."
+
+RULES:
+- Output ONLY the natural language prompt. Nothing else.
+- No rules, bans, "do not" instructions, format labels, JSON, bullet points, or numbered lists in output.
+- No quality blocks, no banned word lists, no technical instructions.
+- 150 words MAXIMUM. Count your words.
 ${'='.repeat(50)}`;
 
     console.log(`\n${'='.repeat(60)}`);
@@ -1285,27 +952,29 @@ YOUR PROMPT MUST INCLUDE (in this order):
 4. COMPOSITION: Different layout than the reference.
 5. PRODUCT-READY SILHOUETTE: The design MUST look like a FINISHED PRODUCT  - a die-cut magnet/sticker with an IRREGULAR custom silhouette. It must NOT look like a wallpaper, poster, illustration, or image inside a rectangle. The design should float on white/transparent background with its own unique organic outline shaped by the elements themselves. If someone printed this and cut along the outer edge, it should have a complex, interesting shape.
 
-WHAT TO KEEP (sacred  - non-negotiable):
+WHAT TO ALWAYS KEEP (sacred regardless of transformation level):
 [OK] EXACT same art style, line work, shading, and rendering approach
-[OK] EXACT same protagonist character with same clothing and accessories
-[OK] Same types of supporting elements (if reference has marigolds and hummingbirds, variation has marigolds and hummingbirds)
-[OK] Same color palette and saturation level
-[OK] Same overall aesthetic feel (if reference looks like a sticker, variation looks like a sticker too)
+[OK] EXACT same protagonist character identity (recognizable as the same character/subject)
+[OK] Same destination context
 
-WHAT TO CHANGE (variation elements):
-[~] Protagonist pose, gesture, or action (sitting -> standing, holding flowers -> waving, etc.)
-[~] Composition layout (centered -> off-center, horizontal -> vertical, etc.)
-[~] Arrangement and placement of supporting elements
-[~] Small decorative detail differences (different flower arrangement, different butterfly positions)
+WHAT TO CHANGE (controlled by the TRANSFORMETER LEVEL in the user's request below):
+The TRANSFORMETER LEVEL determines HOW MUCH your output prompt deviates from the reference image. This is the MOST IMPORTANT parameter — read it carefully and MATCH your transformation intensity EXACTLY:
+
+- Level 1-2 (SUBTLE): Your prompt describes a design almost IDENTICAL to the reference. Same pose, same layout, same elements in same positions. Only tiny detail changes (a flower moved slightly, a minor color shift). Someone comparing both should struggle to spot the difference.
+- Level 3-4 (MODERATE): Your prompt keeps the same character + same elements from the reference, but changes the character's POSE/GESTURE and rearranges element positions. Same general composition approach.
+- Level 5-6 (SIGNIFICANT): Your prompt keeps the same character + same element TYPES but COMPLETELY REBUILDS the composition. New layout direction, new pose, new action, all elements repositioned. Same ingredients, different dish.
+- Level 7-8 (MAJOR REIMAGINING): Your prompt keeps the character identity but places them in a COMPLETELY DIFFERENT context, scene, or action (e.g., driving→surfing, standing→flying). ADD 2-3 new elements NOT in the reference. REMOVE/REPLACE some original elements. Dramatically different composition. Same character, new story.
+- Level 9-10 (RADICAL): Your prompt keeps ONLY the character identity + destination name. Everything else is brand new — new concept, new composition, new color mood, new elements, new narrative. Bold and unexpected.
+
+[!!!] CRITICAL: If the Transformeter level is 6+ and your output prompt still describes the same pose, same layout, and same elements in the same positions as the reference — you have FAILED. High transformation means VISIBLE, DRAMATIC differences from the reference.
 
 WHAT TO NEVER DO:
 [X] Do NOT change the art style (if reference is kawaii chibi, don't output realistic or painterly)
-[X] Do NOT change the protagonist's identity or clothing
-[X] Do NOT use different types of elements (if reference has hummingbirds, don't replace with parrots)
-[X] Do NOT create a completely unrelated design
+[X] Do NOT change the protagonist's core identity (keep same character/subject recognizable)
+[X] Do NOT create a completely unrelated design that has nothing to do with the reference
 [X] Do NOT output a generic "cartoon style" description  - be SPECIFIC about the exact style
-[X] Do NOT create a design that looks like a wallpaper, poster, or rectangular image  - it MUST look like a die-cut PRODUCT with a custom irregular silhouette on white/transparent background
-[X] Do NOT use badge, emblem, medallion, circle, or frame compositions  - the silhouette must be ORGANIC and IRREGULAR
+[X] Do NOT create a design that looks like a wallpaper, poster, or rectangular image  - it MUST look like a die-cut PRODUCT with an organic irregular silhouette on white/transparent background
+[X] Do NOT use badge, emblem, medallion, circle, or frame compositions  - the silhouette must be ORGANIC and IRREGULAR, following the contour of the design elements
 [X] Do NOT add background gradients, sunset colors, textures, or atmospheric effects unless the reference image has them. If the reference has a WHITE/TRANSPARENT background, your prompt MUST have a white/transparent background too
 [X] Do NOT use terms like "gouache", "watercolor", "painterly", "screen-print texture" if the reference is clean flat vector
 [X] Do NOT write extremely long prompts. Keep the prompt between 150-350 words. Longer prompts confuse the image AI and dilute the style instructions
@@ -1686,14 +1355,14 @@ function distributeStyles(styles, count) {
 // Diversity seeds  - each variation gets a different creative direction
 // IMPORTANT: All compositions MUST produce IRREGULAR silhouettes (no circles, rectangles, badges, frames)
 const DIVERSITY_ANGLES = [
-  'Use a HERO-CENTRIC composition: one dominant central element takes 60%+ of the space, with supporting details orbiting around it. The silhouette must be IRREGULAR  - shaped by the elements themselves (ribbons poking up, flowers extending at sides, etc.).',
-  'Use a PANORAMIC SCENE composition: spread elements across a wide landscape view, telling a story from left to right. The top edge should be JAGGED and VARIED (trees, buildings, character heads at different heights), the bottom edge shaped by terrain/flowers  - NOT a clean rectangle.',
-  'Use a DYNAMIC DIAGONAL composition: strong diagonal flow from one corner to the opposite, creating movement and energy. Elements break out of the frame at multiple points creating an IRREGULAR sticker-like silhouette.',
-  'Use a STACKED/LAYERED composition: elements piled and layered with the protagonist on top of a mound of flowers/nature, creating a PYRAMID-like organic shape. The silhouette is defined by the elements  - palm trees, ribbons, flowers all poking out at different angles.',
-  'Use a SCATTERED GARDEN composition: protagonist surrounded by a lush arrangement of flowers, animals, and nature that extends outward UNEVENLY in all directions, like a hand-picked bouquet  - wider on one side, taller on another.',
-  'Use an ASYMMETRIC SPLIT composition: protagonist positioned off-center with supporting elements weighted heavily on one side, creating an organic imbalanced silhouette like a sticker that is wider on one side than the other.',
-  'Use a CASCADING/WATERFALL composition: elements flowing downward from the protagonist, with flowers and nature spilling from top to bottom in an organic cascade, creating a silhouette that is wider at the bottom than the top.',
-  'Use a WRAPAROUND composition: supporting elements curve around the protagonist like a natural wreath but with IRREGULAR, BROKEN edges  - NOT a perfect circle. Flowers, vines, and birds extend outward asymmetrically at different points.'
+  'Use a HERO-CENTRIC composition: one dominant central element takes 60%+ of the space, centered. 2-3 small supporting accents tucked around the hero. The silhouette is IRREGULAR - shaped by the hero and elements themselves. Everything feels unified with a clear center of gravity.',
+  'Use a VERTICAL STACK composition: hero element at the top (largest), destination text below, 1-2 small accents flanking. Elements stacked along a central axis. The irregular silhouette is taller than wide, shaped by whatever extends (a palm tree top, the hero element, etc.).',
+  'Use a LAYERED DEPTH composition: hero in the foreground (largest), one supporting element partially behind it, text integrated at the base. Elements overlap to create depth. The irregular silhouette follows the natural contours of the layered elements.',
+  'Use a WRAPAROUND composition: supporting elements curve around the hero in a natural arrangement. The hero is clearly dominant at center. The irregular silhouette follows the contour of elements - a palm extending up, a flower poking out on one side, etc.',
+  'Use a PEDESTAL composition: hero sits prominently on top, text forms the base below. 1-2 small destination-specific accents on the sides. The irregular silhouette is wider at top (shaped by the hero) and narrower at the text base.',
+  'Use a TEXT-FORWARD composition: the destination text is BIG and BOLD as a primary visual element, with the hero element integrated INTO or BEHIND the letters. 1-2 small supporting accents. The irregular silhouette follows the combined shape of text + hero.',
+  'Use a HERO-AND-TEXT-INTERLOCKED composition: hero and destination text overlap and interweave - text partially in front, hero partially behind, creating one unified cluster. 1-2 tiny accents. Irregular silhouette shaped by both text and hero together.',
+  'Use a WIDE CLUSTER composition: hero centered with supporting elements arranged to create a composition that is wider than tall. Elements spread horizontally but stay CONNECTED and unified. Irregular silhouette follows the natural width of the cluster.'
 ];
 
 // Generate multiple variations using Claude Code with streaming callback
@@ -1749,7 +1418,7 @@ async function generateVariations(params, count, onVariationComplete) {
         if (isLetterFillDesign) {
           output += `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
         } else {
-          output += `\n\nOn a pure white background. Irregular silhouette shaped by the design elements. NO borders, NO frames, NO colored background shapes.`;
+          // Removed: suffix was making prompts too long
         }
 
         const variation = {
@@ -1822,7 +1491,7 @@ async function generateVariations(params, count, onVariationComplete) {
         if (isLetterFillDesign) {
           output += `\n\n[!] CRITICAL LETTER-FILL DESIGN RULES  - MANDATORY:\n- SHAPE: The overall shape is defined by the LETTERS themselves  - each letter is a bold 3D shape\n- LETTERS must look like REAL physical objects with depth, shadows, and material texture\n- Each letter is a PHOTO WINDOW  - filled edge-to-edge with a vivid, sharp photograph\n- NO cartoon elements, NO decorative flowers, NO supporting animals around the letters\n- NO text banners or additional labels  - the letters ARE the text\n- BACKGROUND: Clean white or transparent  - letters float as a group\n- PRODUCT FEEL: Must look like a real souvenir magnet you could buy in a gift shop\n- QUALITY: Crisp, professional, sharp  - like a product photo from an e-commerce site`;
         } else {
-          output += `\n\nOn a pure white background. Irregular silhouette shaped by the design elements. NO borders, NO frames, NO colored background shapes.`;
+          // Removed: suffix was making prompts too long
         }
 
         const variation = {
@@ -1934,7 +1603,7 @@ app.post('/api/generate-prompt-stream', upload.fields([
   { name: 'styleReference', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode, permutedInstructions: permutedInstructionsRaw } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode, permutedInstructions: permutedInstructionsRaw, elementKeyValues } = req.body;
     const images = req.files?.['images'] || [];
     const styleRefFiles = req.files?.['styleReference'] || [];
     const count = parseInt(variationCount) || 1;
@@ -1996,7 +1665,8 @@ app.post('/api/generate-prompt-stream', upload.fields([
       turboMode: turboMode === 'true',
       images: allImages,
       styleReferenceImage: styleRefImagePath,
-      permutedInstructions: permutedInstructionsRaw ? JSON.parse(permutedInstructionsRaw) : null
+      permutedInstructions: permutedInstructionsRaw ? JSON.parse(permutedInstructionsRaw) : null,
+      elementKeyValues: elementKeyValues || null
     };
 
     console.log('\n📥 Received streaming request:', {
@@ -2519,9 +2189,12 @@ tell application "Google Chrome"
     if (execute active tab of front window javascript "document.querySelector('div[contenteditable=true][role=textbox]')?'1':'0'") is "1" then exit repeat
     delay 0.15
   end repeat
-  delay 0.2
-  -- Focus editor
-  execute active tab of front window javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
+  delay 0.3
+  -- Activate Image Mode: click "Create image" chip on the page
+  execute active tab of front window javascript "var chips=document.querySelectorAll('button,a,div[role=button]');for(var c of chips){if(c.textContent.includes('Create image')){c.click();break;}} 'ok'"
+  delay 0.6
+  -- Focus editor in image mode
+  execute active tab of front window javascript "var el=document.querySelector('div[contenteditable=true]');if(el){el.focus();el.click();} 'ok'"
 ${imageSteps}
   -- Paste text via clipboard (most reliable for Gemini)
   execute active tab of front window javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
@@ -2539,11 +2212,12 @@ return "done"
     const scriptFile = path.join(tempDir, 'automate.scpt');
     await fs.writeFile(scriptFile, appleScript, 'utf8');
 
-    exec(`osascript "${scriptFile}"`, { timeout: 30000 }, (error) => {
+    const proc = exec(`osascript "${scriptFile}"`, { timeout: 30000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
       if (error) console.error('  [X] AppleScript error:', error.message);
       else console.log('  [OK] Gemini automation completed');
     });
+    trackAutomation(proc, 'Gemini single');
 
     res.json({ success: true, message: 'Sending to Gemini...', hasImages: imagePaths.length > 0 });
 
@@ -2614,44 +2288,52 @@ pb.writeObjects_([file_url])
 `, 'utf8');
 
     const tabCount = prompts.length;
+    const BATCH_SIZE = 10;
 
-    // ═══ FAST BULK SCRIPT: Open all tabs -> parallel load -> rapid paste ═══
+    // ═══ BATCHED BULK: Open 10 tabs at once, wait, process all 10, then next batch ═══
     let script = `
 tell application "Google Chrome"
   activate
   set w to front window
-  -- Open ALL tabs at once (no delays between)
+end tell
 `;
-    for (let i = 0; i < tabCount; i++) {
-      script += `  tell w to make new tab with properties {URL:"https://gemini.google.com/app"}\n`;
-    }
-    script += `
-  -- Fast parallel wait: poll ALL tabs until loaded
+
+    for (let batchStart = 0; batchStart < tabCount; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, tabCount);
+      const batchSize = batchEnd - batchStart;
+
+      // Open all tabs in this batch simultaneously
+      script += `\n-- ═══ BATCH ${Math.floor(batchStart / BATCH_SIZE) + 1}: tabs ${batchStart + 1}-${batchEnd} ═══\n`;
+      script += `tell application "Google Chrome"\n  set w to front window\n`;
+      for (let i = batchStart; i < batchEnd; i++) {
+        script += `  tell w to make new tab with properties {URL:"https://gemini.google.com/app"}\n`;
+      }
+      script += `
+  -- Wait for all ${batchSize} tabs to load
   set tabTotal to count of tabs of w
   repeat 50 times
     set allDone to true
-    repeat with i from (tabTotal - ${tabCount - 1}) to tabTotal
+    repeat with i from (tabTotal - ${batchSize - 1}) to tabTotal
       if (loading of tab i of w) then set allDone to false
     end repeat
     if allDone then exit repeat
     delay 0.15
   end repeat
-  -- Quick editor init wait
   delay 0.5
 end tell
 `;
 
-    // For each tab: switch + paste images + paste text (tight timing)
-    for (let i = 0; i < tabCount; i++) {
-      const promptFile = promptFiles[i];
+      // Now process each tab in this batch
+      for (let i = batchStart; i < batchEnd; i++) {
+        const promptFile = promptFiles[i];
+        const idxInBatch = i - batchStart;
 
-      // Image paste steps for this tab - each image gets unique name per tab
-      let imgSteps = '';
-      for (let imgIdx = 0; imgIdx < imagePaths.length; imgIdx++) {
-        const imgPath = imagePaths[imgIdx];
-        const ext = path.extname(imgPath) || '.png';
-        const uniqueName = `design-ref-tab${i}-${timestamp}-${imgIdx}${ext}`;
-        imgSteps += `
+        let imgSteps = '';
+        for (let imgIdx = 0; imgIdx < imagePaths.length; imgIdx++) {
+          const imgPath = imagePaths[imgIdx];
+          const ext = path.extname(imgPath) || '.png';
+          const uniqueName = `design-ref-tab${i}-${timestamp}-${imgIdx}${ext}`;
+          imgSteps += `
     do shell script "python3 " & quoted form of "${clipboardHelperPath}" & " " & quoted form of "${imgPath}" & " " & quoted form of "${uniqueName}"
     execute active tab of w javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
     tell application "System Events" to keystroke "v" using command down
@@ -2664,32 +2346,40 @@ end tell
     delay 0.2
     execute active tab of w javascript "var d=document.querySelector('button[aria-label=Dismiss],button[aria-label=Close],.error-dismiss');if(d)d.click();"
 `;
-      }
+        }
 
-      script += `
+        script += `
+-- CHECK ABORT before tab ${i + 1}
+try
+  do shell script "test -f ${ABORT_FILE} && echo aborted || echo ok"
+  set abortCheck to result
+  if abortCheck is "aborted" then return "aborted by user"
+end try
 -- TAB ${i + 1}/${tabCount}
 tell application "Google Chrome"
   set w to front window
   set tabTotal to count of tabs of w
-  set active tab index of w to (tabTotal - ${tabCount - 1 - i})
-  -- Fast poll editor ready
+  set active tab index of w to (tabTotal - ${batchSize - 1 - idxInBatch})
   repeat 20 times
     if (execute active tab of w javascript "document.querySelector('div[contenteditable=true][role=textbox]')?'1':'0'") is "1" then exit repeat
     delay 0.1
   end repeat
+  -- Activate Image Mode
+  execute active tab of w javascript "var chips=document.querySelectorAll('button,a,div[role=button]');for(var c of chips){if(c.textContent.includes('Create image')){c.click();break;}} 'ok'"
+  delay 0.6
   execute active tab of w javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
 ${imgSteps}
   execute active tab of w javascript "var el=document.querySelector('div[contenteditable=true][role=textbox]');if(el){el.focus();el.click();} 'ok'"
 end tell
 do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
 tell application "System Events" to keystroke "v" using command down
--- Wait for paste then press Enter to submit
 delay 0.8
 tell application "System Events"
   key code 36
 end tell
 delay 0.3
 `;
+      }
     }
 
     script += `\nreturn "done"\n`;
@@ -2697,13 +2387,14 @@ delay 0.3
     const scriptFile = path.join(tempDir, 'bulk_automate.scpt');
     await fs.writeFile(scriptFile, script, 'utf8');
 
-    console.log(`  📝 Executing FAST bulk Gemini automation (${tabCount} tabs)...`);
+    console.log(`  📝 Executing batched Gemini automation (${tabCount} tabs, batches of ${BATCH_SIZE})...`);
 
-    exec(`osascript "${scriptFile}"`, { timeout: 90000 }, (error) => {
+    const proc = exec(`osascript "${scriptFile}"`, { timeout: tabCount * 15000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
       if (error) console.error('  [X] Bulk error:', error.message);
       else console.log(`  [OK] Bulk Gemini done (${tabCount} tabs)`);
     });
+    trackAutomation(proc, 'Gemini bulk');
 
     res.json({ success: true, message: `Opening ${tabCount} Gemini tabs...`, count: tabCount });
 
@@ -2788,39 +2479,27 @@ tell application "Google Chrome"
   end repeat
   delay 0.3
 ${refUploadSection}
-  -- Select aspect ratio: click the dropdown then the option
+  -- Select aspect ratio ONLY (exact match to avoid clicking styles like "Flash portrait")
   execute active tab of front window javascript "
     (function(){
-      var labels = document.querySelectorAll('label, span, div, button');
-      for(var i=0;i<labels.length;i++){
-        var t = labels[i].textContent.trim().toLowerCase();
-        if(t==='square'||t==='portrait'||t==='landscape'){
-          var el = labels[i].closest('button') || labels[i].closest('label') || labels[i];
-          if(el.querySelector('input[type=radio],input[type=checkbox]')){
-            el.click();
-          }
-        }
-      }
-      // Try clicking the aspect ratio dropdown/selector first
-      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
-      for(var j=0;j<triggers.length;j++){
-        var txt = triggers[j].textContent.trim().toLowerCase();
-        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
-          triggers[j].click();
-          break;
+      var target = '${envatoAspect}'.toLowerCase();
+      var items = document.querySelectorAll('label, button, div[role=option], span, li');
+      for(var i=0;i<items.length;i++){
+        var t = items[i].textContent.trim().toLowerCase();
+        if(t===target && t.length < 15){
+          items[i].click(); break;
         }
       }
     })();
     'ok';
   "
   delay 0.3
-  -- Now click the specific aspect ratio option
   execute active tab of front window javascript "
     (function(){
       var target = '${envatoAspect}'.toLowerCase();
       var items = document.querySelectorAll('li, label, button, div[role=option], span');
       for(var i=0;i<items.length;i++){
-        if(items[i].textContent.trim().toLowerCase()===target){
+        if(items[i].textContent.trim().toLowerCase()===target && items[i].textContent.trim().length < 15){
           items[i].click();
           return 'clicked';
         }
@@ -2922,28 +2601,13 @@ app.post('/api/send-all-to-envato', async (req, res) => {
 
     const tabCount = prompts.length;
 
-    // Build bulk AppleScript: open all tabs -> wait -> paste each
+    const BATCH_SIZE = 10;
+
+    // Build bulk AppleScript: open in batches of 10
     let script = `
 tell application "Google Chrome"
   activate
   set w to front window
-  -- Open ALL tabs at once
-`;
-    for (let i = 0; i < tabCount; i++) {
-      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
-    }
-    script += `
-  -- Wait for all tabs to load
-  set tabTotal to count of tabs of w
-  repeat 60 times
-    set allDone to true
-    repeat with i from (tabTotal - ${tabCount - 1}) to tabTotal
-      if (loading of tab i of w) then set allDone to false
-    end repeat
-    if allDone then exit repeat
-    delay 0.1
-  end repeat
-  delay 0.3
 end tell
 `;
 
@@ -2963,17 +2627,50 @@ end tell
   delay 0.5`;
     }
 
-    // For each tab: switch + paste text + click Generate
-    for (let i = 0; i < tabCount; i++) {
-      const promptFile = promptFiles[i];
+    // Process in batches of 10
+    for (let batchStart = 0; batchStart < tabCount; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, tabCount);
+      const batchSize = batchEnd - batchStart;
 
+      // Open all tabs in this batch simultaneously
+      script += `\n-- ═══ BATCH ${Math.floor(batchStart / BATCH_SIZE) + 1}: tabs ${batchStart + 1}-${batchEnd} ═══\n`;
+      script += `tell application "Google Chrome"\n  set w to front window\n`;
+      for (let i = batchStart; i < batchEnd; i++) {
+        script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
+      }
       script += `
+  -- Wait for all ${batchSize} tabs to load
+  set tabTotal to count of tabs of w
+  repeat 60 times
+    set allDone to true
+    repeat with i from (tabTotal - ${batchSize - 1}) to tabTotal
+      if (loading of tab i of w) then set allDone to false
+    end repeat
+    if allDone then exit repeat
+    delay 0.1
+  end repeat
+  delay 0.3
+end tell
+`;
+
+      // Process each tab in this batch
+      for (let i = batchStart; i < batchEnd; i++) {
+        const promptFile = promptFiles[i];
+        const idxInBatch = i - batchStart;
+
+        script += `
+-- CHECK ABORT before tab ${i + 1}
+try
+  do shell script "test -f ${ABORT_FILE} && echo aborted || echo ok"
+  set abortCheck to result
+  if abortCheck is "aborted" then return "aborted by user"
+end try
 -- TAB ${i + 1}/${tabCount}
 tell application "Google Chrome"
   set w to front window
   set tabTotal to count of tabs of w
-  set active tab index of w to (tabTotal - ${tabCount - 1 - i})
-  -- Wait for input ready (tight polling)
+  set active tab index of w to (tabTotal - ${batchSize - 1 - idxInBatch})
+  -- Wait for input ready
   repeat 30 times
     set inputReady to (execute active tab of w javascript "
       var ta = document.querySelector('textarea, input[type=text]');
@@ -2983,26 +2680,15 @@ tell application "Google Chrome"
     delay 0.1
   end repeat
 ${bulkRefSection}
-  -- Select aspect ratio (combined: open dropdown + pick option in one call)
+  -- Select aspect ratio ONLY (exact match, no styles)
   execute active tab of w javascript "
     (function(){
-      var triggers = document.querySelectorAll('button, [role=combobox], [role=listbox], select');
-      for(var j=0;j<triggers.length;j++){
-        var txt = triggers[j].textContent.trim().toLowerCase();
-        if(txt.includes('square')||txt.includes('portrait')||txt.includes('landscape')){
-          triggers[j].click();
-          break;
-        }
+      var target = '${envatoAspects[i]}'.toLowerCase();
+      var items = document.querySelectorAll('label, button, div[role=option], span, li');
+      for(var i=0;i<items.length;i++){
+        var t = items[i].textContent.trim().toLowerCase();
+        if(t===target && t.length < 15){ items[i].click(); break; }
       }
-      setTimeout(function(){
-        var target = '${envatoAspects[i]}'.toLowerCase();
-        var items = document.querySelectorAll('li, label, button, div[role=option], span');
-        for(var k=0;k<items.length;k++){
-          if(items[k].textContent.trim().toLowerCase()===target){
-            items[k].click(); break;
-          }
-        }
-      }, 150);
     })();
     'ok';
   "
@@ -3032,20 +2718,22 @@ tell application "Google Chrome"
 end tell
 delay 0.15
 `;
-    }
+      } // end per-tab loop
+    } // end batch loop
 
     script += `\nreturn "done"\n`;
 
     const scriptFile = path.join(tempDir, 'bulk_automate.scpt');
     await fs.writeFile(scriptFile, script, 'utf8');
 
-    console.log(`  📝 Executing FAST bulk Envato automation (${tabCount} tabs)...`);
+    console.log(`  📝 Executing batched Envato automation (${tabCount} tabs, batches of ${BATCH_SIZE})...`);
 
-    exec(`osascript "${scriptFile}"`, { timeout: 90000 }, (error) => {
+    const proc = exec(`osascript "${scriptFile}"`, { timeout: tabCount * 15000 }, (error) => {
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
       if (error) console.error('  [X] Bulk Envato error:', error.message);
       else console.log(`  [OK] Bulk Envato done (${tabCount} tabs)`);
     });
+    trackAutomation(proc, 'Envato bulk');
 
     res.json({ success: true, message: `Opening ${tabCount} Envato tabs...`, count: tabCount });
 
@@ -3755,7 +3443,7 @@ ${refUploadSection}
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
-      var decoded = atob('${imgPromptB64}');
+      var decoded = new TextDecoder().decode(Uint8Array.from(atob('${imgPromptB64}'), function(c){return c.charCodeAt(0);}));
       var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
       ns.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
@@ -4035,7 +3723,7 @@ tell application "Google Chrome"
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
-      var decoded = atob('${vidPromptB64}');
+      var decoded = new TextDecoder().decode(Uint8Array.from(atob('${vidPromptB64}'), function(c){return c.charCodeAt(0);}));
       var ns = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
       ns.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
@@ -4190,7 +3878,7 @@ tell application "Google Chrome"
     (function(){
       var ta = document.querySelector('textarea');
       if(!ta) return 'no textarea';
-      var decoded = atob('${vidPromptB64Single}');
+      var decoded = new TextDecoder().decode(Uint8Array.from(atob('${vidPromptB64Single}'), function(c){return c.charCodeAt(0);}));
       var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
       nativeSetter.call(ta, decoded);
       ta.dispatchEvent(new Event('input', {bubbles:true}));
@@ -4294,6 +3982,12 @@ end tell
     // For each tab: switch + select 9:16 + Sound + Speech + paste prompt
     for (let i = 0; i < tabCount; i++) {
       script += `
+-- CHECK ABORT before tab ${i + 1}
+try
+  do shell script "test -f ${ABORT_FILE} && echo aborted || echo ok"
+  set abortCheck to result
+  if abortCheck is "aborted" then return "aborted by user"
+end try
 -- TAB ${i + 1}/${tabCount}
 tell application "Google Chrome"
   set w to front window
