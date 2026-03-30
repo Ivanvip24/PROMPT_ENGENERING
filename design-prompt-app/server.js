@@ -2190,6 +2190,8 @@ tell application "Google Chrome"
     delay 0.15
   end repeat
   delay 0.3
+  -- Inject abort listener (triple-ESC calls abort)
+  execute active tab of front window javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
   -- Activate Image Mode: click "Create image" chip on the page
   execute active tab of front window javascript "var chips=document.querySelectorAll('button,a,div[role=button]');for(var c of chips){if(c.textContent.includes('Create image')){c.click();break;}} 'ok'"
   delay 0.6
@@ -2364,6 +2366,8 @@ tell application "Google Chrome"
     if (execute active tab of w javascript "document.querySelector('div[contenteditable=true][role=textbox]')?'1':'0'") is "1" then exit repeat
     delay 0.1
   end repeat
+  -- Inject abort listener (triple-ESC)
+  execute active tab of w javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
   -- Activate Image Mode
   execute active tab of w javascript "var chips=document.querySelectorAll('button,a,div[role=button]');for(var c of chips){if(c.textContent.includes('Create image')){c.click();break;}} 'ok'"
   delay 0.6
@@ -2478,6 +2482,8 @@ tell application "Google Chrome"
     delay 0.2
   end repeat
   delay 0.3
+  -- Inject abort listener (triple-ESC)
+  execute active tab of front window javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
 ${refUploadSection}
   -- Select aspect ratio ONLY (exact match to avoid clicking styles like "Flash portrait")
   execute active tab of front window javascript "
@@ -2670,6 +2676,8 @@ tell application "Google Chrome"
   set w to front window
   set tabTotal to count of tabs of w
   set active tab index of w to (tabTotal - ${batchSize - 1 - idxInBatch})
+  -- Inject abort listener (triple-ESC)
+  execute active tab of w javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
   -- Wait for input ready
   repeat 30 times
     set inputReady to (execute active tab of w javascript "
