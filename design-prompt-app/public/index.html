@@ -2419,7 +2419,7 @@
             let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             for (const kn of keyNames) {
                 const escaped = kn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                html = html.replace(new RegExp(`\\b(${escaped})\\b`, 'g'), '<span class="key-highlight">$1</span>');
+                html = html.replace(new RegExp(`\\b(${escaped})\\b`, 'gi'), '<span class="key-highlight">$1</span>');
             }
             html = html.replace(/\n/g, '<br>');
 
@@ -2563,9 +2563,9 @@
             const permutedKeys = definedKeys.filter(k => k.permute);
             const staticKeys = definedKeys.filter(k => !k.permute);
             let baseText = instructionText;
-            // Case-sensitive match — only replaces exact key name (e.g. "OBJ" not "obj")
+            // Case-insensitive match
             for (const key of staticKeys) {
-                baseText = baseText.replace(new RegExp(`\\b${key.name}\\b`, 'g'), key.values.trim());
+                baseText = baseText.replace(new RegExp(`\\b${key.name}\\b`, 'gi'), key.values.trim());
             }
             if (permutedKeys.length === 0) return [baseText];
             const valueArrays = permutedKeys.map(k => parseKeyValues(k.values));
@@ -2577,7 +2577,7 @@
             return combinations.map(combo => {
                 let text = baseText;
                 permutedKeys.forEach((key, i) => {
-                    text = text.replace(new RegExp(`\\b${key.name}\\b`, 'g'), combo[i]);
+                    text = text.replace(new RegExp(`\\b${key.name}\\b`, 'gi'), combo[i]);
                 });
                 return text;
             });
