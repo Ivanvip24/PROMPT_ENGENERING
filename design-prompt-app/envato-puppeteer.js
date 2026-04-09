@@ -34,7 +34,7 @@ async function envLoginVisible() {
   }
   const b = await getBrowser(false); // visible
   const page = await b.newPage();
-  await page.goto('https://labs.envato.com/apps/image-gen/', { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto('https://app.envato.com/image-gen', { waitUntil: 'networkidle2', timeout: 60000 });
   console.log('[Puppeteer] Login browser opened. User should log in and close when done.');
   // Wait for user to close the browser manually
   return new Promise((resolve) => {
@@ -69,7 +69,7 @@ window.__refUploadDone = false;
       }
     }
     for (var a = 0; a < 30; a++) {
-      if (document.querySelectorAll('input[type=file]').length >= 2) break;
+      if (document.querySelectorAll('input[type=file]').length >= 1) break;
       await new Promise(function(r) { setTimeout(r, 200); });
     }
     var urls = ${urlsJSON};
@@ -100,7 +100,7 @@ window.__refUploadDone = false;
 // Core automation: fill and submit one Envato ImageGen page
 async function automateEnvatoPage(page, { prompt, aspectRatio, refFilenames, port }) {
   // 1. Navigate
-  await page.goto('https://labs.envato.com/apps/image-gen/', { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto('https://app.envato.com/image-gen', { waitUntil: 'networkidle2', timeout: 60000 });
 
   // 2. Wait for textarea (confirms logged in + page ready)
   await page.waitForSelector('textarea, input[type=text]', { timeout: 30000 });

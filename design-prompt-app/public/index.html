@@ -304,6 +304,67 @@
         }
         .modify-info.visible { display: flex; align-items: center; gap: 10px; }
 
+        /* ═══ TRANSFORM INFO ═══ */
+        .transform-info {
+            display: none;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(255,149,0,0.10), rgba(231,42,136,0.06));
+            border-radius: var(--radius-md);
+            border-left: 4px solid #FF9500;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .transform-info.visible { display: flex; align-items: center; gap: 10px; }
+
+        /* Transform target selectors */
+        .transform-targets {
+            display: none;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: end;
+        }
+        .transform-targets.visible {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .transform-target-group {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+        }
+        .transform-target-group label {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .transform-target-group label .target-arrow {
+            color: #FF9500;
+            margin-right: 4px;
+        }
+        .transform-target-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #eee;
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .transform-target-group select:focus {
+            border-color: #FF9500;
+            outline: none;
+        }
+
         /* ═══ CONTROLS ROW ═══ */
         .controls-row {
             display: grid;
@@ -475,45 +536,151 @@
         /* ═══ DROPDOWNS BAR ═══ */
         .dropdowns-bar {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
             margin-bottom: 20px;
         }
         .dropdown-group { position: relative; }
         .dropdown-group.hidden { display: none; }
         .dropdown-label {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-size: 11px;
-            font-weight: 600;
-            color: var(--text-tertiary);
+            font-weight: 700;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 6px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
-        .dropdown-select {
+        .dropdown-label .dd-icon {
+            font-size: 14px;
+            line-height: 1;
+        }
+        /* Hidden native select — only used as data store */
+        .dropdown-select { display: none; }
+
+        /* ═══ CUSTOM DROPDOWN ═══ */
+        .custom-dropdown {
+            position: relative;
             width: 100%;
-            padding: 12px 40px 12px 16px;
-            border: 2px solid var(--border-light);
-            border-radius: var(--radius-md);
+        }
+        .custom-dropdown-trigger {
+            width: 100%;
+            padding: 13px 42px 13px 18px;
+            border: 2.5px solid var(--border-light);
+            border-radius: 20px;
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: white;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(.4,0,.2,1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .custom-dropdown-trigger:hover {
+            border-color: var(--rosa);
+            box-shadow: 0 4px 14px rgba(231,42,136,0.12), 0 2px 6px rgba(0,0,0,0.06);
+            transform: translateY(-1px);
+        }
+        .custom-dropdown-trigger.open {
+            border-color: var(--rosa);
+            box-shadow: 0 4px 16px rgba(231,42,136,0.18), 0 0 0 4px rgba(231,42,136,0.08);
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        .custom-dropdown-trigger .dd-trigger-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .custom-dropdown-trigger .dd-trigger-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .custom-dropdown-trigger .dd-trigger-arrow {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+            color: var(--rosa);
+            font-size: 12px;
+        }
+        .custom-dropdown-trigger.open .dd-trigger-arrow {
+            transform: translateY(-50%) rotate(180deg);
+        }
+        .custom-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: white;
+            border: 2.5px solid var(--rosa);
+            border-top: none;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 12px 32px rgba(231,42,136,0.12), 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-8px);
+            pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1);
+        }
+        .custom-dropdown-menu.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .custom-dropdown-item {
+            padding: 12px 18px;
             font-family: var(--font-body);
             font-size: 14px;
             font-weight: 500;
             color: var(--text-primary);
-            background: white;
-            appearance: none;
             cursor: pointer;
-            transition: all 0.2s ease;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9e9e' stroke-width='2' fill='none'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 14px center;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s ease;
+            position: relative;
         }
-        .dropdown-select:focus {
-            outline: none;
-            border-color: var(--rosa);
-            box-shadow: 0 0 0 4px rgba(231,42,136,0.1);
+        .custom-dropdown-item:hover {
+            background: linear-gradient(90deg, var(--rosa-light), rgba(231,42,136,0.04));
+            padding-left: 22px;
         }
-        .dropdown-select:hover { border-color: var(--border-medium); }
-        .dropdown-select option[disabled] { color: var(--text-tertiary); }
+        .custom-dropdown-item.active {
+            background: var(--rosa-light);
+            color: var(--rosa);
+            font-weight: 700;
+        }
+        .custom-dropdown-item.active::before {
+            content: '✓';
+            position: absolute;
+            right: 16px;
+            color: var(--rosa);
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .custom-dropdown-item.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .custom-dropdown-item .dd-item-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .custom-dropdown-item + .custom-dropdown-item {
+            border-top: 1px solid rgba(0,0,0,0.04);
+        }
 
         /* ═══ STYLE REFERENCE UPLOAD ═══ */
         .style-ref-card {
@@ -680,25 +847,30 @@
         .style-multi-group { position: relative; }
         .style-multi-select {
             width: 100%;
-            padding: 12px 40px 12px 16px;
-            border: 2px solid var(--border-light);
-            border-radius: var(--radius-md);
+            padding: 14px 42px 14px 18px;
+            border: 2.5px solid var(--border-light);
+            border-radius: 20px;
             font-family: var(--font-body);
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 600;
             color: var(--text-primary);
             background: white;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 46px;
+            min-height: 50px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
         }
-        .style-multi-select:hover { border-color: var(--border-medium); }
+        .style-multi-select:hover {
+            border-color: var(--rosa);
+            box-shadow: 0 4px 14px rgba(231,42,136,0.12), 0 2px 6px rgba(0,0,0,0.06);
+            transform: translateY(-1px);
+        }
         .style-multi-select.open {
             border-color: var(--rosa);
-            box-shadow: 0 0 0 4px rgba(231,42,136,0.1);
+            box-shadow: 0 4px 16px rgba(231,42,136,0.15), 0 0 0 4px rgba(231,42,136,0.08);
         }
         .style-multi-display {
             flex: 1;
@@ -1970,6 +2142,12 @@
                 <span data-translate="modifyCard.description">Upload the design you want to modify, then describe the changes in the instructions field</span>
             </div>
 
+            <!-- Transform-only info banner -->
+            <div class="transform-info" id="transformInfo">
+                <span>🔄</span>
+                <span data-translate="transformCard.description">Upload the design to transform, then select the target product and ratio below</span>
+            </div>
+
             <!-- Form Grid: Instructions left, Destino/Theme right -->
             <div class="form-grid">
                 <div class="form-field field-instructions">
@@ -2080,28 +2258,87 @@
             </div>
         </div>
 
+        <!-- Transform Target Selectors -->
+        <div class="transform-targets" id="transformTargets">
+            <div class="transform-target-group">
+                <label><span class="target-arrow">&#10132;</span> <span data-translate="transformCard.targetProduct">Target Product</span></label>
+                <select id="targetProductDropdown">
+                    <option value="magnet">&#129522; Magnet</option>
+                    <option value="bottle-opener">&#127866; Bottle Opener</option>
+                    <option value="keyholder">&#128272; Portallaves</option>
+                    <option value="portrait">&#128444;&#65039; Retrato</option>
+                </select>
+            </div>
+            <div class="transform-target-group">
+                <label><span class="target-arrow">&#10132;</span> <span data-translate="transformCard.targetRatio">Target Ratio</span></label>
+                <select id="targetRatioDropdown">
+                    <option value="1:1">&#11036; 1:1 Square</option>
+                    <option value="2:1">&#9645; 2:1 Horizontal</option>
+                    <option value="1:2">&#9647; 1:2 Vertical</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Dropdowns Bar -->
         <div class="dropdowns-bar" id="dropdownsBar" style="display: none;">
             <div class="dropdown-group">
-                <label class="dropdown-label" data-translate="productCard.title">Product</label>
+                <label class="dropdown-label"><span data-translate="productCard.title">Product</span></label>
                 <select class="dropdown-select" id="productDropdown" onchange="onProductChange(this.value)">
                     <option value="magnet" data-translate="productCard.magnet">Magnet</option>
-                    <option value="keychain" disabled data-translate="productCard.keychain">Keychain</option>
                     <option value="bottle-opener" data-translate="productCard.bottleOpener">Bottle Opener</option>
                     <option value="keyholder" data-translate="productCard.keyholder">Portallaves</option>
                     <option value="portrait" data-translate="productCard.portrait">Retrato</option>
                 </select>
+                <div class="custom-dropdown" id="customProductDropdown">
+                    <div class="custom-dropdown-trigger" onclick="toggleCustomDropdown('product')">
+                        <span class="dd-trigger-icon">🧲</span>
+                        <span class="dd-trigger-text" id="productTriggerText">Magnet</span>
+                        <span class="dd-trigger-arrow">▾</span>
+                    </div>
+                    <div class="custom-dropdown-menu" id="productMenu">
+                        <div class="custom-dropdown-item active" data-value="magnet" onclick="selectCustomDropdown('product','magnet',this)">
+                            <span class="dd-item-icon">🧲</span> Magnet
+                        </div>
+                        <div class="custom-dropdown-item" data-value="bottle-opener" onclick="selectCustomDropdown('product','bottle-opener',this)">
+                            <span class="dd-item-icon">🍺</span> Bottle Opener
+                        </div>
+                        <div class="custom-dropdown-item" data-value="keyholder" onclick="selectCustomDropdown('product','keyholder',this)">
+                            <span class="dd-item-icon">🔐</span> Portallaves
+                        </div>
+                        <div class="custom-dropdown-item" data-value="portrait" onclick="selectCustomDropdown('product','portrait',this)">
+                            <span class="dd-item-icon">🖼️</span> Retrato
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="dropdown-group">
-                <label class="dropdown-label" data-translate="ratioCard.title">Ratio</label>
+                <label class="dropdown-label"><span data-translate="ratioCard.title">Ratio</span></label>
                 <select class="dropdown-select" id="ratioDropdown" onchange="onRatioChange(this.value)">
                     <option value="1:1">⬜ 1:1 Square</option>
                     <option value="2:1">▭ 2:1 Rectangular</option>
                     <option value="1:2">▯ 1:2 Vertical</option>
                 </select>
+                <div class="custom-dropdown" id="customRatioDropdown">
+                    <div class="custom-dropdown-trigger" onclick="toggleCustomDropdown('ratio')">
+                        <span class="dd-trigger-icon">⬜</span>
+                        <span class="dd-trigger-text" id="ratioTriggerText">1:1 Square</span>
+                        <span class="dd-trigger-arrow">▾</span>
+                    </div>
+                    <div class="custom-dropdown-menu" id="ratioMenu">
+                        <div class="custom-dropdown-item active" data-value="1:1" onclick="selectCustomDropdown('ratio','1:1',this)">
+                            <span class="dd-item-icon">⬜</span> 1:1 Square
+                        </div>
+                        <div class="custom-dropdown-item" data-value="2:1" onclick="selectCustomDropdown('ratio','2:1',this)">
+                            <span class="dd-item-icon">▭</span> 2:1 Rectangular
+                        </div>
+                        <div class="custom-dropdown-item" data-value="1:2" onclick="selectCustomDropdown('ratio','1:2',this)">
+                            <span class="dd-item-icon">▯</span> 1:2 Vertical
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="dropdown-group style-multi-group">
-                <label class="dropdown-label" data-translate="styleCard.title">Style</label>
+            <!-- Style multi-select (hidden, kept for JS compatibility) -->
+            <div class="dropdown-group style-multi-group" style="display:none;">
                 <div class="style-multi-select" id="styleMultiSelect" onclick="toggleStyleDropdown(event)">
                     <span class="style-multi-display" id="styleMultiDisplay">--</span>
                     <span class="style-multi-arrow">▾</span>
@@ -2886,11 +3123,17 @@
                     title: 'Modification Instructions',
                     description: 'Upload the design you want to modify, then describe the changes in the instructions field'
                 },
+                transformCard: {
+                    description: 'Upload the design to transform, then select the target product and ratio below',
+                    targetProduct: 'Target Product',
+                    targetRatio: 'Target Ratio'
+                },
                 projects: {
                     variations: 'Design Variation',
                     fromscratch: 'New Design',
                     previouselement: 'Previous Element',
-                    modify: 'Modify Design'
+                    modify: 'Modify Design',
+                    transform: 'Transform Design'
                 },
                 alerts: {
                     selectProject: 'Please select a project first!',
@@ -3007,11 +3250,17 @@
                     title: 'Instrucciones de Modificación',
                     description: 'Sube el diseño a modificar, luego describe los cambios en el campo de instrucciones'
                 },
+                transformCard: {
+                    description: 'Sube el diseño a transformar, luego selecciona el producto y ratio destino abajo',
+                    targetProduct: 'Producto Destino',
+                    targetRatio: 'Ratio Destino'
+                },
                 projects: {
                     variations: 'Variación de Diseño',
                     fromscratch: 'Nuevo Diseño',
                     previouselement: 'Elemento Anterior',
-                    modify: 'Modificar Diseño'
+                    modify: 'Modificar Diseño',
+                    transform: 'Transformar Diseño'
                 },
                 alerts: {
                     selectProject: '¡Selecciona un proyecto primero!',
@@ -3070,8 +3319,9 @@
 
         function populateDropdownTranslations() {
             const t = translations[currentLanguage];
-            // Product dropdown
+            // Product dropdown (native + custom)
             const pdd = document.getElementById('productDropdown');
+            const productLabels = {};
             if (pdd) {
                 const opts = pdd.options;
                 for (let i = 0; i < opts.length; i++) {
@@ -3080,15 +3330,43 @@
                         const keys = key.split('.');
                         let val = t;
                         for (const k of keys) { val = val?.[k]; }
-                        if (val) opts[i].textContent = val;
+                        if (val) { opts[i].textContent = val; productLabels[opts[i].value] = val; }
                     }
                 }
             }
-            // Ratio dropdown
+            // Sync custom product items
+            document.querySelectorAll('#productMenu .custom-dropdown-item').forEach(item => {
+                const val = item.dataset.value;
+                const label = productLabels[val];
+                if (label) {
+                    const icon = item.querySelector('.dd-item-icon');
+                    item.textContent = '';
+                    if (icon) item.appendChild(icon);
+                    item.appendChild(document.createTextNode(' ' + label));
+                }
+                if (item.classList.contains('active')) {
+                    document.getElementById('productTriggerText').textContent = label || _ddItemLabel(item);
+                }
+            });
+            // Ratio dropdown (native + custom)
             const rdd = document.getElementById('ratioDropdown');
             if (rdd) {
                 rdd.options[0].textContent = '⬜ ' + t.ratioCard.square;
                 rdd.options[1].textContent = '▭ ' + t.ratioCard.rectangular;
+            }
+            const ratioItems = document.querySelectorAll('#ratioMenu .custom-dropdown-item');
+            if (ratioItems.length >= 2) {
+                const updateRatioItem = (item, icon, text) => {
+                    const iconEl = item.querySelector('.dd-item-icon');
+                    item.textContent = '';
+                    if (iconEl) item.appendChild(iconEl);
+                    item.appendChild(document.createTextNode(' ' + text));
+                    if (item.classList.contains('active')) {
+                        document.getElementById('ratioTriggerText').textContent = text;
+                    }
+                };
+                updateRatioItem(ratioItems[0], '⬜', t.ratioCard.square);
+                updateRatioItem(ratioItems[1], '▭', t.ratioCard.rectangular);
             }
             // Style dropdown - update "no style" option
             const noStyle = document.getElementById('noStyleOption');
@@ -3144,6 +3422,92 @@
             }
         }
 
+        // ═══ CUSTOM DROPDOWN ENGINE ═══
+        const _ddIcons = {
+            'magnet': '🧲', 'keychain': '🔑', 'bottle-opener': '🍺', 'keyholder': '🔐', 'portrait': '🖼️',
+            '1:1': '⬜', '2:1': '▭', '1:2': '▯'
+        };
+        // Get item label text WITHOUT the icon span
+        function _ddItemLabel(el) {
+            const clone = el.cloneNode(true);
+            const icon = clone.querySelector('.dd-item-icon');
+            if (icon) icon.remove();
+            return clone.textContent.trim();
+        }
+
+        function toggleCustomDropdown(type) {
+            const menuId = type === 'product' ? 'productMenu' : 'ratioMenu';
+            const triggerId = type === 'product' ? 'customProductDropdown' : 'customRatioDropdown';
+            const trigger = document.querySelector(`#${triggerId} .custom-dropdown-trigger`);
+            const menu = document.getElementById(menuId);
+            const isOpen = menu.classList.contains('open');
+
+            // Close all other open dropdowns first
+            closeAllCustomDropdowns();
+
+            if (!isOpen) {
+                trigger.classList.add('open');
+                menu.classList.add('open');
+            }
+        }
+
+        function closeAllCustomDropdowns() {
+            document.querySelectorAll('.custom-dropdown-trigger.open').forEach(t => t.classList.remove('open'));
+            document.querySelectorAll('.custom-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+        }
+
+        function selectCustomDropdown(type, value, itemEl) {
+            if (itemEl.classList.contains('disabled')) return;
+
+            const menuId = type === 'product' ? 'productMenu' : 'ratioMenu';
+            const textId = type === 'product' ? 'productTriggerText' : 'ratioTriggerText';
+            const triggerId = type === 'product' ? 'customProductDropdown' : 'customRatioDropdown';
+            const nativeId = type === 'product' ? 'productDropdown' : 'ratioDropdown';
+
+            // Update active state
+            document.querySelectorAll(`#${menuId} .custom-dropdown-item`).forEach(i => i.classList.remove('active'));
+            itemEl.classList.add('active');
+
+            // Update trigger text and icon
+            document.getElementById(textId).textContent = _ddItemLabel(itemEl);
+            const triggerIcon = document.querySelector(`#${triggerId} .dd-trigger-icon`);
+            if (triggerIcon && _ddIcons[value]) triggerIcon.textContent = _ddIcons[value];
+
+            // Sync native select
+            const native = document.getElementById(nativeId);
+            native.value = value;
+
+            // Close menu
+            closeAllCustomDropdowns();
+
+            // Fire the handler
+            if (type === 'product') onProductChange(value);
+            else onRatioChange(value);
+        }
+
+        // Sync custom dropdown display when native is set programmatically
+        function syncCustomDropdown(type, value) {
+            const menuId = type === 'product' ? 'productMenu' : 'ratioMenu';
+            const textId = type === 'product' ? 'productTriggerText' : 'ratioTriggerText';
+            const triggerId = type === 'product' ? 'customProductDropdown' : 'customRatioDropdown';
+            const items = document.querySelectorAll(`#${menuId} .custom-dropdown-item`);
+            items.forEach(i => {
+                i.classList.toggle('active', i.dataset.value === value);
+                if (i.dataset.value === value) {
+                    document.getElementById(textId).textContent = _ddItemLabel(i);
+                    const triggerIcon = document.querySelector(`#${triggerId} .dd-trigger-icon`);
+                    if (triggerIcon && _ddIcons[value]) triggerIcon.textContent = _ddIcons[value];
+                }
+            });
+        }
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.custom-dropdown') && !e.target.closest('.style-multi-group')) {
+                closeAllCustomDropdowns();
+            }
+        });
+
         // ═══ DROPDOWN HANDLERS ═══
         function onProductChange(value) {
             selectedProduct = value;
@@ -3166,6 +3530,20 @@
             } else {
                 gallery.classList.remove('visible');
             }
+
+            // Remove selected shapes that don't belong to the new product
+            const shapesToRemove = selectedShapes.filter(s => {
+                const shapeEl = document.getElementById('shape-option-' + s.id.replace(/^shape-/, ''));
+                return shapeEl && !shapeEl.classList.contains('shape-for-' + value);
+            });
+            shapesToRemove.forEach(s => {
+                const optionSuffix = s.id.replace(/^shape-/, '');
+                const shapeOption = document.getElementById('shape-option-' + optionSuffix);
+                if (shapeOption) shapeOption.classList.remove('selected');
+                const preview = document.querySelector(`[data-shape-id="${s.id}"]`);
+                if (preview) preview.remove();
+            });
+            selectedShapes = selectedShapes.filter(s => !shapesToRemove.includes(s));
         }
 
         function onRatioChange(value) {
@@ -3310,12 +3688,17 @@
             document.getElementById('aiAnalyzerToggle').style.display = '';
 
             const isModify = (key === 'modify');
+            const isTransform = (key === 'transform');
             const isVariations = (key === 'variations');
             const isFromScratch = (key === 'from-scratch');
             const isPreviousElement = (key === 'previous-element');
 
             // Show/hide modify info
             document.getElementById('modifyInfo').classList.toggle('visible', isModify);
+            // Show/hide transform info
+            document.getElementById('transformInfo').classList.toggle('visible', isTransform);
+            // Show/hide transform target selectors
+            document.getElementById('transformTargets').classList.toggle('visible', isTransform);
 
             // Fields visibility
             const showField = (id, visible) => {
@@ -3325,7 +3708,7 @@
 
             showField('field-destination', false); // Destination is now a default key
             showField('field-theme', false);
-            showField('field-keys', !isModify);
+            showField('field-keys', !(isModify || isTransform));
             // Ensure default keys exist when project is selected
             ensureDefaultKeys();
             renderKeys();
@@ -3337,19 +3720,20 @@
             document.getElementById('slider-decoration').classList.toggle('hidden', !isVariations);
             document.getElementById('slider-crazymeter').classList.toggle('hidden', !(isFromScratch || isPreviousElement));
 
-            // Controls row: hide for modify (no sliders needed)
-            document.getElementById('controlsRow').style.display = isModify ? 'none' : '';
-            // Actually keep stepper visible for modify too (user may want multiple modification prompts)
+            // Controls row: hide for modify/transform (no sliders needed)
+            const isSimpleMode = isModify || isTransform;
+            document.getElementById('controlsRow').style.display = isSimpleMode ? 'none' : '';
+            // Actually keep stepper visible for modify/transform too (user may want multiple prompts)
             // But hide sliders card
-            if (isModify) {
+            if (isSimpleMode) {
                 document.getElementById('controlsRow').style.display = '';
                 document.getElementById('slidersCard').style.display = 'none';
             } else {
                 document.getElementById('slidersCard').style.display = '';
             }
 
-            // Dropdowns: hide for modify
-            document.getElementById('dropdownsBar').style.display = isModify ? 'none' : '';
+            // Dropdowns: hide for modify/transform
+            document.getElementById('dropdownsBar').style.display = isSimpleMode ? 'none' : '';
 
             // No-style option: only show for variations
             const noStyleOpt = document.getElementById('noStyleOption');
@@ -3363,13 +3747,28 @@
             // Update photo style visibility
             updatePhotoStyleSelectorVisibility();
 
+            // Update instructions placeholder for transform mode
+            const instrEl = document.getElementById('instructions');
+            if (isTransform) {
+                instrEl.setAttribute('data-placeholder', currentLanguage === 'es'
+                    ? 'Opcional: notas adicionales sobre la transformación...'
+                    : 'Optional: additional notes about the transformation...');
+            } else {
+                instrEl.setAttribute('data-placeholder', currentLanguage === 'es'
+                    ? 'Describe lo que quieres...'
+                    : 'Describe what you want...');
+            }
+
             // Translate newly visible elements
             setTimeout(() => setLanguage(currentLanguage), 0);
         }
 
         // ═══ SHAPE SELECTION ═══
         async function toggleShapeSelection(shapeId) {
-            const shapeOption = document.getElementById('shape-option-' + shapeId.split('-')[1]);
+            // shapeId: 'shape-1', 'shape-2', 'shape-keyholder-1', 'shape-portrait-1'
+            // element IDs: 'shape-option-1', 'shape-option-2', 'shape-option-keyholder-1', 'shape-option-portrait-1'
+            const optionSuffix = shapeId.replace(/^shape-/, '');
+            const shapeOption = document.getElementById('shape-option-' + optionSuffix);
             const shapeData = shapeReferences[shapeId];
             if (!shapeData) return;
 
@@ -3421,7 +3820,8 @@
             selectedShapes = selectedShapes.filter(s => s.id !== shapeId);
             const existing = document.querySelector(`[data-shape-id="${shapeId}"]`);
             if (existing) existing.remove();
-            const shapeOption = document.getElementById('shape-option-' + shapeId.split('-')[1]);
+            const optionSuffix = shapeId.replace(/^shape-/, '');
+            const shapeOption = document.getElementById('shape-option-' + optionSuffix);
             if (shapeOption) shapeOption.classList.remove('selected');
             updateImageCount();
         }
@@ -3548,6 +3948,79 @@
             if (!match) return 'png';
             const type = match[1].toLowerCase();
             return type === 'jpeg' ? 'jpg' : type;
+        }
+
+        // ═══ IMAGE OPTIMIZATION ═══
+        // Compress and resize images that exceed size/dimension thresholds
+        const IMG_MAX_DIMENSION = 4096; // max width or height in px
+        const IMG_MAX_BYTES = 10 * 1024 * 1024; // 10MB — compress anything larger
+        const IMG_JPEG_QUALITY = 0.85;
+
+        function optimizeImage(dataUrl) {
+            return new Promise((resolve) => {
+                const blob = dataURLtoBlob(dataUrl);
+                // Skip if already small enough
+                if (blob.size <= IMG_MAX_BYTES) {
+                    resolve(dataUrl);
+                    return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    // Scale down if dimensions exceed max
+                    if (width > IMG_MAX_DIMENSION || height > IMG_MAX_DIMENSION) {
+                        const scale = Math.min(IMG_MAX_DIMENSION / width, IMG_MAX_DIMENSION / height);
+                        width = Math.round(width * scale);
+                        height = Math.round(height * scale);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    // Always output as JPEG for compression (unless PNG is small enough)
+                    const optimized = canvas.toDataURL('image/jpeg', IMG_JPEG_QUALITY);
+                    console.log(`Image optimized: ${(blob.size / 1024 / 1024).toFixed(1)}MB → ${(dataURLtoBlob(optimized).size / 1024 / 1024).toFixed(1)}MB (${width}x${height})`);
+                    resolve(optimized);
+                };
+                img.onerror = () => resolve(dataUrl); // fallback to original on error
+                img.src = dataUrl;
+            });
+        }
+
+        function optimizeBlob(blob, filename) {
+            return new Promise((resolve) => {
+                if (blob.size <= IMG_MAX_BYTES) {
+                    resolve(blob);
+                    return;
+                }
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    let { width, height } = img;
+                    if (width > IMG_MAX_DIMENSION || height > IMG_MAX_DIMENSION) {
+                        const scale = Math.min(IMG_MAX_DIMENSION / width, IMG_MAX_DIMENSION / height);
+                        width = Math.round(width * scale);
+                        height = Math.round(height * scale);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((optimizedBlob) => {
+                        if (optimizedBlob) {
+                            console.log(`Blob optimized: ${(blob.size / 1024 / 1024).toFixed(1)}MB → ${(optimizedBlob.size / 1024 / 1024).toFixed(1)}MB (${width}x${height})`);
+                            resolve(optimizedBlob);
+                        } else {
+                            resolve(blob);
+                        }
+                    }, 'image/jpeg', IMG_JPEG_QUALITY);
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(blob); };
+                img.src = url;
+            });
         }
 
         // ═══ IMAGE HANDLING ═══
@@ -3689,7 +4162,13 @@
             if (genBtn.disabled) return; // Prevent double-click
             if (!currentProject) { alert(translations[currentLanguage].alerts.selectProject); return; }
             const instructions = document.getElementById('instructions').value;
-            if (!instructions.trim()) { alert(translations[currentLanguage].alerts.provideInstructions); return; }
+            const isTransformMode = currentProject === 'transform';
+            if (!instructions.trim() && !isTransformMode) { alert(translations[currentLanguage].alerts.provideInstructions); return; }
+            // Transform mode requires at least one image
+            if (isTransformMode && selectedImages.length === 0 && imageDataUrls.length === 0 && selectedShapes.length === 0) {
+                alert(currentLanguage === 'es' ? 'Sube el diseño que quieres transformar' : 'Upload the design you want to transform');
+                return;
+            }
 
             // Disable button during generation
             genBtn.disabled = true;
@@ -3745,6 +4224,17 @@
             if (selectedPhotoStyle) formData.append('photoStyle', selectedPhotoStyle);
             if (turboMode) formData.append('turboMode', 'true');
 
+            // Transform mode: send target product and ratio
+            if (isTransformMode) {
+                formData.append('targetProduct', document.getElementById('targetProductDropdown').value);
+                formData.append('targetRatio', document.getElementById('targetRatioDropdown').value);
+                formData.append('turboMode', 'true');
+                // Send a placeholder instruction if empty so server doesn't reject
+                if (!instructions.trim()) {
+                    formData.set('instructions', 'Transform this design to the target product format');
+                }
+            }
+
             // Get destination from the DESTINATION default key
             // If permuted mode, don't send raw multi-value — each permuted instruction has the correct single destination
             const destKey = promptKeys.find(k => k.isDefault && k.name === 'DESTINATION');
@@ -3780,17 +4270,26 @@
             if (crazyEl) formData.append('crazymeter', crazyEl.value);
 
             // Shapes go FIRST so they're the primary reference
-            selectedShapes.forEach(shape => formData.append('images', shape.file));
-            selectedImages.forEach(file => formData.append('images', file));
-            imageDataUrls.forEach((dataUrl, index) => {
-                formData.append('images', dataURLtoBlob(dataUrl), `pasted-image-${index}.${getExtFromDataUrl(dataUrl)}`);
-            });
+            for (const shape of selectedShapes) {
+                const optimized = await optimizeBlob(shape.file, shape.file.name);
+                formData.append('images', optimized, shape.file.name);
+            }
+            for (const file of selectedImages) {
+                const optimized = await optimizeBlob(file, file.name);
+                formData.append('images', optimized, file.name);
+            }
+            for (let index = 0; index < imageDataUrls.length; index++) {
+                const optimizedDataUrl = await optimizeImage(imageDataUrls[index]);
+                formData.append('images', dataURLtoBlob(optimizedDataUrl), `pasted-image-${index}.${getExtFromDataUrl(optimizedDataUrl)}`);
+            }
 
             // Style reference image (separate from regular reference images)
             if (styleReferenceFile) {
-                formData.append('styleReference', styleReferenceFile);
+                const optimized = await optimizeBlob(styleReferenceFile, styleReferenceFile.name);
+                formData.append('styleReference', optimized, styleReferenceFile.name);
             } else if (styleReferenceDataUrl) {
-                formData.append('styleReference', dataURLtoBlob(styleReferenceDataUrl), 'style-reference.png');
+                const optimizedDataUrl = await optimizeImage(styleReferenceDataUrl);
+                formData.append('styleReference', dataURLtoBlob(optimizedDataUrl), 'style-reference.png');
             }
 
             const outputSection = document.getElementById('outputSection');
@@ -3824,7 +4323,14 @@
 
             try {
                 const response = await fetch('/api/generate-prompt-stream', { method: 'POST', body: formData, signal: _abortController.signal });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    let errMsg = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errBody = await response.json();
+                        if (errBody.error) errMsg = errBody.error;
+                    } catch (_) {}
+                    throw new Error(errMsg);
+                }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -4130,9 +4636,9 @@
         async function postToEnvato(prompt) {
             try {
                 const aspectRatio = document.getElementById('ratioDropdown')?.value || '1:1';
-                // Collect reference images (first 2 for Envato's 2-slot modal)
+                // Collect reference images (up to 3 for Envato's 3-slot modal)
                 const allImages = await collectAllImageData();
-                const referenceImages = allImages.slice(0, 2).map(img => img.dataUrl);
+                const referenceImages = allImages.slice(0, 3).map(img => img.dataUrl);
                 const response = await fetch('/api/send-to-envato', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4142,7 +4648,7 @@
             } catch (err) {
                 console.error('Send to Envato failed:', err);
                 await navigator.clipboard.writeText(prompt);
-                window.open('https://labs.envato.com/apps/image-gen/', '_blank');
+                window.open('https://app.envato.com/image-gen', '_blank');
                 return { success: false, fallback: true };
             }
         }
@@ -4178,9 +4684,9 @@
                 const aspectRatios = allPrompts.map((_, idx) => ratios[idx % 3]);
                 // Shuffle the assigned ratios so it's not just repeating 1-2-3
                 for (let i = aspectRatios.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [aspectRatios[i], aspectRatios[j]] = [aspectRatios[j], aspectRatios[i]]; }
-                // Collect reference images (first 2 for Envato's 2-slot modal)
+                // Collect reference images (up to 3 for Envato's 3-slot modal)
                 const allImages = await collectAllImageData();
-                const referenceImages = allImages.slice(0, 2).map(img => img.dataUrl);
+                const referenceImages = allImages.slice(0, 3).map(img => img.dataUrl);
                 const response = await fetch('/api/send-all-to-envato', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4218,7 +4724,7 @@
             try {
                 // Collect regular uploaded images only (style ref is NOT sent — analysis only)
                 const allImages = await collectAllImageData();
-                const refs = allImages.slice(0, 2).map(img => img.dataUrl);
+                const refs = allImages.slice(0, 3).map(img => img.dataUrl);
 
                 const response = await fetch('/api/send-to-envato-image-to-video', {
                     method: 'POST',
@@ -4353,8 +4859,8 @@
                         const matchCb = document.querySelector(`#styleMultiOptions input[value="${d.style}"]`);
                         if (matchCb) { matchCb.checked = true; toggleStyleOption(matchCb); }
                     }
-                    if (d.ratio) { const ratioDD = document.getElementById('ratioDropdown'); if (ratioDD) ratioDD.value = d.ratio; }
-                    if (d.productType) { const prodDD = document.getElementById('productDropdown'); if (prodDD) { prodDD.value = d.productType; if (typeof onProductChange === 'function') onProductChange(d.productType); } }
+                    if (d.ratio) { const ratioDD = document.getElementById('ratioDropdown'); if (ratioDD) ratioDD.value = d.ratio; syncCustomDropdown('ratio', d.ratio); }
+                    if (d.productType) { const prodDD = document.getElementById('productDropdown'); if (prodDD) { prodDD.value = d.productType; syncCustomDropdown('product', d.productType); if (typeof onProductChange === 'function') onProductChange(d.productType); } }
                     if (d.variationCount) { const vc = Math.min(Math.max(parseInt(d.variationCount) || 1, 1), 10); document.getElementById('variationCount').value = vc; document.getElementById('variationDisplay').textContent = vc; }
                     if (d.level) { const s = document.getElementById('level'); if (s) { s.value = d.level; updateSlider('level', 'levelValue'); } }
                     if (d.decorationLevel) { const s = document.getElementById('decoration'); if (s) { s.value = d.decorationLevel; updateSlider('decoration', 'decorationValue'); } }
@@ -4676,8 +5182,8 @@
                         updateStyleDisplay();
                         updatePhotoStyleSelectorVisibility();
                     }
-                    if (s.selectedRatio) { const dd = document.getElementById('ratioDropdown'); if (dd) { dd.value = s.selectedRatio; onRatioChange(s.selectedRatio); } }
-                    if (s.selectedProduct) { const dd = document.getElementById('productDropdown'); if (dd) { dd.value = s.selectedProduct; onProductChange(s.selectedProduct); } }
+                    if (s.selectedRatio) { const dd = document.getElementById('ratioDropdown'); if (dd) { dd.value = s.selectedRatio; syncCustomDropdown('ratio', s.selectedRatio); onRatioChange(s.selectedRatio); } }
+                    if (s.selectedProduct) { const dd = document.getElementById('productDropdown'); if (dd) { dd.value = s.selectedProduct; syncCustomDropdown('product', s.selectedProduct); onProductChange(s.selectedProduct); } }
                     if (s.selectedPhotoStyle) { try { selectPhotoStyle(s.selectedPhotoStyle); } catch(e) {} }
 
                     // Turbo
@@ -4787,7 +5293,7 @@
                     // Select product type
                     if (product) {
                         const prodDD = document.getElementById('productDropdown');
-                        if (prodDD) { prodDD.value = product; if (typeof onProductChange === 'function') onProductChange(product); }
+                        if (prodDD) { prodDD.value = product; syncCustomDropdown('product', product); if (typeof onProductChange === 'function') onProductChange(product); }
                     }
 
                     // Fill variations count
@@ -4828,7 +5334,7 @@
                     var ratio = params.get('ratio');
                     if (ratio) {
                         var ratioDD = document.getElementById('ratioDropdown');
-                        if (ratioDD) { ratioDD.value = ratio; if (typeof onRatioChange === 'function') onRatioChange(ratio); }
+                        if (ratioDD) { ratioDD.value = ratio; syncCustomDropdown('ratio', ratio); if (typeof onRatioChange === 'function') onRatioChange(ratio); }
                     }
 
                     // Fill DESTINATION key

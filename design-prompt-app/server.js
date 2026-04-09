@@ -211,7 +211,7 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + path.basename(file.originalname));
   }
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB max per file
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB max per file
 
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
@@ -225,6 +225,14 @@ app.use('/tmp-ref', (req, res, next) => {
     next();
 }, express.static(tmpRefDir));
 
+// Debug endpoint — injected JS posts here so we can see what's happening on the Envato page.
+app.get('/envato-debug', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const { step, status, detail } = req.query;
+    console.log(`  🐞 [envato-debug] step=${step} status=${status}${detail ? ' detail='+detail : ''}`);
+    res.json({ ok: true });
+});
+
 // Write reference images from base64 data URLs to tmp-ref directory, return filenames
 async function writeRefImages(referenceImages) {
     await fs.mkdir(tmpRefDir, { recursive: true });
@@ -232,7 +240,7 @@ async function writeRefImages(referenceImages) {
     const oldFiles = await fs.readdir(tmpRefDir).catch(() => []);
     for (const f of oldFiles) await fs.unlink(path.join(tmpRefDir, f)).catch(() => {});
     const written = [];
-    const maxImages = Math.min(referenceImages.length, 2);
+    const maxImages = Math.min(referenceImages.length, 3);
     for (let i = 0; i < maxImages; i++) {
         const dataUrl = referenceImages[i];
         if (!dataUrl || !dataUrl.startsWith('data:')) continue;
@@ -248,56 +256,150 @@ async function writeRefImages(referenceImages) {
     return written;
 }
 
-// Generate JS code for reference image upload via DragEvent on Envato page
+// Generate JS code for reference image upload on Envato ImageGen (/image-gen).
+// Flow: modal is ALREADY open (opened by caller). Find dropzone, drop files, close modal.
 function generateRefUploadJS(filenames) {
     const urls = filenames.map(f => `http://localhost:${PORT}/tmp-ref/${f}`);
     const urlsJSON = JSON.stringify(urls);
     return `
 window.__refUploadDone = false;
 (async function() {
-  try {
-    // Step 1: Click the "Upload image references" button (small icon-only button in bottom toolbar)
-    var ta = document.querySelector('[placeholder*="Describe"]');
-    if (!ta) { window.__refUploadDone = true; return; }
-    var toolbar = ta.parentElement;
-    while (toolbar && toolbar.getBoundingClientRect().height < 60) toolbar = toolbar.parentElement;
-    if (toolbar) {
-      var btns = toolbar.querySelectorAll('button');
-      for (var b of btns) {
-        var r = b.getBoundingClientRect();
-        if (r.width > 20 && r.width < 55 && r.height > 20 && r.height < 55) {
-          var txt = b.textContent.trim();
-          if (!txt || txt.length < 3) { b.click(); break; }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function dbg(step, status, detail){
+    try{
+      var u = 'http://localhost:${PORT}/envato-debug?step='+encodeURIComponent(step)+'&status='+encodeURIComponent(status);
+      if(detail !== undefined && detail !== null) u += '&detail='+encodeURIComponent(String(detail).slice(0,200));
+      fetch(u).catch(function(){});
+    }catch(e){}
+  }
+  function findDropzone(){
+    // Primary: any element whose text contains "Sube hasta" or "Arrastra y suelta"
+    var all = document.querySelectorAll('div, label, section, form');
+    var best = null, bestArea = 0;
+    for(var i=0;i<all.length;i++){
+      var el = all[i];
+      var t = (el.textContent || '');
+      if(t.length > 200) continue;
+      if(/Sube hasta|Arrastra y suelta|Upload up to|Drag and drop/i.test(t)){
+        var r = el.getBoundingClientRect();
+        var area = r.width * r.height;
+        if(area > bestArea && area < 500000){
+          best = el;
+          bestArea = area;
         }
       }
     }
-    // Step 2: Wait for modal with file inputs
-    for (var a = 0; a < 30; a++) {
-      if (document.querySelectorAll('input[type=file]').length >= 2) break;
-      await new Promise(function(r) { setTimeout(r, 200); });
+    return best;
+  }
+  function closeModal(){
+    // Try explicit close button
+    var closeBtn = document.querySelector('[aria-label*="close" i], [aria-label*="cerrar" i]');
+    if(closeBtn){ try{ closeBtn.click(); return 'close-btn'; }catch(e){} }
+    // Try clicking backdrop (element with role=dialog parent)
+    var dialog = document.querySelector('[role="dialog"], [aria-modal="true"]');
+    if(dialog){
+      var parent = dialog.parentElement;
+      if(parent){
+        var r = parent.getBoundingClientRect();
+        parent.dispatchEvent(new MouseEvent('mousedown', {bubbles:true, clientX:5, clientY:5}));
+        parent.dispatchEvent(new MouseEvent('mouseup', {bubbles:true, clientX:5, clientY:5}));
+        parent.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:5, clientY:5}));
+      }
     }
-    // Step 3: Fetch images from local server and drop into dropzones
+    // Escape key fallback
+    ['keydown','keyup'].forEach(function(et){
+      document.dispatchEvent(new KeyboardEvent(et, { key:'Escape', code:'Escape', keyCode:27, which:27, bubbles:true }));
+      document.body.dispatchEvent(new KeyboardEvent(et, { key:'Escape', code:'Escape', keyCode:27, which:27, bubbles:true }));
+    });
+    return 'escape';
+  }
+  try {
+    dbg('ref','start');
+    // Step 1: Click the "+" add-reference button. Anchor on window.__promptEl (set by focus step)
+    // OR fall back to a contenteditable-aware search so we don't depend on <textarea>.
+    var anchor = window.__promptEl
+      || document.querySelector('textarea')
+      || document.querySelector('[contenteditable="true"],[contenteditable=""],div[role=textbox],[role=textbox]')
+      || document.querySelector('input[type=text]');
+    if (anchor) {
+      var container = anchor.closest('form') || anchor.parentElement;
+      for (var up = 0; up < 8 && container && container.querySelectorAll('button').length < 2; up++) {
+        container = container.parentElement;
+      }
+      var opened = false;
+      if (container) {
+        var btns = container.querySelectorAll('button');
+        for (var i = 0; i < btns.length; i++) {
+          var b = btns[i];
+          var r = b.getBoundingClientRect();
+          var txt = (b.textContent || '').trim();
+          var aria = (b.getAttribute('aria-label') || '').toLowerCase();
+          if (/gener/i.test(txt)) continue;
+          if (/estilo|variaciones|cuadrado|vertical|horizontal|style|portrait|landscape|square|retrato|paisaje/i.test(txt)) continue;
+          if (r.width < 18 || r.height < 18 || r.width > 90 || r.height > 90) continue;
+          // icon-only button (empty/short text) or aria mentions reference
+          if (txt.length <= 2 || /referenc|imagen|image|add|a[nñ]adir|upload|sub/i.test(aria)) {
+            b.click();
+            opened = true;
+            dbg('ref','plus');
+            break;
+          }
+        }
+      }
+      if(!opened) dbg('ref','no-plus');
+    } else { dbg('ref','no-anchor'); }
+    // Wait for modal to render.
+    await sleep(700);
+    // Fetch all images from local server as Blob → File.
     var urls = ${urlsJSON};
     var blobs = await Promise.all(urls.map(function(u) {
-      return fetch(u).then(function(r) { return r.blob(); }).catch(function() { return null; });
+      return fetch(u).then(function(r) { return r.ok ? r.blob() : null; }).catch(function() { return null; });
     }));
-    var inputs = document.querySelectorAll('input[type=file]');
+    var files = [];
     blobs.forEach(function(blob, idx) {
-      if (!blob || !inputs[idx]) return;
-      var file = new File([blob], 'ref' + idx + '.png', { type: 'image/png' });
-      var dz = inputs[idx].parentElement;
-      while (dz && (dz.offsetHeight < 100 || dz.offsetWidth < 100)) dz = dz.parentElement;
-      if (!dz) return;
-      var dt = new DataTransfer();
-      dt.items.add(file);
-      ['dragenter', 'dragover', 'drop'].forEach(function(t) {
-        dz.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt }));
-      });
+      if (!blob) return;
+      var ext = (blob.type && blob.type.split('/')[1]) || 'png';
+      files.push(new File([blob], 'ref' + idx + '.' + ext, { type: blob.type || 'image/png' }));
     });
-    // Step 4: Wait for processing, then close modal
-    await new Promise(function(r) { setTimeout(r, 2000); });
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
-  } catch(e) { console.error('ref upload error:', e); }
+    dbg('ref','files',files.length);
+    if (files.length === 0) {
+      closeModal();
+      window.__refUploadDone = true;
+      return;
+    }
+    var dt = new DataTransfer();
+    files.forEach(function(f){ dt.items.add(f); });
+    // Strategy A: native <input type=file> setter via React prototype
+    var inputs = document.querySelectorAll('input[type=file]');
+    dbg('ref','inputs',inputs.length);
+    if (inputs.length > 0) {
+      var fileInput = inputs[inputs.length - 1];
+      try {
+        var desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'files');
+        if (desc && desc.set) desc.set.call(fileInput, dt.files);
+        else fileInput.files = dt.files;
+        fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(e) {}
+    }
+    // Strategy B: dispatch drop on the dropzone element (covers react-dropzone style handlers).
+    var dz = findDropzone();
+    dbg('ref','dz',dz?'y':'n');
+    if (dz) {
+      try {
+        ['dragenter','dragover','drop'].forEach(function(t) {
+          var ev = new DragEvent(t, { bubbles: true, cancelable: true, composed: true });
+          try { Object.defineProperty(ev, 'dataTransfer', { value: dt }); } catch(e2) {}
+          dz.dispatchEvent(ev);
+        });
+      } catch(e) {}
+    }
+    // Wait for thumbnails to register, then close modal.
+    await sleep(2200);
+    closeModal();
+    await sleep(500);
+    dbg('ref','done');
+  } catch(e) { dbg('ref','err',e.message); }
   window.__refUploadDone = true;
 })();
 `;
@@ -391,11 +493,11 @@ const PROJECTS = {
     icon: '[~]',
     folder: '../Design Based on a Previous Element'
   },
-  'modify': {
-    name: 'Modify Existing Design',
-    color: '#FF6B6B',
-    icon: '🔧',
-    folder: '../MODIFY_DESIGN'
+  'transform': {
+    name: 'Transform / Adapt Design',
+    color: '#FF9500',
+    icon: '🔄',
+    folder: '../TRANSFORM_DESIGN'
   }
 };
 
@@ -433,6 +535,55 @@ DESTINATION: ${destination}
 ---
 
 Output ONLY the short natural language prompt. 150 words MAX. Each letter must show a DIFFERENT iconic scene from ${destination}.`;
+
+    } else if (params.projectType === 'transform') {
+      // TRANSFORM / ADAPT DESIGN TEMPLATE
+      // Extracts the "DNA" of an uploaded design and re-generates it for a different product type/ratio
+      const targetProduct = params.targetProduct || params.productType || 'magnet';
+      const targetRatio = params.targetRatio || params.ratio || '1:1';
+
+      const transformProductDescriptions = {
+        'bottle-opener': 'a flat, front-facing RECTANGULAR bottle opener souvenir with an arch/hole cutout at the top. ALL artwork CONTAINED WITHIN the rectangular shape — no elements extending outside. The illustration must FILL THE ENTIRE SURFACE with NO white/empty space.',
+        'magnet': 'a flat, front-facing design for a souvenir magnet with an organic irregular silhouette shape (edges follow the contour of the design elements - die-cut look). NO border, NO outline, NO frame around the design.',
+        'keychain': 'a flat, front-facing design for a keychain souvenir with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design.',
+        'keyholder': 'a flat, front-facing keyholder souvenir. Rectangular text bar at bottom with hook holes, illustration bursts out the top with irregular organic silhouette. NO white space — every inch filled with artwork.',
+        'portrait': 'a flat, front-facing RECTANGULAR portrait/frame souvenir design with a thick decorative border/frame. ALL artwork CONTAINED WITHIN the rectangular frame shape. The frame itself can be ornamental.'
+      };
+      const targetProductDesc = transformProductDescriptions[targetProduct] || transformProductDescriptions['magnet'];
+
+      const ratioGuide = {
+        '1:1': 'SQUARE format (1:1 ratio) — equal width and height',
+        '2:1': 'HORIZONTAL RECTANGULAR format (2:1 ratio) — twice as wide as tall, panoramic/landscape layout',
+        '1:2': 'VERTICAL RECTANGULAR format (1:2 ratio) — twice as tall as wide, portrait/tall layout'
+      };
+      const targetRatioDesc = ratioGuide[targetRatio] || ratioGuide['1:1'];
+
+      turboPrompt = `You are a design prompt generator for Gemini image AI. You must TRANSFORM an existing design into a different product format.
+
+TASK: Analyze the uploaded reference image and extract its complete design DNA:
+- EXACT color palette (list the specific colors)
+- Art/rendering style (cartoon, realistic, etc. — be hyper-specific about line work, shading, proportions)
+- ALL text/lettering (exact words, font style, color treatment of each letter)
+- ALL visual elements (characters, animals, flowers, landmarks, decorative elements)
+- Composition approach and visual hierarchy
+- Decorative details (borders, patterns, textures, effects)
+
+Then generate a NEW prompt that recreates this SAME design but adapted for:
+TARGET PRODUCT: ${targetProductDesc}
+TARGET FORMAT: ${targetRatioDesc}
+
+CRITICAL ADAPTATION RULES:
+- Keep EVERY visual element, color, and text from the original — nothing removed, nothing added
+- The STYLE must be identical (same artist, same rendering technique)
+- ONLY change the LAYOUT to fit the new product shape and ratio
+- If going from wide to square: stack elements or rearrange composition
+- If going from square to wide: spread elements horizontally, use panoramic layout
+- If going from magnet (irregular shape) to bottle-opener (rectangular): contain all elements within the rectangle
+- If going from rectangular to magnet (irregular shape): let elements define the silhouette edge
+- Text placement must adapt to the new format but keep the SAME text content and style
+${instruction ? `\nADDITIONAL NOTES FROM USER: ${instruction}` : ''}
+
+Output ONLY the short natural language prompt (200 words MAX). No rules, no bans, no labels, no bullet points. White background always.`;
 
     } else {
       // UNIVERSAL TURBO TEMPLATE — style comes from the reference image, not hardcoded
@@ -495,8 +646,8 @@ Output ONLY the short natural language prompt. 150 words MAX. No rules, no bans,
         'bottle-opener': 'a flat, front-facing RECTANGULAR bottle opener souvenir with an arch/hole cutout at the top. ALL artwork CONTAINED WITHIN the rectangular shape — no elements extending outside. The illustration must FILL THE ENTIRE SURFACE with NO white/empty space — every inch covered with artwork, patterns, or colors.',
         'magnet': 'a flat, front-facing design for a souvenir magnet with an organic irregular silhouette shape (edges follow the contour of the design elements - die-cut look). NO border, NO outline, NO frame around the design.',
         'keychain': 'a flat, front-facing design for a keychain souvenir with a small organic shape and a metal ring at the top. NO border, NO outline, NO frame around the design.',
-        'keyholder': 'a flat, front-facing RECTANGULAR keyholder/key rack souvenir (approx 8x4 inches) with hook holes at the bottom. ALL artwork CONTAINED WITHIN the rectangular shape. The illustration fills the shape like a pattern printed on the surface.',
-        'portrait': 'a flat, front-facing RECTANGULAR portrait/frame souvenir design. ALL artwork CONTAINED WITHIN the rectangular frame shape. The illustration fills the frame like a decorative printed surface.'
+        'keyholder': 'a flat, front-facing keyholder souvenir. Rectangular text bar at bottom with hook holes, illustration bursts out the top with irregular organic silhouette. NO white space — every inch filled with artwork.',
+        'portrait': 'a flat, front-facing RECTANGULAR portrait/frame souvenir design with a thick decorative border/frame. ALL artwork CONTAINED WITHIN the rectangular frame shape. The frame itself can be ornamental.'
       };
       const turboProductDesc = turboProductDescriptions[params.productType] || turboProductDescriptions['magnet'];
 
@@ -855,9 +1006,9 @@ You MUST use exactly this creativity level. A level of ${params.crazymeter}/10 m
       if (params.productType === 'bottle-opener') {
         fullInstruction += ` Shape: tall vertical RECTANGULAR bottle opener with arch/hole cutout at top. ALL artwork must be CONTAINED WITHIN the rectangular shape — NO elements extending outside the edges. The illustration must FILL THE ENTIRE SURFACE with NO white/empty space — every square inch covered with artwork, patterns, colors, or design elements. No bare white areas visible.`;
       } else if (params.productType === 'keyholder') {
-        fullInstruction += ` Shape: horizontal RECTANGULAR keyholder/key rack (wider than tall, approx 8x4 inches) with small hook holes along the bottom edge. ALL artwork must be CONTAINED WITHIN the rectangular shape — NO elements extending outside the edges. The illustration fills the shape like a pattern printed on the surface.`;
+        fullInstruction += ` Shape: keyholder souvenir. Rectangular text bar at bottom with hook holes, illustration bursts out the top with irregular organic silhouette. NO white space — every inch filled with artwork.`;
       } else if (params.productType === 'portrait') {
-        fullInstruction += ` Shape: RECTANGULAR portrait/frame (can be vertical or horizontal). ALL artwork must be CONTAINED WITHIN the rectangular frame — NO elements extending outside the edges. The illustration fills the frame like a decorative printed surface.`;
+        fullInstruction += ` Shape: RECTANGULAR portrait/frame with a thick decorative border/frame around the edges. ALL artwork must be CONTAINED WITHIN the rectangular frame. The frame itself can be ornamental.`;
       }
     }
 
@@ -1603,7 +1754,7 @@ app.post('/api/generate-prompt-stream', upload.fields([
   { name: 'styleReference', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode, permutedInstructions: permutedInstructionsRaw, elementKeyValues } = req.body;
+    const { projectType, instructions, variationCount, destination, theme, level, decorationLevel, crazymeter, style, styles, ratio, productType, includeShapeConstraints, photoStyle, turboMode, permutedInstructions: permutedInstructionsRaw, elementKeyValues, targetProduct, targetRatio } = req.body;
     const images = req.files?.['images'] || [];
     const styleRefFiles = req.files?.['styleReference'] || [];
     const count = parseInt(variationCount) || 1;
@@ -1615,7 +1766,7 @@ app.post('/api/generate-prompt-stream', upload.fields([
     } catch (e) { /* ignore parse errors, fall back to single style */ }
     if (parsedStyles.length === 0 && style) parsedStyles = [style];
 
-    if (!instructions || !instructions.trim()) {
+    if ((!instructions || !instructions.trim()) && projectType !== 'transform') {
       return res.status(400).json({
         success: false,
         error: 'Instructions are required'
@@ -1662,11 +1813,13 @@ app.post('/api/generate-prompt-stream', upload.fields([
       productType: productType || 'bottle-opener',
       includeShapeConstraints: includeShapeConstraints === 'true',
       photoStyle: photoStyle || null,
-      turboMode: turboMode === 'true',
+      turboMode: turboMode === 'true' || projectType === 'transform',
       images: allImages,
       styleReferenceImage: styleRefImagePath,
       permutedInstructions: permutedInstructionsRaw ? JSON.parse(permutedInstructionsRaw) : null,
-      elementKeyValues: elementKeyValues || null
+      elementKeyValues: elementKeyValues || null,
+      targetProduct: targetProduct || null,
+      targetRatio: targetRatio || null
     };
 
     console.log('\n📥 Received streaming request:', {
@@ -2435,9 +2588,14 @@ app.post('/api/send-to-envato', async (req, res) => {
     const tempDir = path.join(os.tmpdir(), `envato-${timestamp}`);
     await fs.mkdir(tempDir, { recursive: true });
 
-    // Write prompt to temp file
+    // Write prompt to temp file (legacy pbcopy fallback)
     const promptFile = path.join(tempDir, 'prompt.txt');
     await fs.writeFile(promptFile, sanitizePrompt(prompt), 'utf8');
+    // Also expose prompt over HTTP so the page can fetch & inject via React's native setter.
+    await fs.mkdir(tmpRefDir, { recursive: true });
+    const promptHttpName = `prompt-${timestamp}.txt`;
+    await fs.writeFile(path.join(tmpRefDir, promptHttpName), sanitizePrompt(prompt), 'utf8');
+    const promptHttpUrl = `http://localhost:${PORT}/tmp-ref/${promptHttpName}`;
 
     // Write reference upload JS to temp file if we have images
     let refJSFile = '';
@@ -2466,76 +2624,58 @@ app.post('/api/send-to-envato', async (req, res) => {
     const appleScript = `
 tell application "Google Chrome"
   activate
-  tell front window to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
+  tell front window to make new tab with properties {URL:"https://app.envato.com/image-gen"}
   -- Wait for page to load
   repeat 50 times
     if not (loading of active tab of front window) then exit repeat
     delay 0.15
   end repeat
-  -- Wait for the text input to be ready (textarea or input)
+  -- Wait for the prompt input to be ready (textarea, contenteditable, or text input)
   repeat 40 times
-    set inputReady to (execute active tab of front window javascript "
-      var ta = document.querySelector('textarea, input[type=text]');
-      ta ? '1' : '0';
-    ")
+    set inputReady to (execute active tab of front window javascript "(document.querySelector('textarea')||document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox],[role=textbox]')||document.querySelector('input[type=text]'))?'1':'0'")
     if inputReady is "1" then exit repeat
     delay 0.2
   end repeat
   delay 0.3
   -- Inject abort listener (triple-ESC)
   execute active tab of front window javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
-${refUploadSection}
-  -- Select aspect ratio ONLY (exact match to avoid clicking styles like "Flash portrait")
-  execute active tab of front window javascript "
-    (function(){
-      var target = '${envatoAspect}'.toLowerCase();
-      var items = document.querySelectorAll('label, button, div[role=option], span, li');
-      for(var i=0;i<items.length;i++){
-        var t = items[i].textContent.trim().toLowerCase();
-        if(t===target && t.length < 15){
-          items[i].click(); break;
-        }
-      }
-    })();
-    'ok';
-  "
+  -- Locate the prompt input (textarea OR contenteditable div OR role=textbox) and focus it.
+  execute active tab of front window javascript "window.__promptFocused=0;(function(){try{var el=document.querySelector('textarea');var k='ta';if(!el){el=document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox],[role=textbox]');k='ce';}if(!el){el=document.querySelector('input[type=text]');k='in';}if(!el){window.__promptFocused=1;return;}window.__promptEl=el;window.__promptKind=k;el.scrollIntoView({block:'center'});el.focus();el.click();window.__promptFocused=1;}catch(e){window.__promptFocused=1;}})();"
+  repeat 20 times
+    set isFocused to (execute active tab of front window javascript "window.__promptFocused?'yes':'no'")
+    if isFocused is "yes" then exit repeat
+    delay 0.1
+  end repeat
   delay 0.3
+end tell
+-- Paste via real clipboard (reliable for both textareas and contenteditable rich editors).
+do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
+tell application "System Events" to keystroke "v" using command down
+delay 0.8
+tell application "Google Chrome"
+${refUploadSection}
+  delay 0.3
+  -- Select aspect ratio (English + Spanish labels)
+  execute active tab of front window javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspect}'.toLowerCase()]||['${envatoAspect}'.toLowerCase()];function clickMatch(){var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return true;}}}return false;}if(clickMatch())return'ok';var btns=document.querySelectorAll('button');for(var j=0;j<btns.length;j++){var bt=(btns[j].textContent||'').trim().toLowerCase();if(bt==='cuadrado'||bt==='square'||bt==='vertical'||bt==='portrait'||bt==='horizontal'||bt==='landscape'||bt==='retrato'||bt==='paisaje'){btns[j].click();return'opened';}}return'nf';})();"
+  delay 0.4
+  execute active tab of front window javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspect}'.toLowerCase()]||['${envatoAspect}'.toLowerCase()];var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return'ok';}}}return'skip';})();"
+  delay 0.3
+end tell
+-- Click the Generate button (supports English "Generate" and Spanish "Generar").
+tell application "Google Chrome"
   execute active tab of front window javascript "
     (function(){
-      var target = '${envatoAspect}'.toLowerCase();
-      var items = document.querySelectorAll('li, label, button, div[role=option], span');
-      for(var i=0;i<items.length;i++){
-        if(items[i].textContent.trim().toLowerCase()===target && items[i].textContent.trim().length < 15){
-          items[i].click();
+      var btns = document.querySelectorAll('button');
+      for(var i=0;i<btns.length;i++){
+        var t = (btns[i].textContent||'').trim().toLowerCase();
+        if(t==='generate' || t==='generar'){
+          if(btns[i].disabled) return 'disabled';
+          btns[i].click();
           return 'clicked';
         }
       }
-      return 'not found';
+      return 'not-found';
     })();
-  "
-  delay 0.3
-  -- Focus the text input
-  execute active tab of front window javascript "
-    var ta = document.querySelector('textarea, input[type=text]');
-    if(ta){ta.focus();ta.click();} 'ok';
-  "
-end tell
--- Paste text via clipboard
-do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
-tell application "System Events" to keystroke "v" using command down
--- Wait for paste to register
-delay 0.8
--- Click the Generate button via JS injection
-tell application "Google Chrome"
-  execute active tab of front window javascript "
-    var btns = document.querySelectorAll('button');
-    for(var i=0;i<btns.length;i++){
-      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
-        btns[i].click();
-        break;
-      }
-    }
-    'ok';
   "
 end tell
 return "done"
@@ -2642,7 +2782,7 @@ end tell
       script += `\n-- ═══ BATCH ${Math.floor(batchStart / BATCH_SIZE) + 1}: tabs ${batchStart + 1}-${batchEnd} ═══\n`;
       script += `tell application "Google Chrome"\n  set w to front window\n`;
       for (let i = batchStart; i < batchEnd; i++) {
-        script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
+        script += `  tell w to make new tab with properties {URL:"https://app.envato.com/image-gen"}\n`;
       }
       script += `
   -- Wait for all ${batchSize} tabs to load
@@ -2831,7 +2971,7 @@ tell application "Google Chrome"
   end if
   set w to front window
   -- Open new tab and remember its index
-  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}
+  tell w to make new tab with properties {URL:"https://app.envato.com/image-gen"}
   set myTab to (count of tabs of w)
 
   -- Wait for page load
@@ -3371,7 +3511,7 @@ tell application "Google Chrome"
 `;
     // Open N tabs
     for (let i = 0; i < clipCount; i++) {
-      script += `  tell w to make new tab with properties {URL:"https://labs.envato.com/apps/image-gen/"}\n`;
+      script += `  tell w to make new tab with properties {URL:"https://app.envato.com/image-gen"}\n`;
     }
     script += `
   -- Wait for all tabs to load
@@ -3782,13 +3922,19 @@ delay 1.0
 // ═══ SEND TO ENVATO VIDEO GEN (single prompt — video, 9:16, Sound+Speech) ═══
 app.post('/api/send-to-envato-video', async (req, res) => {
   try {
-    const { prompt, speech } = req.body;
+    const { prompt, speech, referenceImages } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ success: false, error: 'No prompt provided' });
     }
 
-    console.log(`\n🎬 Send to Envato Video Gen (background): prompt length=${prompt.length}, speech length=${(speech || '').length}`);
+    // Write reference images to tmp-ref if provided
+    let refFilenames = [];
+    if (referenceImages && Array.isArray(referenceImages) && referenceImages.length > 0) {
+      refFilenames = await writeRefImages(referenceImages);
+    }
+
+    console.log(`\n🎬 Send to Envato Video Gen (background): prompt length=${prompt.length}, speech length=${(speech || '').length}, refs=${refFilenames.length}`);
 
     const timestamp = Date.now();
     const tempDir = path.join(os.tmpdir(), `envato-video-${timestamp}`);
@@ -3802,6 +3948,23 @@ app.post('/api/send-to-envato-video', async (req, res) => {
 
     // Escape the prompt for embedding in JS string
     const vidPromptB64Single = Buffer.from(sanitizeVideoPrompt(combinedPrompt)).toString('base64');
+
+    // Build reference image upload section if we have images
+    let refUploadSection = '';
+    if (refFilenames.length > 0) {
+      // Save ref-upload.js to tmp-ref so the page can fetch it
+      await fs.writeFile(path.join(tmpRefDir, 'ref-upload.js'), generateRefUploadJS(refFilenames), 'utf8');
+      refUploadSection = `
+  -- Upload reference images via fetch from local server
+  execute tab myTab of w javascript "fetch('http://localhost:${PORT}/tmp-ref/ref-upload.js').then(r=>r.text()).then(js=>eval(js)).catch(e=>{ window.__refUploadDone=true; });"
+  -- Wait for ref upload to complete
+  repeat 30 times
+    set isDone to (execute tab myTab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
+    if isDone is "yes" then exit repeat
+    delay 0.5
+  end repeat
+  delay 0.5`;
+    }
 
     // BACKGROUND AppleScript: no activate, no tab switching, no clipboard paste
     // Everything done via "execute tab ... javascript" — user can keep working
@@ -3880,7 +4043,7 @@ tell application "Google Chrome"
     })();
   "
   delay 1.5
-
+${refUploadSection}
   -- STEP 3: Set prompt text via JS using base64 decode
   execute tab myTab of w javascript "
     (function(){
@@ -4163,6 +4326,40 @@ delay 0.5
     console.error('[X] Bulk Send to Envato Video error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// Global error handler for multer, JSON parse, and other middleware errors
+app.use((err, req, res, next) => {
+  // Prevent double-response if headers already sent
+  if (res.headersSent) {
+    console.error('[!] Error after headers sent:', err.message);
+    return next(err);
+  }
+
+  // Multer: file too large
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    console.error(`[!] File too large: ${err.field || 'unknown'} — ${err.message}`);
+    return res.status(413).json({ success: false, error: 'Image file too large (max 50MB). The image will be auto-compressed on retry.' });
+  }
+  // Multer: other errors (too many files, unexpected field, etc.)
+  if (err.name === 'MulterError') {
+    console.error(`[!] Multer error [${err.code}]: ${err.message}`);
+    return res.status(400).json({ success: false, error: `Upload error: ${err.message}` });
+  }
+  // JSON parse errors
+  if (err.type === 'entity.parse.failed') {
+    console.error(`[!] JSON parse error: ${err.message}`);
+    return res.status(400).json({ success: false, error: 'Invalid request format' });
+  }
+  // Payload too large (express body-parser)
+  if (err.type === 'entity.too.large') {
+    console.error(`[!] Payload too large: ${err.message}`);
+    return res.status(413).json({ success: false, error: 'Request payload too large. Try reducing the number or size of images.' });
+  }
+
+  // Catch-all
+  console.error('[!] Unhandled server error:', err.stack || err.message || err);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, () => {
