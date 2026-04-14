@@ -226,10 +226,16 @@ app.use('/tmp-ref', (req, res, next) => {
 }, express.static(tmpRefDir));
 
 // Debug endpoint — injected JS posts here so we can see what's happening on the Envato page.
+let envatoStartMs = 0;
+let envatoLastPhaseMs = 0;
 app.get('/envato-debug', (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     const { step, status, detail } = req.query;
-    console.log(`  🐞 [envato-debug] step=${step} status=${status}${detail ? ' detail='+detail : ''}`);
+    const now = Date.now();
+    const total = envatoStartMs ? (now - envatoStartMs) : 0;
+    const delta = envatoLastPhaseMs ? (now - envatoLastPhaseMs) : 0;
+    envatoLastPhaseMs = now;
+    console.log(`  🐞 [+${String(total).padStart(5)}ms Δ${String(delta).padStart(5)}ms] ${step}=${status}${detail ? ' ('+detail+')' : ''}`);
     res.json({ ok: true });
 });
 
@@ -395,9 +401,9 @@ window.__refUploadDone = false;
       } catch(e) {}
     }
     // Wait for thumbnails to register, then close modal.
-    await sleep(2200);
+    await sleep(1200);
     closeModal();
-    await sleep(500);
+    await sleep(200);
     dbg('ref','done');
   } catch(e) { dbg('ref','err',e.message); }
   window.__refUploadDone = true;
@@ -2564,6 +2570,8 @@ delay 0.3
 // ═══ SEND TO ENVATO (single prompt, text-only, auto-submit) ═══
 app.post('/api/send-to-envato', async (req, res) => {
   try {
+    envatoStartMs = Date.now();
+    envatoLastPhaseMs = envatoStartMs;
     const { prompt, aspectRatio, referenceImages } = req.body;
 
     if (!prompt) {
@@ -2611,13 +2619,12 @@ app.post('/api/send-to-envato', async (req, res) => {
   -- Upload reference images
   set refJS to do shell script "cat " & quoted form of "${refJSFile}"
   execute active tab of front window javascript refJS
-  -- Wait for ref upload to complete
-  repeat 30 times
+  -- Wait for ref upload to complete — poll tightly so we catch completion fast.
+  repeat 60 times
     set isDone to (execute active tab of front window javascript "window.__refUploadDone ? 'yes' : 'no'")
     if isDone is "yes" then exit repeat
-    delay 0.5
-  end repeat
-  delay 0.5`;
+    delay 0.1
+  end repeat`;
     }
 
     // AppleScript: open Envato ImageGen, paste text, click Generate
@@ -2630,12 +2637,14 @@ tell application "Google Chrome"
     if not (loading of active tab of front window) then exit repeat
     delay 0.15
   end repeat
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=page-loaded&status=ok').catch(function(){});"
   -- Wait for the prompt input to be ready (textarea, contenteditable, or text input)
   repeat 40 times
     set inputReady to (execute active tab of front window javascript "(document.querySelector('textarea')||document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox],[role=textbox]')||document.querySelector('input[type=text]'))?'1':'0'")
     if inputReady is "1" then exit repeat
     delay 0.2
   end repeat
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=input-ready&status=ok').catch(function(){});"
   delay 0.3
   -- Inject abort listener (triple-ESC)
   execute active tab of front window javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
@@ -2646,6 +2655,7 @@ tell application "Google Chrome"
     if isFocused is "yes" then exit repeat
     delay 0.1
   end repeat
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=focus-done&status=ok').catch(function(){});"
   delay 0.3
 end tell
 -- Paste via real clipboard (reliable for both textareas and contenteditable rich editors).
@@ -2653,12 +2663,15 @@ do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
 tell application "System Events" to keystroke "v" using command down
 delay 0.8
 tell application "Google Chrome"
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=paste-done&status=ok').catch(function(){});"
 ${refUploadSection}
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=ref-done&status=ok').catch(function(){});"
   delay 0.3
   -- Select aspect ratio (English + Spanish labels)
   execute active tab of front window javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspect}'.toLowerCase()]||['${envatoAspect}'.toLowerCase()];function clickMatch(){var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return true;}}}return false;}if(clickMatch())return'ok';var btns=document.querySelectorAll('button');for(var j=0;j<btns.length;j++){var bt=(btns[j].textContent||'').trim().toLowerCase();if(bt==='cuadrado'||bt==='square'||bt==='vertical'||bt==='portrait'||bt==='horizontal'||bt==='landscape'||bt==='retrato'||bt==='paisaje'){btns[j].click();return'opened';}}return'nf';})();"
   delay 0.4
   execute active tab of front window javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspect}'.toLowerCase()]||['${envatoAspect}'.toLowerCase()];var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return'ok';}}}return'skip';})();"
+  execute active tab of front window javascript "fetch('http://localhost:${PORT}/envato-debug?step=aspect-done&status=ok').catch(function(){});"
   delay 0.3
 end tell
 -- Click the Generate button (supports English "Generate" and Spanish "Generar").
@@ -2669,11 +2682,13 @@ tell application "Google Chrome"
       for(var i=0;i<btns.length;i++){
         var t = (btns[i].textContent||'').trim().toLowerCase();
         if(t==='generate' || t==='generar'){
-          if(btns[i].disabled) return 'disabled';
+          if(btns[i].disabled) { fetch('http://localhost:${PORT}/envato-debug?step=generate&status=disabled').catch(function(){}); return 'disabled'; }
           btns[i].click();
+          fetch('http://localhost:${PORT}/envato-debug?step=generate&status=clicked').catch(function(){});
           return 'clicked';
         }
       }
+      fetch('http://localhost:${PORT}/envato-debug?step=generate&status=not-found').catch(function(){});
       return 'not-found';
     })();
   "
@@ -2764,13 +2779,12 @@ end tell
   -- Upload reference images
   set refJS to do shell script "cat " & quoted form of "${refJSFile}"
   execute active tab of w javascript refJS
-  -- Wait for ref upload to complete
-  repeat 30 times
+  -- Wait for ref upload to complete — tight polling so we catch completion fast.
+  repeat 60 times
     set isDone to (execute active tab of w javascript "window.__refUploadDone ? 'yes' : 'no'")
     if isDone is "yes" then exit repeat
-    delay 0.5
-  end repeat
-  delay 0.5`;
+    delay 0.1
+  end repeat`;
     }
 
     // Process in batches of 10
@@ -2818,53 +2832,44 @@ tell application "Google Chrome"
   set active tab index of w to (tabTotal - ${batchSize - 1 - idxInBatch})
   -- Inject abort listener (triple-ESC)
   execute active tab of w javascript "if(!window.__abortInjected){window.__abortInjected=1;var _et=[];document.addEventListener('keydown',function(e){if(e.key==='Escape'){_et.push(Date.now());_et=_et.filter(function(t){return Date.now()-t<1000});if(_et.length>=3){_et=[];fetch('http://localhost:3001/abort').catch(function(){});var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;padding:16px;background:#e72a88;color:white;text-align:center;font-weight:bold;font-size:20px;z-index:999999';d.textContent='ABORTED';document.body.appendChild(d);setTimeout(function(){d.remove()},2000)}}});} 'ok'"
-  -- Wait for input ready
-  repeat 30 times
-    set inputReady to (execute active tab of w javascript "
-      var ta = document.querySelector('textarea, input[type=text]');
-      ta ? '1' : '0';
-    ")
+  -- Wait for prompt input (textarea, contenteditable, or text input) to be ready
+  repeat 40 times
+    set inputReady to (execute active tab of w javascript "(document.querySelector('textarea')||document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox],[role=textbox]')||document.querySelector('input[type=text]'))?'1':'0'")
     if inputReady is "1" then exit repeat
+    delay 0.15
+  end repeat
+  -- Locate prompt element and focus it, storing reference on window.__promptEl
+  execute active tab of w javascript "window.__promptFocused=0;(function(){try{var el=document.querySelector('textarea');if(!el)el=document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox],[role=textbox]');if(!el)el=document.querySelector('input[type=text]');if(!el){window.__promptFocused=1;return;}window.__promptEl=el;el.scrollIntoView({block:'center'});el.focus();el.click();window.__promptFocused=1;}catch(e){window.__promptFocused=1;}})();"
+  repeat 20 times
+    set isFocused to (execute active tab of w javascript "window.__promptFocused?'yes':'no'")
+    if isFocused is "yes" then exit repeat
     delay 0.1
   end repeat
-${bulkRefSection}
-  -- Select aspect ratio ONLY (exact match, no styles)
-  execute active tab of w javascript "
-    (function(){
-      var target = '${envatoAspects[i]}'.toLowerCase();
-      var items = document.querySelectorAll('label, button, div[role=option], span, li');
-      for(var i=0;i<items.length;i++){
-        var t = items[i].textContent.trim().toLowerCase();
-        if(t===target && t.length < 15){ items[i].click(); break; }
-      }
-    })();
-    'ok';
-  "
-  delay 0.25
-  -- Focus input
-  execute active tab of w javascript "
-    var ta = document.querySelector('textarea, input[type=text]');
-    if(ta){ta.focus();ta.click();} 'ok';
-  "
+  delay 0.3
 end tell
--- Paste text
+-- Paste via real clipboard (works for contenteditable rich editors)
 do shell script "cat " & quoted form of "${promptFile}" & " | pbcopy"
 tell application "System Events" to keystroke "v" using command down
-delay 0.5
--- Click Generate
+delay 0.3
 tell application "Google Chrome"
-  execute active tab of w javascript "
-    var btns = document.querySelectorAll('button');
-    for(var i=0;i<btns.length;i++){
-      if(btns[i].textContent.trim().toLowerCase().includes('generate')){
-        btns[i].click();
-        break;
-      }
-    }
-    'ok';
-  "
+  -- Force React/framework to recognize pasted text by dispatching input events
+  execute active tab of w javascript "(function(){var el=document.querySelector('textarea')||document.querySelector('[contenteditable=\\"true\\"],[contenteditable=\\"\\"],div[role=textbox]')||document.querySelector('input[type=text]');if(el){el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}})();"
+${bulkRefSection}
+  delay 0.3
+  -- Select aspect ratio (English + Spanish labels)
+  execute active tab of w javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspects[i]}'.toLowerCase()]||['${envatoAspects[i]}'.toLowerCase()];function clickMatch(){var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return true;}}}return false;}if(clickMatch())return'ok';var btns=document.querySelectorAll('button');for(var j=0;j<btns.length;j++){var bt=(btns[j].textContent||'').trim().toLowerCase();if(bt==='cuadrado'||bt==='square'||bt==='vertical'||bt==='portrait'||bt==='horizontal'||bt==='landscape'||bt==='retrato'||bt==='paisaje'){btns[j].click();return'opened';}}return'nf';})();"
+  delay 0.4
+  execute active tab of w javascript "(function(){var map={'square':['square','cuadrado'],'portrait':['portrait','vertical','retrato'],'landscape':['landscape','horizontal','paisaje']};var targets=map['${envatoAspects[i]}'.toLowerCase()]||['${envatoAspects[i]}'.toLowerCase()];var items=document.querySelectorAll('li,label,button,div[role=option],[role=menuitem],span');for(var i=0;i<items.length;i++){var t=(items[i].textContent||'').trim().toLowerCase();if(t.length===0||t.length>20)continue;for(var k=0;k<targets.length;k++){if(t===targets[k]){items[i].click();return'ok';}}}return'skip';})();"
+  delay 0.3
+  -- Click Generate with retry (button may be disabled until UI registers pasted text)
+  set genResult to "not-found"
+  repeat 20 times
+    set genResult to (execute active tab of w javascript "(function(){var btns=document.querySelectorAll('button');for(var i=0;i<btns.length;i++){var t=(btns[i].textContent||'').trim().toLowerCase();if(t==='generate'||t==='generar'){if(btns[i].disabled)return'disabled';btns[i].click();return'clicked';}}return'not-found';})();")
+    if genResult is "clicked" then exit repeat
+    delay 0.2
+  end repeat
 end tell
-delay 0.15
+delay 0.2
 `;
       } // end per-tab loop
     } // end batch loop
@@ -2874,12 +2879,14 @@ delay 0.15
     const scriptFile = path.join(tempDir, 'bulk_automate.scpt');
     await fs.writeFile(scriptFile, script, 'utf8');
 
+    const startTime = Date.now();
     console.log(`  📝 Executing batched Envato automation (${tabCount} tabs, batches of ${BATCH_SIZE})...`);
 
     const proc = exec(`osascript "${scriptFile}"`, { timeout: tabCount * 15000 }, (error) => {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       setTimeout(() => { fs.rm(tempDir, { recursive: true }).catch(() => {}); }, 30000);
-      if (error) console.error('  [X] Bulk Envato error:', error.message);
-      else console.log(`  [OK] Bulk Envato done (${tabCount} tabs)`);
+      if (error) console.error(`  [X] Bulk Envato error after ${elapsed}s:`, error.message);
+      else console.log(`  ⏱️ Bulk Envato done (${tabCount} tabs) in ${elapsed}s`);
     });
     trackAutomation(proc, 'Envato bulk');
 
