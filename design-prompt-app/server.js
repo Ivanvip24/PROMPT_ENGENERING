@@ -4369,6 +4369,45 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, error: err.message || 'Internal server error' });
 });
 
+// ═══ HEALTH CHECK (used by update polling) ═══
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true });
+});
+
+// ═══ SELF-UPDATE: git pull + restart ═══
+app.post('/api/update', async (req, res) => {
+  try {
+    const repoDir = path.join(__dirname, '..');
+    console.log('\n🔄 Update requested — running git pull...');
+
+    // Run git pull
+    const pullResult = await new Promise((resolve, reject) => {
+      exec('git pull origin main', { cwd: repoDir, timeout: 30000 }, (error, stdout, stderr) => {
+        if (error) reject(error);
+        else resolve(stdout.trim());
+      });
+    });
+
+    console.log(`  git pull: ${pullResult}`);
+
+    if (pullResult.includes('Already up to date') || pullResult.includes('Already up-to-date')) {
+      console.log('  ✅ No updates available.');
+      return res.json({ updated: false, message: 'Already up to date' });
+    }
+
+    // There are updates — respond first, then exit with code 42
+    // The start.sh wrapper script sees code 42 and restarts automatically
+    res.json({ updated: true, message: pullResult });
+
+    console.log('  🔄 Restarting server (exit code 42)...');
+    setTimeout(() => process.exit(42), 500);
+
+  } catch (error) {
+    console.error('[X] Update error:', error.message);
+    res.status(500).json({ updated: false, error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
 

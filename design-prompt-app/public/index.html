@@ -96,6 +96,41 @@
             font-weight: 400;
             letter-spacing: 1px;
         }
+        .update-btn {
+            position: absolute;
+            top: 8px;
+            left: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+        }
+        .update-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .update-btn.updating {
+            background: linear-gradient(135deg, var(--rosa), var(--rosa-dark));
+            color: white;
+            pointer-events: none;
+        }
+        .update-btn.success {
+            background: #22c55e;
+            color: white;
+            pointer-events: none;
+        }
+        .update-btn.no-update {
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+        .update-btn .spin-icon { animation: spin 1s linear infinite; }
         .language-switcher {
             position: absolute;
             top: 8px;
@@ -2010,6 +2045,7 @@
         @media (max-width: 768px) {
             .header { padding: 16px 20px; }
             .header-logo { height: 56px; }
+            .update-btn { position: static; margin: 8px auto 0; }
             .language-switcher { position: static; margin: 10px auto 0; }
             .main-container { padding: 16px; }
             .project-pills { gap: 8px; }
@@ -2050,6 +2086,10 @@
     <!-- Header -->
     <header class="header">
         <div class="header-inner">
+            <button class="update-btn" id="updateBtn" onclick="downloadUpdate()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Update
+            </button>
             <div class="language-switcher">
                 <button class="lang-btn active" onclick="setLanguage('en')" id="lang-en">EN</button>
                 <button class="lang-btn" onclick="setLanguage('es')" id="lang-es">ES</button>
@@ -3293,6 +3333,42 @@
         };
 
         // ═══ LANGUAGE ═══
+        async function downloadUpdate() {
+            const btn = document.getElementById('updateBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Updating...';
+            btn.classList.add('updating');
+            try {
+                const res = await fetch('/api/update', { method: 'POST' });
+                const data = await res.json();
+                if (data.updated) {
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Restarting...';
+                    btn.classList.remove('updating');
+                    btn.classList.add('success');
+                    // Server will restart — poll until it's back, then reload
+                    let retries = 0;
+                    const poll = setInterval(async () => {
+                        retries++;
+                        try {
+                            const check = await fetch('/api/health', { signal: AbortSignal.timeout(1000) });
+                            if (check.ok) { clearInterval(poll); location.reload(); }
+                        } catch(e) { /* server still restarting */ }
+                        if (retries > 30) { clearInterval(poll); location.reload(); }
+                    }, 1000);
+                } else {
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Already up to date';
+                    btn.classList.remove('updating');
+                    btn.classList.add('no-update');
+                    setTimeout(() => { btn.innerHTML = originalHTML; btn.classList.remove('no-update'); }, 3000);
+                }
+            } catch(err) {
+                console.error('Update failed:', err);
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Error';
+                btn.classList.remove('updating');
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+            }
+        }
+
         function setLanguage(lang) {
             currentLanguage = lang;
             document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
